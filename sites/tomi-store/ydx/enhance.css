@@ -125,6 +125,14 @@ html.ydx-hdr-bg body:not(.in-page):not(.in-dial):not(.menu-open) .top::before { 
 }
 @keyframes ydx-dome { from { transform: scaleY(1); } to { transform: scaleY(0); } }
 
+/* home: a 1px line of the page background (the model colour, e.g. purple) showed through the sub-pixel seam
+   between ink > pink and green > footer (desktop and phone, every scroll position). Each section now paints a
+   1px skirt in the colour of the section above it, over that seam. */
+.home > .numbers { box-shadow: 0 -1px 0 var(--sand, #ede4d6); }
+.home > .builder { box-shadow: 0 -1px 0 #0e0d0c; }
+.home > .deliver { box-shadow: 0 -1px 0 #c9255f; }
+.home > .deliver + .foot { box-shadow: 0 -1px 0 #0c7f57; }
+
 /* footer wordmark in Hebrew: `direction: ltr` on the Latin wordmark made `text-align: start` mean LEFT, so in RTL
    it floated mid-page (desktop) or sat on the wrong edge (phones) while everything around it is right-aligned.
    Put it on the reading-start edge, mirroring the header logo. */
