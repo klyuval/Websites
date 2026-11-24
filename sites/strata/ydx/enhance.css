@@ -10,6 +10,13 @@
    load they would otherwise show up unstyled at the end of the page. */
 :root { --ydx-css: 1; }
 
+/* Motion tokens (round 4). Two curves for the whole layer, matching the site's own:
+   --ease (the site's ease-out) for anything that lifts, settles or fades in;
+   --ydx-move, one "machine" in-out curve for everything that travels like a gantry or extruder
+   (seams, the hero marquee, the shutter and loader layers in enhance.js use the same value).
+   Stepped motion (prints, typing) runs at roughly one layer per 50-75ms, the site's own print rate. */
+:root { --ydx-move: cubic-bezier(.7, 0, .2, 1); }
+
 /* ---------- 1. Design fixes (all viewports) ---------------------------- */
 
 /* Nav pills: brand 41.6px, links 44px, CTA 45px, menu 46px tall — align all to 46px. */
@@ -26,7 +33,26 @@
   .nav-cta:hover { background: var(--ink); color: var(--lime); }
   .faq summary span { transition: transform .25s var(--ease), background-color .18s, color .18s; }
   .faq summary:hover span { background: var(--violet); }
+
+  /* Material tabs were the only selectable control with no hover (chips fill, buttons lift). An unselected
+     tab now lifts its top layer 3px over an ink layer, the buttons' language, and its swatch swells.
+     `translate` (not transform) so the site's own :active scale(.97) press still works. */
+  .mat-tabs button { transition: transform .12s var(--ease), translate .2s var(--ease), box-shadow .2s var(--ease); }
+  .mat-tabs button[aria-selected="false"]:hover { translate: 0 -3px; box-shadow: 0 3px 0 var(--ink); }
+  .mat-tabs button[aria-selected="false"]:active { translate: 0; box-shadow: none; }
+  .mat-tabs button i { transition: scale .2s var(--ease); }
+  .mat-tabs button[aria-selected="false"]:hover i { scale: 1.3; }
+
+  /* Footer word scrub (enhance.js): a lime nozzle line rides the current layer while the pointer
+     un-prints and re-prints the word, the hero word's interaction mirrored at the end of the page. */
+  .footer-word { position: relative; }
+  .footer-word::after {
+    content: ""; position: absolute; left: -1%; right: -1%; top: var(--ydx-fz, 0px); height: 3px; margin-top: -1px;
+    background: var(--lime); border-radius: 2px; pointer-events: none; opacity: 0; transition: opacity .2s linear;
+  }
+  .footer-word[data-ydx-scrub]::after { opacity: 1; }
 }
+@media (prefers-reduced-motion: reduce) { .mat-tabs button, .mat-tabs button i { transition: none; } }
 
 /* Materials tab panel: the focus ring cut straight through the big material
    name that sits above the panel. Draw the ring around name + panel instead. */
@@ -146,7 +172,7 @@
 
   /* 4d. Seams between sections extrude left→right like fresh perimeters. */
   html.ydx-js .seam[data-ydx-r] i { transform: scaleX(0); transform-origin: 0 50%; }
-  html.ydx-js .seam[data-ydx-r][data-ydx-in] i { transform: none; transition: transform .9s cubic-bezier(.65, 0, .25, 1); }
+  html.ydx-js .seam[data-ydx-r][data-ydx-in] i { transform: none; transition: transform .9s var(--ydx-move); }
   html.ydx-js .seam[data-ydx-r][data-ydx-in] i:nth-child(2) { transition-delay: .11s; }
   html.ydx-js .seam[data-ydx-r][data-ydx-in] i:nth-child(3) { transition-delay: .22s; }
 
@@ -166,7 +192,7 @@
   html.ydx-intro .hero-out > span:nth-child(2) { animation-delay: .12s; }
   /* backwards fill only: once dragged open the clip goes away, so a kicker wider than the box
      (landscape phones) is not left cut off for the rest of the intro. */
-  html.ydx-intro .sel { animation: ydx-marquee .7s cubic-bezier(.65, 0, .25, 1) .18s backwards; }
+  html.ydx-intro .sel { animation: ydx-marquee .7s var(--ydx-move) .18s backwards; }
   @keyframes ydx-marquee {
     from { clip-path: inset(-40px 100% 100% -14px); }
     to { clip-path: inset(-40px -14px -14px -14px); }

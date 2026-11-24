@@ -295,3 +295,82 @@ then fixed and re-run. The scripts are in the round 3 scratch folder.
   hidden content.
 - In a browser without Web Animations the site's own bundle throws (`R.animate is not a function`). That is
   not ydx's code, and ydx no longer adds to it.
+
+## Round 4
+
+A final whole-site pass, scroll by scroll at 1440×900 and on iPhone 13. The site is English only, so there was
+no other language to check. Interactive states were driven with Playwright (hovering every control family,
+pressing the material tabs, submitting the brief empty and filled, typing into the form, the end of the page).
+The aim was to find what still felt flat or inconsistent, not to add more motion.
+
+### What was judged
+
+After three rounds the page has a motion moment in every section: the loader hands over to the hero, then the
+shutter, reveals, seams, slab sink, parallax, the ticker, the menu and the sheet. The section hand-offs are
+the site's own 7px seams, which extrude. I did not add another section transition: one would compete with
+the seams and the shutter. What was left were inconsistencies in the interaction layer, plus one
+regression introduced by ydx itself.
+
+### What was changed
+
+- **Bug, introduced in round 1: reveals overrode the site's own transforms for good.** A revealed "lift" element
+  kept `transform: none` and a .75s transition with a stagger delay, at higher specificity than the site's rules.
+  The visible result was that the material tabs lost their `:active` scale(.97) press. Before:
+  `transform: none, 0.5s/0.75s, delay 0.14s`. After: `matrix(.97…)`. Each reveal now settles to
+  `data-ydx-r="done"` once it has played, and no reveal rule matches that state, so the site's own styles apply
+  again. The end-of-page sweep skips settled elements.
+- **Material tabs had no hover** (chips fill and buttons lift; the tabs did nothing). An unselected tab now lifts
+  3px over an ink layer, in the buttons' "top layer lifts" language, and its swatch dot swells. This uses
+  `translate`, so the site's `:active` scale still applies. It is pointer:fine only, with no transition under
+  reduced motion.
+- **The footer word now answers the pointer, like the hero word.** In the hero, the pointer drives the print: the
+  layers above it un-print and reprint when it leaves. The footer STRATA is the same component and the closing
+  image of the page, but it did nothing. Now the pointer un-prints it down to the cursor, a lime nozzle line rides
+  the current layer, and on leave it reprints at about 26ms a layer (the hero's rate), with the line stepping
+  up with it. It is built from paused Web Animations on the app's `.printed-clip` and its image. An animation
+  overrides their inline transforms without writing them, and `cancel()` hands back the app's own fully
+  printed state. It only starts once the app has finished printing the word. A click (back to top) restores
+  the word at once. It is pointer:fine only, needs WAAPI, and is off with reduced motion.
+- **The Z readout has an end state.** At the very bottom it reads `BUILD COMPLETE` instead of `Z 240.0 MM`. This
+  coincides with the footer word printing its last layers. The label is now only written when it changes.
+- **Ticket noise removed.** The project-brief ticket reprinted a value every 700ms while someone typed into a text
+  field. That was flicker, not feedback. While typing, a value now prints in only when it goes from
+  empty/placeholder to filled or back. Selects and the quantity still print on each change. Over the same
+  typing sequence: 7 print-ins in round 3, 3 now.
+- **Motion tokens.** The layer used three near-identical in-out curves for "machine" moves:
+  `(.65,0,.25,1)` for the seams and marquee, `(.7,0,.3,1)` for the shutter cover and `(.7,0,.2,1)` for the shutter
+  and loader retract. They are now one: `--ydx-move` in CSS and `EASE_MOVE` in JS, both `(.7,0,.2,1)`. Entrances
+  use the site's own `--ease` (`EASE_OUT` in JS). This is documented at the top of `enhance.css`.
+
+### What was tried and removed
+
+- A "printout feed" reveal for the generated brief (stepped, top to bottom). The site already animates
+  `.brief-result` with its own `info` keyframes, so this doubled it, and the site's animation replayed when the
+  reveal settled. Removed. `.brief-result` is also now excluded from the generic lift group, which had been
+  doubling the site's entrance since round 1.
+
+### Left as is
+
+- No custom cursor and no new section transition (see round 1). The empty-submit state is the browser's native
+  validation bubble with the site's violet focus ring, which reads fine. A failed clipboard copy is silent;
+  that is app state and cannot be changed from outside.
+- With JavaScript disabled, Chromium warns that the two image preloads went unused, because without JS the SPA
+  renders nothing. This is not new, and there is no page to show in that case.
+
+### Regression results (round-3 suite, re-run on the round-4 files)
+
+- `scen.cjs` (desktop): nojs, js404, jshtml, css404, csshtml, both404, bothhtml, jsdelay8, cssdelay8, noanimate,
+  appdelay8 and iframe. Every case ends with the loader gone, the app and hero visible, nothing inert and the
+  page scrollable. The only log lines are the expected 404s, `Unexpected token '<'` for HTML served as JS, and
+  the bundle's own `R.animate` error in noanimate.
+- `inter.cjs`: menuesc, menulink, topbusy, dbl, cancel, dialogkbd, twice and deeplate all pass with values
+  identical to round 3, for example brief top at 72, `#process 3`, one shutter and one Z readout. `inter2.cjs`
+  topbusy2 passes (work top at 72). `misc.cjs` passes: reduced motion is a plain fade with no shutter, a keypress
+  hurries the loader, and the mobile menu jump to #process lands at 72. `wheel.cjs` passes (brief top at 72), and
+  `after.cjs` passes (the Lenis reset holds; a short hop stays smooth). No console errors.
+- New checks (scripts in the round 4 scratch folder): tab press scale restored; footer scrub and reprint frames;
+  ticket print counts; no double entrance on the brief result.
+- `shoot.mjs` walk: desktop is 13 shots and mobile 15, with 0 log lines. The page heights are unchanged
+  (10023 / 8719).
+- Live headers (`curl -sI https://strata.ydesign.workers.dev/`) are unchanged: no CSP or XFO, and
+  `cache-control: public, max-age=0, must-revalidate`.

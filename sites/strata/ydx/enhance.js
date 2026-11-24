@@ -24,6 +24,9 @@
     set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* private mode */ } },
   };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  // Motion tokens (same values as enhance.css): the site's ease-out, and one in-out "machine" curve for
+  // everything that travels like a gantry (loader layers, shutter bands, seams, marquee).
+  const EASE_OUT = 'cubic-bezier(.23,1,.32,1)', EASE_MOVE = 'cubic-bezier(.7,0,.2,1)';
   // Web Animations drive the loader exit and the shutter. Without them (old Safari), those degrade to
   // instant versions instead of throwing half way and leaving the page covered.
   const WAAPI = typeof Element.prototype.animate === 'function';
@@ -195,7 +198,7 @@
             grid.animate([{ opacity: 1 }, { opacity: 0 }], { duration: lead + 40, fill: 'forwards' });
             // Layers retract right, bottom layer first: the build plate empties, the hero shows through.
             const anims = bands.map((b, i) => b.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], {
-              duration: dur, delay: lead + (bands.length - 1 - i) * stag, easing: 'cubic-bezier(.7,0,.2,1)', fill: 'forwards',
+              duration: dur, delay: lead + (bands.length - 1 - i) * stag, easing: EASE_MOVE, fill: 'forwards',
             }));
             setTimeout(() => release(atTop), lead);
             Promise.all(anims.map((a) => a.finished)).then(cleanup, cleanup);
@@ -252,7 +255,7 @@
         if (WAAPI) safe(setupShutter);
         if (!RM) {
           safe(setupScrollFx);
-          if (FINE) safe(setupMagnetic);
+          if (FINE) { safe(setupMagnetic); if (WAAPI) safe(setupFooterScrub); }
         }
       });
     });
@@ -280,10 +283,20 @@
     const GROUPS = [
       ['type', '.work-head > .label, .materials-head > .label, .process-head > .label:first-child, .brief-banner > .label, .brief-intro > .label, .process-foot, .studies-note'],
       ['print', '.work-head > .lede, .materials-head > .lede, .brief-banner > .lede, .brief-intro > h3, .faq-title, .footer-top > p'],
-      ['lift', '.mat-tabs > button, .faq-list > details, .ticket, .brief-note, .brief-form > *, .brief-intro > p:not(.label), .footer-top > .brand, .footer-top > .link, .footer-bottom > *'],
+      ['lift', '.mat-tabs > button, .faq-list > details, .ticket, .brief-note, .brief-form > :not(.brief-result), .brief-intro > p:not(.label), .footer-top > .brand, .footer-top > .link, .footer-bottom > *'],
       ['seam', '.seam'],
     ];
-    const show = (el) => el.setAttribute('data-ydx-in', '');
+    // Once its reveal has played, an element settles to data-ydx-r="done": no reveal rule matches it any
+    // more, so the site's own transforms and transitions apply again. (A revealed "lift" used to keep
+    // transform:none and a .75s transition for good, which killed the material tabs' :active press.)
+    const settle = (el) => {
+      const k = el.getAttribute('data-ydx-r');
+      if (k === 'seam') return;
+      const ms = (parseFloat(el.style.getPropertyValue('--ydx-d')) || 0) +
+        (k === 'type' ? (parseFloat(el.style.getPropertyValue('--ydx-ch')) || 40) * 24 : 950) + 150;
+      setTimeout(() => { if (el.getAttribute('data-ydx-r') === k) el.setAttribute('data-ydx-r', 'done'); }, ms);
+    };
+    const show = (el) => { el.setAttribute('data-ydx-in', ''); settle(el); };
     // Typing is measured in characters of the mono face, so it only works on single lines. Martian Mono
     // arrives after the first scan (fonts no longer block paint) and is wider than the fallback, so a
     // label that fitted on one line may wrap later: re-check before it reveals and fall back to a lift.
@@ -339,7 +352,7 @@
     let endEl = null;
     const endIO = io ? new IntersectionObserver((entries) => {
       if (!entries.some((e) => e.isIntersecting)) return;
-      for (const el of root.querySelectorAll('[data-ydx-r]:not([data-ydx-in])')) {
+      for (const el of root.querySelectorAll('[data-ydx-r]:not([data-ydx-in]):not([data-ydx-r="done"])')) {
         if (el.getBoundingClientRect().top < innerHeight + 60) { show(el); io.unobserve(el); }
       }
     }, { threshold: 0.99 }) : null;
@@ -429,9 +442,9 @@
         sh.classList.add('on');
         bands.forEach((el) => { el.style.transformOrigin = '0 50%'; });
         const cover = bands.map((el, i) => el.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }],
-          { duration: dur, delay: (n - 1 - i) * st, easing: 'cubic-bezier(.7,0,.3,1)', fill: 'forwards' }));
+          { duration: dur, delay: (n - 1 - i) * st, easing: EASE_MOVE, fill: 'forwards' }));
         anims.push(...cover, label.animate([{ opacity: 0, transform: 'translate(-50%,-30%)' }, { opacity: 1, transform: 'translate(-50%,-50%)' }],
-          { duration: 180, delay: 170, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'forwards' }));
+          { duration: 180, delay: 170, easing: EASE_OUT, fill: 'forwards' }));
         Promise.all(cover.map((a) => a.finished)).then(() => {
           jump();
           setTimeout(() => {
@@ -439,7 +452,7 @@
               anims.push(label.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: 'forwards' }));
               bands.forEach((el) => { el.style.transformOrigin = '100% 50%'; });
               const out = bands.map((el, i) => el.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }],
-                { duration: dur + 30, delay: (n - 1 - i) * st, easing: 'cubic-bezier(.7,0,.2,1)', fill: 'forwards' }));
+                { duration: dur + 30, delay: (n - 1 - i) * st, easing: EASE_MOVE, fill: 'forwards' }));
               anims.push(...out);
               Promise.all(out.map((a) => a.finished)).then(end, end);
             } catch (e) { end(); }
@@ -518,7 +531,16 @@
   /* ------------------------------------------------------------------ */
   function setupTicket() {
     if (RM) return;
-    const last = new WeakMap();
+    const last = new WeakMap(), filled = new WeakMap();
+    // Typing into a text field updates the ticket on every keystroke; reprinting it every 700ms while
+    // someone types was flicker, not feedback. While typing, a value only prints in when it goes from
+    // empty/placeholder to filled or back. Selects and the quantity still print on every change.
+    let typedAt = 0;
+    d.addEventListener('input', (e) => {
+      const t = e.target;
+      if (t && (t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && t.type !== 'number'))) typedAt = performance.now();
+    }, true);
+    const isFilled = (dd) => !dd.classList.contains('dim') && dd.textContent.trim() !== '';
     let ticket = null, mo = null;
     const bind = () => {
       const t = d.querySelector('.ticket');
@@ -530,11 +552,16 @@
         for (const m of list) {
           const node = m.target.nodeType === 1 ? m.target : m.target.parentElement;
           const dd = node && node.closest('dd');
-          if (!dd || now - (last.get(dd) || 0) < 700) continue;
+          if (!dd) continue;
+          const was = filled.get(dd), is = isFilled(dd);
+          filled.set(dd, is);
+          if (now - typedAt < 400 && was === is) continue;
+          if (now - (last.get(dd) || 0) < 700) continue;
           last.set(dd, now);
           dd.animate([{ clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0)' }], { duration: 300, easing: 'steps(4, end)' });
         }
       });
+      t.querySelectorAll('dd').forEach((dd) => filled.set(dd, isFilled(dd)));
       mo.observe(t, { subtree: true, childList: true, characterData: true });
     };
     bind();
@@ -612,7 +639,9 @@
       const f = clamp(y / Math.max(1, docH - vh), 0, 1);
       z.style.setProperty('--z', f.toFixed(4));
       z.classList.toggle('on', y > vh * 0.7);
-      zLabel.textContent = 'Z ' + (f * 240).toFixed(1).padStart(5, '0') + ' MM';
+      // At the very end of the page the build is done (the footer word prints its last layers there).
+      const txt = f > 0.995 ? 'BUILD COMPLETE' : 'Z ' + (f * 240).toFixed(1).padStart(5, '0') + ' MM';
+      if (zLabel.textContent !== txt) zLabel.textContent = txt;
       clearTimeout(zTimer);
       zTimer = setTimeout(zTone, 120);
 
@@ -649,6 +678,78 @@
       el.style.translate = `${(dx * 6).toFixed(1)}px ${(dy * 4).toFixed(1)}px`;
     }, { passive: true });
     d.addEventListener('pointerleave', () => { if (cur) { reset(cur); cur = null; } });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 10. Footer word: the hero word's pointer printing, mirrored          */
+  /* ------------------------------------------------------------------ */
+  // In the hero the pointer drives the print: layers above it are un-printed and they reprint when it
+  // leaves. The footer STRATA is the same component and the closing moment of the page, but did nothing
+  // under the pointer. Same interaction here, done with paused Web Animations on the app's clip and image
+  // (an animation overrides their inline transforms without touching them; cancel() hands back the app's
+  // own, fully printed state). Only once the app has finished printing the word.
+  function setupFooterScrub() {
+    const LAYERS = 38, DUR = 1000;           // 38 layers; the reprint runs at ~26ms a layer, like the hero's
+    let st = null;
+    const pct = (el) => { const m = /translate3d\([^,]+,\s*(-?[\d.]+)%/.exec(el.style.transform || ''); return m ? +m[1] : NaN; };
+    function stop() {
+      if (!st) return;
+      const s = st; st = null;
+      s.anims.forEach((a) => { try { a.cancel(); } catch (e) { /* ignore */ } });
+      s.a.removeAttribute('data-ydx-scrub');
+      s.a.style.removeProperty('--ydx-fz');
+    }
+    function begin(a) {
+      const clip = a.querySelector('.printed-clip'), img = clip && clip.querySelector('img');
+      if (!img || pct(clip) !== 0) return false;   // still printing (or not the structure we know)
+      const opt = { duration: DUR, fill: 'both', easing: `steps(${LAYERS}, end)` };
+      const anims = [
+        clip.animate([{ transform: 'translate3d(0,100%,0)' }, { transform: 'translate3d(0,0%,0)' }], opt),
+        img.animate([{ transform: 'translate3d(0,-100%,0)' }, { transform: 'translate3d(0,0%,0)' }], opt),
+      ];
+      anims.forEach((x) => { x.pause(); x.currentTime = DUR; });
+      st = { a, anims, leaving: false };
+      return true;
+    }
+    function leave() {
+      if (!st || st.leaving) return;
+      const s = st;
+      s.leaving = true;
+      const left = DUR - (s.anims[0].currentTime || 0);
+      s.anims.forEach((x) => x.play());
+      // The nozzle line rides the reprint up to the top layer, in the same steps.
+      try {
+        const n = Math.max(1, Math.round(left / DUR * LAYERS));
+        s.anims.push(s.a.animate([{ top: s.fz + 'px' }, { top: s.top0 + 'px' }],
+          { pseudoElement: '::after', duration: Math.max(1, left), easing: `steps(${n}, end)`, fill: 'forwards' }));
+      } catch (e) { s.a.removeAttribute('data-ydx-scrub'); }
+      s.anims[0].finished.then(() => { if (st === s) stop(); }, () => { if (st === s) stop(); });
+    }
+    d.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch') return;
+      const a = e.target.closest && e.target.closest('.footer-word');
+      if (!a) { leave(); return; }
+      if (st && st.a !== a) stop();
+      if (!st && !begin(a)) return;
+      const pr = a.querySelector('.printed');
+      if (!pr) return;
+      const r = pr.getBoundingClientRect(), ar = a.getBoundingClientRect();
+      // Like the hero: the layers below the pointer (plus two) stay printed.
+      const f = clamp((r.bottom - e.clientY) / r.height + 2 / LAYERS, 0, 1);
+      if (st.leaving) {   // back over the word mid-reprint: drop the nozzle line's reprint animation
+        st.leaving = false;
+        st.anims.splice(2).forEach((x) => { try { x.cancel(); } catch (err) { /* ignore */ } });
+      }
+      st.anims.forEach((x) => { x.pause(); x.currentTime = f * DUR; });
+      const q = Math.floor(f * LAYERS) / LAYERS;
+      st.top0 = r.top - ar.top;
+      st.fz = (1 - q) * r.height + st.top0;
+      a.style.setProperty('--ydx-fz', st.fz.toFixed(1) + 'px');
+      if (q < 1) a.setAttribute('data-ydx-scrub', ''); else a.removeAttribute('data-ydx-scrub');
+    }, { passive: true });
+    html.addEventListener('pointerleave', leave);   // the pointer left the window
+    // A click goes back to top (shutter): hand the app its printed word back at once.
+    d.addEventListener('click', (e) => { if (st && e.target.closest && e.target.closest('.footer-word')) stop(); }, true);
   }
 
   /* ------------------------------------------------------------------ */
