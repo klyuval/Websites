@@ -22,10 +22,11 @@
   const anim = (el, kf, o) => { if (!el || !el.animate) return null; try { return el.animate(kf, o); } catch (e) { return null; } };
   const ss = (() => { try { return w.sessionStorage; } catch (e) { return null; } })();
   const isEn = () => !!$('.site.english');
-  // enhance.css sets --ydx-css on :root. A deferred script runs only after the stylesheets before
-  // it have loaded or failed, so this is reliable. Without the CSS, the cursor and the sheet ghost
-  // would render as unstyled nodes, so they are skipped.
-  const CSSOK = getComputedStyle(h).getPropertyValue('--ydx-css').trim() === '1';
+  // enhance.css is inserted by the inline <head> script without blocking render (w.__ydxCss
+  // settles when it loads or fails). It sets --ydx-css on :root; without it the cursor and the
+  // sheet ghost would render as unstyled nodes, so they wait for it and are skipped if it failed.
+  const whenCss = Promise.race([w.__ydxCss || Promise.resolve(), new Promise(r => setTimeout(r, 3000))]);
+  const cssOK = () => getComputedStyle(h).getPropertyValue('--ydx-css').trim() === '1';
 
   if (!RM) h.classList.add('ydx-motion');
 
@@ -120,7 +121,7 @@
     const min = MIN[L.mode] != null ? MIN[L.mode] : 900;
     const since = () => performance.now() - L.t0;
     const waitMin = new Promise(r => setTimeout(r, Math.max(0, min - since())));
-    Promise.all([whenLoad, whenFonts, whenData, waitMin]).then(lift);
+    Promise.all([whenLoad, whenFonts, whenData, whenCss, waitMin]).then(lift);
     setTimeout(lift, Math.max(0, HARD - since())); // never trap anyone
   } else if (loader) { // the failsafe is fading it: tidy up once it has gone
     settle(); setTimeout(park, 420);
@@ -267,7 +268,7 @@
   const sheetEl = () => d.querySelector('body > .sheet[role=dialog]');
   const remember = e => {
     if (sheetEl()) { // a close is likely: freeze what is on screen right now
-      if (RM || !CSSOK || e.type === 'keydown' && e.key !== 'Escape') return;
+      if (RM || e.type === 'keydown' && e.key !== 'Escape' || !cssOK()) return;
       const sh = sheetEl(), ov = d.querySelector('body > .dialog-overlay');
       snap = { t: performance.now(), sh: sh.cloneNode(true), ov: ov && ov.cloneNode(true), r: sh.getBoundingClientRect() };
       return;
@@ -461,7 +462,8 @@
   /* 6. Scoop cursor (fine pointers): a red dot that turns into a ✳      */
   /*    sticker over anything that opens a flavour                       */
   /* ---------------------------------------------------------------- */
-  if (FINE && w.self === w.top && CSSOK) {
+  if (FINE && w.self === w.top) whenCss.then(() => { if (cssOK()) cursor(); });
+  function cursor() {
     const c = d.createElement('div');
     c.className = 'ydx-cursor';
     c.setAttribute('aria-hidden', 'true');

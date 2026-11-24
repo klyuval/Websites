@@ -50,10 +50,12 @@
     <!-- ydx: safety net for the loading screen. Without JS it never shows; in a frame (the hub preview) the site's own
          short ?noloader path is used; and if the bundle fails to start (404, error) or stalls, the screen is lifted after
          4s (or 20s once the build has started) of visible time, so the page can never stay covered. -->
-    <noscript><style data-ydx>.loader{display:none}html.is-loading{overflow:auto}</style></noscript>
+    <noscript><link rel="stylesheet" href="/ydx/enhance.css"><style data-ydx>.loader{display:none}html.is-loading{overflow:auto}</style></noscript>
     <script data-ydx>(function(){var d=document,h=d.documentElement,t=0,iv;try{if(self!==top&&!/[?&](no)?loader\b/.test(location.search)){var u=new URL(location.href);u.searchParams.set('noloader','1');history.replaceState(history.state,'',u)}}catch(e){}function on(){return h.classList.contains('is-ready')||!!(performance.getEntriesByName&&performance.getEntriesByName('loader-start').length)}function lift(){clearInterval(iv);var l=d.querySelector('[data-loader]');h.classList.remove('is-loading');if(!l)return;l.style.transition='opacity .4s';l.style.opacity='0';l.style.pointerEvents='none';setTimeout(function(){l.style.display='none'},450)}d.addEventListener('DOMContentLoaded',function(){iv=setInterval(function(){if(!d.querySelector('[data-loader]'))return clearInterval(iv);if(d.visibilityState!=='visible')return;t+=500;if(t>=20000||(t>=4000&&!on()))lift()},500)})})()</script>
-    <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
-    <script src="/ydx/enhance.js" defer></script><!-- ydx -->
+    <!-- ydx: the layer never holds up the page: the stylesheet loads without blocking first paint and the script runs
+         whenever it arrives (async; it waits for the DOM itself), so a slow or missing file cannot delay the loader. -->
+    <link rel="stylesheet" href="/ydx/enhance.css" media="print" onload="this.media='all'"><!-- ydx -->
+    <script src="/ydx/enhance.js" async></script><!-- ydx -->
   </head>
   <body>
     <!-- Loading screen: the page starts unlit, flat in its accent colour, and the designer's cursor builds the first screen on

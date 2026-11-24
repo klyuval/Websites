@@ -51,7 +51,7 @@
     // first frame under the loader (no "visible, then hidden, then animated" double entrance even when this
     // timer runs late on a busy main thread). Removing ydx-hold resumes them and brings the hero word back,
     // whose own IntersectionObserver then starts printing it.
-    if (intro && !RM && !LATE) {
+    if (intro && !RM && !LATE && cssOK()) {   // the intro keyframes live in enhance.css
       html.classList.add('ydx-intro');
       // Counted from the first frame: in a background tab nothing animates until the visitor comes back,
       // and a timer started now could end the intro half way through.
@@ -221,9 +221,21 @@
     mo.observe(root, { childList: true, subtree: true });
   }
 
-  // enhance.css applied? (It is render-blocking, so it has loaded or failed by the time the app renders.)
-  // Without it the overlays this script appends to <body> would show up unstyled at the end of the page.
-  const cssOK = () => getComputedStyle(html).getPropertyValue('--ydx-css').trim() === '1';
+  // enhance.css applied? It loads non-blocking (index.html), so it can arrive after the app has rendered,
+  // or never. Without it the overlays this script appends to <body> would show up unstyled at the end of
+  // the page, so everything that needs it waits for it. cb(late): late = the loader no longer covers the
+  // page, so hiding content for reveals now would make visible content blink out and back.
+  function cssOK() { return getComputedStyle(html).getPropertyValue('--ydx-css').trim() === '1'; }
+  function whenCSS(cb) {
+    if (cssOK()) { cb(false); return; }
+    const link = d.querySelector('link[href^="/ydx/enhance.css"]');
+    if (!link) return;
+    link.addEventListener('load', () => {
+      if (!cssOK()) return;
+      const L = d.getElementById('ydx-loader');
+      cb(!L || L.classList.contains('is-out'));
+    }, { once: true });
+  }
 
   // Each setup runs on its own: one that throws must not take the others down with it.
   const safe = (fn, ...args) => { try { fn(...args); } catch (e) { /* this enhancement is skipped */ } };
@@ -231,17 +243,18 @@
   function boot() {
     loader();
     whenApp((root) => {
-      const css = cssOK();
       safe(fixDeepLink);
-      if (!LATE && css) safe(setupReveals, root);
       safe(setupCaptionFit);
-      if (css && WAAPI) safe(setupShutter);
       safe(setupMenuClose);
       if (WAAPI) safe(setupTicket);
-      if (!RM && css) {
-        safe(setupScrollFx);
-        if (FINE) safe(setupMagnetic);
-      }
+      whenCSS((late) => {
+        if (!LATE && !late) safe(setupReveals, root);
+        if (WAAPI) safe(setupShutter);
+        if (!RM) {
+          safe(setupScrollFx);
+          if (FINE) safe(setupMagnetic);
+        }
+      });
     });
   }
   /* Deep links (/#materials) never scrolled on the live site: the browser looks for the
@@ -481,7 +494,7 @@
       if (pass) return;
       const btn = e.target.closest && e.target.closest('.nav-menu');
       const nav = btn && btn.closest('.nav');
-      if (!nav || !nav.classList.contains('open')) return;
+      if (!nav || !nav.classList.contains('open') || !cssOK()) return;   // the close animation is in enhance.css
       e.preventDefault();
       e.stopPropagation();
       if (nav.hasAttribute('data-ydx-closing')) return;

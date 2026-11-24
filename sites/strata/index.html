@@ -55,7 +55,10 @@
     <script src="/ydx/enhance.js" async onerror="__ydxFail()" onload="window.__ydxLoader||__ydxFail()"></script>
     <script type="module" crossorigin src="/assets/index-CkiVEG1F.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-C1lfMyBM.css">
-    <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
+    <!-- ydx: non-blocking, so a slow enhance.css never delays first paint or the app (module scripts wait for
+         render-blocking sheets). The loader's critical CSS is inline; enhance.js wires up what needs this file once it applies. -->
+    <link rel="stylesheet" href="/ydx/enhance.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="/ydx/enhance.css"></noscript>
   </head>
   <body>
     <!-- ydx: loading screen (an FDM nozzle printing the STRATA logotype layer by layer); driven by /ydx/enhance.js -->

@@ -91,10 +91,11 @@ html.ydx-kbd .contact__copy { visibility: visible !important; opacity: 1 !import
   .index__sector { white-space: normal; text-align: end; line-height: 1.2; }
 }
 
-/* Phones: the steps slide under the pinned bench with a hard cut; a short paper fade softens that edge. */
+/* Phones: the steps slide under the pinned bench with a hard cut; a short paper fade softens that edge (tall enough
+   that the last sliver of a big step numeral fades out instead of showing as a stray fragment under the bench). */
 @media (width <= 899px) {
   .bench::after {
-    content: ""; position: absolute; inset-inline: 0; top: 100%; height: 22px; pointer-events: none;
+    content: ""; position: absolute; inset-inline: 0; top: 100%; height: 36px; pointer-events: none;
     background: linear-gradient(var(--paper), rgb(246 241 231 / 0));
   }
 }
