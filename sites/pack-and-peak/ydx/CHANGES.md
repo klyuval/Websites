@@ -114,3 +114,94 @@ transition (seeked frame by frame), the dialog and the counters as frame sequenc
 focus styles intact, including the board focus), reduced motion (nothing hidden, loader fades), no JS (loader hidden, all
 content visible), the iframe and repeat-visit loader timings, and a run with `enhance.js` blocked (the fallback clears the
 loader at 4 s). No horizontal overflow and zero console errors or warnings in every run.
+
+## Round 2
+
+A second reviewer audited the first pass as a first-time visitor would see it. The audit recorded the loader and the
+transitions as frame sequences on desktop (1440×900) and mobile (iPhone 13, 360). Screencast frames are not reliable
+on this heavily loaded container, so the exits were also sought frame by frame by pausing their Web Animations. Other
+checks:
+- Slow 3G (400 kbps, 400 ms RTT) with 4× CPU throttling.
+- CLS and long tasks compared with the untouched page (`index.html` with the ydx blocks stripped, served via
+  `page.route`).
+- A keyboard-only run, including the packing-list dialog.
+- Screen-reader basics.
+- 360, 390, 768, 1024, 1280, 1440 and 1920 wide, plus a landscape phone (844×390).
+- Reduced motion, no JS, the iframe (hub) mode and a repeat visit.
+
+The site has one language (English, LTR), so no RTL checks were needed.
+
+### What the audit found
+1. **The loader looked stuck on slow networks.** Its whole climb was driven by `enhance.js` (deferred, 23 KB). On slow
+   3G the HTML arrived at about 5.8 s, and the loader then sat at "0 m" with no motion for 4 s. After that the inline
+   fallback cut it away abruptly, leaving a blank sky frame. On normal loads the counter also stayed near 0 for the
+   first ~350 ms, until `enhance.js` ran.
+2. **The loader caused load CLS of 0.018 on desktop and 0.020 on mobile, against 0 on the original.** The altimeter
+   digits are proportional, so the "m" after them moved on every frame.
+3. **Main-thread exit.** The exit animated `clip-path` polygons, which run on the main thread, so it stuttered while
+   React hydrated. A ~300 ms lull also opened before the ridge appeared, because the polygon started fully off-screen
+   under a slow-start easing.
+4. **The hero massif popped in after the reveal, and the wipe uncovered an empty hero.** The 384 KB massif was not
+   decoded until it first became visible, by which time its rise animation had already finished, so it appeared
+   suddenly about 1 s after the loader left. The hero letters were also released 180 ms *after* the wipe began, so the
+   wipe exposed a blank sky.
+5. **The brand had a double entrance.** The loader's brand sat 2 px above the masthead brand and used a different ®
+   glyph (slab instead of Hanken). It faded out with the loader, and then the masthead brand dropped in again.
+6. **On phones the trailhead was off-screen** (the map was centred at 150vw), and the exit ridge became a saw blade:
+   22 peaks across 390 px at full height.
+7. **The packing-list dialog stagger was out of order.** The base rule used `:is(… .packing-list label …)`, which took
+   the label's specificity and overrode the per-element delays. The title, description, progress, advice, CTA and note
+   therefore all started at .12 s, and the advice and CTA appeared *before* the rows above them.
+8. **Landscape phones (844×390):** the hero card sat on top of the OUT wordmark (`top: calc(100svh - 190px)`), and the
+   dock covered "out there.". This comes from the original layout.
+9. **Phones:** the full-pack badge wrapped as "READY FOR OUT / THERE".
+10. **Chapter jumps to the summit could reveal the lazy summit rock before it had loaded.**
+
+Things that passed: keyboard order and focus rings (the board focus is the site's white face plus the ring); no focus
+is trapped by the loader, whose only reachable target is the skip link; the dialog traps focus, Escape closes it and
+focus returns to its trigger; every ydx overlay is `aria-hidden`; there was no horizontal overflow at any width; and
+there were no console errors or warnings in any run.
+
+### What changed
+- **The loader driver moved into the inline `<script data-ydx>` at the top of `<head>`** (3 KB minified; readable source in
+  `ydx/loader-inline.src.js`, which is not loaded). It starts on the first frame, independently of `enhance.js`, and
+  `runLoader` was removed from `enhance.js`. Release now waits for `load`, `document.fonts.ready` **and**
+  `decode()` of the hero massif, so the hero is never revealed half-built. The hard cap is still 2.4 s from navigation.
+  If the HTML itself arrives late, the climb shortens to 650 ms. A repeat visit uses a 300 ms climb and a 480 ms exit,
+  and the iframe version takes about 0.7 s. Reduced motion shows the summit state and fades in 300 ms. A 4.5 s safety
+  fades the loader out instead of cutting it, which also covers background tabs where rAF never runs. The script still
+  sets `window.__ydxDone` and dispatches `ydx:ready`.
+- **The exit is now composited.** The sky panel and the vermilion under-layer are taller than the viewport by the ridge
+  height `--R`. Each carries a *static* ridge `clip-path`, and they lift with `transform` only (780 ms,
+  `cubic-bezier(.62,.02,.2,1)`). The two ridges use offset patterns so the red band has a varying thickness. The map,
+  altimeter and caption sink 26vh and fade (parallax), while the top bar counter-moves so it stays fixed. The ridge
+  therefore wipes over the loader brand, and the pixel-identical masthead brand underneath takes over in place: the
+  masthead brand no longer has its own drop-in. `--R` is `min(17vh,160px,20vw)` so phones get a ridge rather than a
+  saw. The hero hold is released as the exit *starts*, so the letters and massif rise while they are being uncovered.
+- **The loader brand is pixel-matched to the masthead** (desktop 100px / phone 72px bar, Hanken ®, ≤380 and ≤350 sizes).
+  The trailhead is visible on phones (map at `left:70%`). The altimeter number box has a fixed width (`2.88em`), so the
+  "m" no longer moves and the load CLS is back to **0** (desktop and mobile). Added `contain:strict` on the loader.
+- **Dialog:** the base rule now uses `:where()`, so the stagger runs top to bottom. It is also tighter: .45 s rows that
+  finish by about 0.93 s instead of 1.1 s.
+- **Landscape phones:** `@media (max-height:500px) and (min-width:761px)` anchors the hero card to the foot of the hero,
+  `bottom:96px`.
+- **Chapter jump:** while the strata cover the screen, the destination's lazy images are warmed with `new Image()`, so
+  the summit rock is ready when the cover lifts.
+- **Phones:** `text-wrap: balance` on the pack-count badge, so it reads "READY FOR / OUT THERE".
+
+### Added (second improvement loop)
+- **8/8 packed:** a red-white-red trail-blaze tag on a short ink cord swings from the pack's top-left buckle and
+  settles at 7°. It uses the site's own blaze motif. It is a `.pack-core::after` pseudo-element: nothing is inserted
+  into the React tree. On desktop it is sized in container units (`container-type` is set on `.pack-core` on desktop
+  only, because on phones it is a shrink-to-fit flex item that inline-size containment would collapse to 0), and in px
+  on phones. Unpacking an item takes the tag off again. Under reduced motion it appears without the swing.
+
+### Considered and left alone
+- The chapter-jump strata (720 ms) and the reveal choreography were re-checked and kept. The cover lifts while the
+  Lenis jump (1.15 s, expo-out) is in its last ~5%, which reads as a landing, not a slide.
+- The map reticle, the altimeter pill, magnetic buttons and the hero sink were kept. Each is quiet and on-motif.
+- The massif cannot be helped on slow 3G: the hero is revealed at the cap and the image arrives when it arrives.
+- The altimeter pill (scroll phase) and the readout counters still log a few layout-shift entries of ≤0.0003, which is
+  noise (total 0.0008 desktop and 0.0043 mobile, against 0 and 0.0031 for the original).
+- Timings measured here are inflated about 2× by the container (load average around 19 on 4 cores). The design
+  timings above are the nominal values.

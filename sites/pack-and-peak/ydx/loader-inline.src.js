@@ -70,7 +70,7 @@
       { duration: exitMs * .8, easing: 'cubic-bezier(.5,0,.5,1)', fill: 'forwards' });
     // The top bar counter-moves so it stays put: the ridge wipes over the brand and the identical masthead brand
     // underneath takes over in place (no second entrance). The tag fades as the header CTA drops in.
-    var lift = innerHeight + Math.min(innerHeight * .17, 160, innerWidth * .26);  // = --R in the inline CSS
+    var lift = innerHeight + Math.min(innerHeight * .17, 160, innerWidth * .2);  // = --R in the inline CSS
     q('.ydx-l-top').animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(0,' + lift + 'px,0)' }], { duration: exitMs, easing: e, fill: 'forwards' });
     q('.ydx-l-tag').animate([{ opacity: 1 }, { opacity: 0 }], { duration: exitMs * .35, fill: 'forwards' });
     q('.ydx-l-under').animate(up, { duration: exitMs, delay: frame ? 40 : 70, easing: e, fill: 'forwards' }).onfinish = cleanup;
