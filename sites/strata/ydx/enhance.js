@@ -269,18 +269,20 @@
     scan();
     // Items in the last few pixels of the page (footer bottom row) can never cross the -8% margin:
     // reveal whatever is left once the visitor reaches the end.
-    // One check per frame with a cached page height: reading scrollHeight on every scroll event forced a
-    // layout each time and showed up as long tasks while scrolling.
+    // The end test runs in the scroll event (layout is clean there, so reading scrollY is free) against a
+    // cached page height; only at the very end is a frame scheduled to measure. Reading scrollHeight per
+    // event, or scrollY inside rAF after other writes, forced a layout every time while scrolling.
     let docH = d.documentElement.scrollHeight, endRaf = 0;
     if ('ResizeObserver' in window) new ResizeObserver(() => { docH = d.documentElement.scrollHeight; }).observe(d.body);
     const atEnd = () => {
       endRaf = 0;
-      if (scrollY + innerHeight < docH - 4) return;
       for (const el of root.querySelectorAll('[data-ydx-r]:not([data-ydx-in])')) {
         if (el.getBoundingClientRect().top < innerHeight + 60) { show(el); if (io) io.unobserve(el); }
       }
     };
-    addEventListener('scroll', () => { if (!endRaf) endRaf = requestAnimationFrame(atEnd); }, { passive: true });
+    addEventListener('scroll', () => {
+      if (!endRaf && scrollY + innerHeight >= docH - 4) endRaf = requestAnimationFrame(atEnd);
+    }, { passive: true });
     // The app re-renders parts of the tree (brief result, tabs): pick up new nodes.
     let pending = 0;
     new MutationObserver(() => {

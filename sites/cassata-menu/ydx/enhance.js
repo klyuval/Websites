@@ -193,6 +193,61 @@
     vt.finished.finally(() => h.classList.remove('ydx-vt-lang'));
   }, true);
 
+  /* ---------------------------------------------------------------- */
+  /* Flavour sheet close (round 2):                                     */
+  /*  - focus goes back to the card / coupe / token that opened it       */
+  /*    (the app's controlled Radix dialog dropped focus on <body>);    */
+  /*  - the sheet gets an exit. Radix unmounts it at once, so a frozen,  */
+  /*    inert copy (appended to <body>, outside the app) plays the        */
+  /*    mirror of the site's `pop` / mobile `lift` and is then removed.  */
+  /* ---------------------------------------------------------------- */
+  let opener = null, snap = null;
+  const sheetEl = () => d.querySelector('body > .sheet[role=dialog]');
+  const remember = e => {
+    if (sheetEl()) { // a close is likely: freeze what is on screen right now
+      if (RM || e.type === 'keydown' && e.key !== 'Escape') return;
+      const sh = sheetEl(), ov = d.querySelector('body > .dialog-overlay');
+      snap = { t: performance.now(), sh: sh.cloneNode(true), ov: ov && ov.cloneNode(true), r: sh.getBoundingClientRect() };
+      return;
+    }
+    if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+    const t = e.target.closest && e.target.closest('button, a[href], [role=button]');
+    if (t) opener = t;
+  };
+  ['pointerdown', 'click', 'keydown'].forEach(type => w.addEventListener(type, remember, true));
+
+  function ghost(el, kf, o) {
+    el.removeAttribute('id'); el.removeAttribute('role');
+    el.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+    el.setAttribute('aria-hidden', 'true'); el.inert = true;
+    el.classList.add('ydx-ghost');
+    el.style.animation = 'none'; el.style.pointerEvents = 'none';
+    d.body.appendChild(el);
+    const a = anim(el, kf, Object.assign({ fill: 'forwards' }, o));
+    const rm = () => el.remove();
+    a ? a.finished.then(rm, rm) : rm();
+    setTimeout(rm, (o.duration || 300) + 400);
+  }
+  let hadSheet = false;
+  new MutationObserver(() => {
+    const has = !!sheetEl();
+    if (hadSheet && !has) {
+      const s = snap; snap = null;
+      if (s && performance.now() - s.t < 900) {
+        const phone = matchMedia('(max-width: 820px)').matches;
+        if (s.ov) ghost(s.ov, [{ opacity: 1 }, { opacity: 0 }], { duration: phone ? 300 : 240, easing: 'ease' });
+        ghost(s.sh, phone
+          ? [{ translate: '0 0' }, { translate: '0 104%' }]
+          : [{ opacity: 1, scale: '1', rotate: '0deg', translate: '0 0' }, { opacity: 0, scale: '.93', rotate: '1.6deg', translate: '0 22px' }],
+          { duration: phone ? 300 : 230, easing: phone ? 'cubic-bezier(.5,0,.75,0)' : 'cubic-bezier(.4,0,1,1)' });
+      }
+      const a = d.activeElement;
+      if (opener && opener.isConnected && (!a || a === d.body)) { try { opener.focus({ preventScroll: true }); } catch (e) {} }
+    }
+    if (!hadSheet && has) snap = null;
+    hadSheet = has;
+  }).observe(d.body, { childList: true });
+
   if (RM) { onReadyStatic(); return; }
 
   /* ---------------------------------------------------------------- */

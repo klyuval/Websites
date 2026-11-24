@@ -178,3 +178,7 @@ html.ydx-motion .btn { transition: transform .16s var(--ease), box-shadow .16s v
   .hero__copy { max-width: min(30ch, 34vw); gap: 10px; }
   .hero__copy h1 { font-size: clamp(1.5rem, 2.6vw, 2.2rem); }
 }
+
+/* Flavour-sheet exit (round 2): enhance.js plays a frozen, inert copy of the sheet + overlay
+   after Radix unmounts them. Freeze the copy's own CSS entrances so it leaves as it looked. */
+.ydx-ghost, .ydx-ghost * { animation: none !important; transition: none !important; }

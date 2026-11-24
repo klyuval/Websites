@@ -58,7 +58,7 @@
       if (mode === 'load' || mode === 'frame') { curtain.classList.add('ydx-done'); await wait(mode === 'frame' ? 70 : 260); }
       const sheet = curtain.querySelector('.ydx-sheet');
       const center = curtain.querySelector('.ydx-center');
-      const dur = mode === 'frame' ? 360 : mode === 'load' ? 700 : 620;
+      const dur = { frame: 360, load: 700, nav: 560 }[mode] ?? 620;
       curtain.style.pointerEvents = 'none';
       releaseHold();
       const a = anim(sheet, [{ transform: 'rotate(14deg) translateX(0)' }, { transform: 'rotate(14deg) translateX(134vmax)' }], { duration: dur, easing: PEEL, fill: 'forwards' });

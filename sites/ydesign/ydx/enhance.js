@@ -61,7 +61,8 @@
       if (!avail) return;
       const cs = getComputedStyle(name);
       Object.assign(probe.style, {
-        font: cs.font, letterSpacing: cs.letterSpacing, textTransform: cs.textTransform,
+        fontFamily: cs.fontFamily, fontSize: cs.fontSize, fontWeight: cs.fontWeight, fontStyle: cs.fontStyle,
+        fontStretch: cs.fontStretch, letterSpacing: cs.letterSpacing, textTransform: cs.textTransform,
         fontVariationSettings: cs.fontVariationSettings,
       });
       info.append(probe);
@@ -85,9 +86,15 @@
     // pulls the wall back. Only for that dive (desktop, opened from the wall); the other paths already animate.
     let pass = false, closing = false;
     const tileUnderShot = () => {
-      const r = shot.getBoundingClientRect();
-      const hit = d.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-      return hit.find((el) => el.classList && el.classList.contains('tile') && wall.contains(el)) || null;
+      // (geometry, not elementsFromPoint: the wall ignores the pointer while it is zoomed)
+      const r = shot.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      let best = null, area = 0;
+      for (const t of $$('.tile', wall)) {
+        const b = t.getBoundingClientRect();
+        if (cx < b.left || cx > b.right || cy < b.top || cy > b.bottom) continue;
+        if (b.width * b.height > area) { area = b.width * b.height; best = t; }
+      }
+      return best;
     };
     const softClose = (e) => {
       if (pass || reduce || !dlg.open || !wall.classList.contains('is-diving')) return;

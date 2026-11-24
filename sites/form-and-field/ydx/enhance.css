@@ -12,6 +12,13 @@
 /* The three questions are scaled to .56, so their hit area shrank to ~29px. Extend it without changing the look. */
 .q-stack button{position:relative}
 .q-stack button::after{content:"";position:absolute;inset:-.2em -.1em}
+/* Chapter index (861-1440px): six 1fr columns took the min-content of "relationships." (Display 800 at 2.25vw), so the
+   row grew wider than its container and the sixth card ran off the right edge (1024px: 1059px wide in a 954px box).
+   The columns may now shrink and the titles scale with the card. */
+@media (min-width:861px){
+  .colour-index{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .colour-index b{font-size:clamp(16px,calc(2.5vw - 6px),36px)}
+}
 /* A page-transition jump moves focus to the section; a section does not need a ring. */
 [data-ydx-ft]:focus{outline:none}
 
