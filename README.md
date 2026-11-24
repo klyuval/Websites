@@ -39,7 +39,8 @@ Each site's `ydx/CHANGES.md` has the full analysis, every change and every fix (
 round 2 = an independent review that audited round 1 frame by frame, on throttled network/CPU, for layout shift and by
 keyboard, then fixed and refined it; round 3 = a line-by-line code review with every suspected bug reproduced in a test,
 run under the live response headers and failure cases: JS off, missing or 8s-late files, background tabs, back/forward
-cache, double clicks, the hub iframe).
+cache, double clicks, the hub iframe; round 4 = a final creative-director pass that unified each site's motion
+into a few easing tokens, filled the last static moments and re-ran the round-3 suites).
 
 | Site | Loading screen | Transitions | Notable fixes |
 | --- | --- | --- | --- |
@@ -55,6 +56,15 @@ cache, double clicks, the hub iframe).
 | STRATA | Print head lays STRATA down in 38 layers; layers retract into the hero's own nozzle | Layer shutter for long section jumps | Deep links (/#materials) never scrolled (also live); hero caption clipped; uneven nav heights |
 | TOMI | Device wireframe fills solid with the real 3D-model download progress | Language shutter, ring motif on the route curtain | Empty-cart checkout layout; step pills wrapping; English titles clipped on phones |
 | ydesign (hub) | Kept the existing loader; repeat visits play it at 3x | Case dialog now closes as softly as it opens | Preview showed the wrong language after a fast scroll (also live); RTL arrow keys; case names broke mid-word |
+
+### Section hand-offs (round 4)
+
+Most sites cut between colour fields on hard straight edges. Round 4 turned those cuts into scroll-scrubbed hand-offs in
+each site's own motif (pure CSS where possible, off under reduced motion, a plain edge where the browser lacks
+scroll-driven animation): Cassata's colours melt over the edge as drips, Negia's rise as a swatch dome, PEEL CLUB
+Botanical's arrive on the label-peel slant, TOMI's rise as ring domes, AlexStudio's paper sections widen in, and the
+ydesign hub's scenes lift in like sheets with matching rounded tops. Pack & Peak gained a summit ending, STRATA a
+footer word that un-prints toward the cursor, FORM a faster return to views you've already opened.
 
 ## Deploying the pass
 
