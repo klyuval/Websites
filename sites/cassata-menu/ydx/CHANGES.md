@@ -100,3 +100,78 @@ dashboard states with mocked data, plus the real blocked-API state). They covere
 iframe, no-JS and failed-`enhance.js` loader paths, the page transition there and back plus bfcache, the language
 switch by mouse and keyboard, filters, tabs, and opening and closing the dialog. There was no horizontal overflow and
 no new console errors or warnings. The only warning is the app's existing preload notice on `/host`.
+
+## Round 2
+
+A second review of pass 1 with fresh eyes: QA plus a creative pass. Live `/api/menu` JSON (fetched through the proxy)
+was injected with Playwright `page.route` for realistic states, including a mocked `authenticated:true` for the
+staff dashboard.
+
+### What was audited
+
+- **Loader and transitions as frame sequences:** CDP screencast, about 16ms per frame, on desktop and iPhone 13,
+  in Hebrew and English. Covered the first visit, repeat visit, `/` → `/host` drip transition, language scoop
+  (View Transition), flavour-sheet open and close, and the hero flavour swap.
+- **Throttled:** network at 400kbps / 400ms RTT and CPU at 4×. The loader is never stuck and always lifts within
+  its 4s cap. A JS profile while scrolling under 4× CPU showed about 16ms of total `enhance.js` time. The long
+  tasks belong to the app bundle.
+- **CLS (PerformanceObserver), with and without the ydx layer** (`/ydx/*` routed to 404). Desktop was about 0.005
+  both ways.
+- **Keyboard and screen reader:** full Tab order on `/` and `/host`, visible focus everywhere, no focus trap. The
+  loader and cursor are `aria-hidden`. Checked Escape on the sheet and where focus goes after closing it.
+- **Layout:** viewport-stepped screenshots at 360, 390, 768, 1024, 1280, 1440, 1920 and 844×390 landscape, plus
+  960×600, in both languages, on `/` and `/host` (login and dashboard).
+
+### Found and fixed
+
+| Where | Viewport | Problem | Fix |
+| --- | --- | --- | --- |
+| Hero flavour swap | ≤820px (phones, tablets) | **Original bug, missed in pass 1.** Framer keeps the outgoing name mounted beside the incoming one, and the stage is a one-column grid there. So on every flavour change (every 5s) two names stacked, and the coupe, copy and rail jumped 196px down and back. Mobile CLS was **0.43–0.70**. | `.hero__stage > .hero__name { grid-area: 1/1 }`. Both names share one cell and cross-fade, as on desktop. Mobile CLS is now **0.000**. |
+| Hero | landscape phones and short windows (≥821px wide, ≤674px tall) | **Original bug.** The hero has a 620px minimum height, but the coupe was sized at 76svh. At 844×390 it shrank to a 296px cup at the bottom of the stage. In English the bottom-anchored copy grew up into the split name ("BROWN" sat on "Something"). | In that range only: `--coupe-h: min(470px, 50vw)`, the name band moved up (`inset: 3% 0 40%`), and the copy is slightly wider with a smaller h1, so the CTA stays on one line. |
+| Flavour sheet | all | **Original a11y bug.** After closing (Escape, ×, overlay), focus fell to `<body>`, so keyboard users lost their place in the grid. | `enhance.js` remembers the card, coupe or token that opened the sheet and refocuses it (`preventScroll`) when the sheet unmounts. This also works under reduced motion. |
+| Loader text | first visit | The handwritten line, and on arrival pages the ring, rendered in a fallback font first, then swapped to Gveret Levin/Rubik about 150ms later. This was visible in the frames. | The inline loader script calls `document.fonts.load()` for the three faces. The hand line and ring stay transparent until the fonts are ready, then fade in over 0.3s, with a 1.2s fallback. The ring is not gated on page-to-page arrivals, so it doesn't blink out. |
+| Loader art | all | The rotating ring text ran *through* the waffle cone ("CHARACTER" and "WIT" were cut by ink lines). | The cone gets a lime die-cut halo, like a sticker border, so the ring passes cleanly behind it. |
+| Drip page transition | all | The arriving page stayed covered until `load`, which means every image and an uncapped data wait, plus a 4s cap. In practice it was ~1.4s of a static loader after a 0.5s pour, which felt like a second loading screen. Navigation also only started *after* the pour finished. | Navigation now starts 110ms before the curtain lands, so the network wait overlaps the pour. Arrival (`nav` mode) waits for DOM, fonts (capped at 0.6s), data (capped at 1.1s) and `load` (capped at 0.45s), with a hard cap of 1.5s. The "Checking the counter…" line is hidden during page-to-page transitions: it is first-load copy. |
+| Slow networks | 3G-ish | `enhance.js` (defer) queued behind ~575KB of modulepreloads and arrived about 3.9s after the loader painted. That is right at the inline failsafe, which then *removed* the loader in one frame. | `fetchpriority="high"` on the `enhance.js` tag: it now runs about 1.4s after first paint under the same throttle. The inline failsafe now fades the loader out (0.35s) instead of cutting it. |
+| Scoop cursor | desktop | The 64px ✳ "hot" sticker sat on top of the flavour name while hovering a card. It also stayed in its card state after a click opened the sheet, because the pointer hadn't moved. | Hot state reduced to about 42px with a lighter shadow. The state is cleared when the sheet opens. |
+| `enhance.js` | — | `refreshTracks()` called `getAnimations()` on the tickers on every DOM mutation. The app re-renders every 5s, and the hero swaps. | It only re-reads when React actually replaced the ticker nodes. |
+
+### Added
+
+- **Flavour-sheet exit.** Pass 1 left this out because Radix unmounts the sheet instantly. Now an inert,
+  `aria-hidden` frozen copy of the sheet and overlay is captured at the close gesture (Escape, ×, outside
+  pointerdown). It is appended to `<body>`, outside the app, after Radix removes the real one, then plays the
+  mirror of the site's entrance and is removed:
+  - **Desktop:** the sticker drops away, at 0.93 scale with a +1.6° tilt and fading, in 230ms.
+  - **Phones:** the bottom sheet slides back down (the reverse of `lift`) in 300ms.
+  - **Overlay:** fades out.
+
+  Its CSS entrances are fast-forwarded with a negative `animation-delay`, so it leaves exactly as it looked. Nothing
+  happens under reduced motion.
+
+### Reviewed and kept
+
+- **Pass-1 motion:** card drop-ins, price stamps, magnetic CTAs, the ticker boost, the language scoop and the
+  entrance choreography. In the frame sequences each reads as on-brand, and none double-animates the app.
+- **Language View Transition:** about 160–280ms before the wipe starts. That is React re-rendering the whole page,
+  not the wrapper.
+- **Under-loader shifts:** the `/host` footer shift (CLS 0.019) happens under the loader and is the same without
+  ydx.
+- **Mobile hero name:** a two-line name partly tucked behind the coupe is the original art direction (name behind
+  the cup).
+
+### Verified
+
+- No console errors or warnings in any tested state, apart from the app's own `/host` preload warning.
+- No horizontal overflow at any width tested.
+- Every `[data-ydx-r]` element is revealed after scrolling.
+- Mobile CLS is 0.000 (from 0.43–0.70). Desktop CLS is 0.005.
+- Loader lift times:
+
+  | Mode | Lift |
+  | --- | --- |
+  | Reduced motion | fade |
+  | Iframe | <0.5s |
+  | Repeat visit | ~0.7–0.9s |
+  | Failsafe without `enhance.js` | fades at 4.5s |
+  | 3G-throttled | ~4s cap, never stuck |
