@@ -182,7 +182,7 @@ A second review of pass 1, looking at it as a first-time visitor would. Scratch 
 A line-by-line review of the ydx layer before it ships to the live site, plus tests under production conditions. Each
 suspected bug got a Playwright test that reproduced it before the fix and passed after it. The tests are in
 `scratchpad/negia-r3/t/`: `races.cjs`, `nav.cjs`, `nav2.cjs`, `hidden.cjs`, `frame.cjs`, `xo.cjs`, `frametime.cjs`,
-`bottom.cjs`, `rotate.cjs` and `details.cjs`.
+`bottom.cjs`, `rotate.cjs`, `details.cjs`, `order.cjs` and `bootorder.cjs`.
 
 ### Bugs found and fixed
 
@@ -238,6 +238,28 @@ suspected bug got a Playwright test that reproduced it before the fix and passed
       now `.js-ready[dir=ltr]`.
     - The chip media query now uses `max-width:420px` instead of range syntax, for older Safari.
 13. **Dead code removed:** the unused `html.ydx-ready` class and the unused `#ydx-wipe` id.
+14. **The layer's files could hold up the whole page** (checked after a coordinator note from another site).
+    `order.cjs` measured each case:
+    - **`enhance.css` delayed 8s** delayed first paint, the loader injection and the app's own boot (`js-ready`) to
+      about 8.2s. A render-blocking stylesheet also blocks the module script after it.
+    - **`enhance.js` delayed 8s** delayed `DOMContentLoaded` to 8s, because `defer` scripts block it. The app itself was
+      not delayed, since its module comes first in document order.
+
+    Fixes, in both HTML files:
+    - `enhance.css` now loads as `rel=preload as=style`, swapped to a stylesheet `onload`, with a `<noscript>` copy.
+      The link stays in place, so it still overrides the site CSS. The loader's critical CSS is inline, so the loader
+      never depended on it.
+    - `enhance.js` is now `async`.
+
+    Changes in `enhance.js` to tolerate any arrival order:
+    - It polls for the injected loader, because it may now run before `<body>` is parsed.
+    - `boot()` still runs only after `DOMContentLoaded`, i.e. after the app's module. An async script can run between
+      the end of parsing and that event, so this is checked through Navigation Timing, not `readyState`.
+    - `boot()` waits for the CSS sentinel, up to 3s.
+
+    After: with `enhance.css` delayed 8s, first paint is at about 0.3–0.5s and the app is ready at about 0.4s. With
+    `enhance.js` delayed 8s, `DOMContentLoaded` is at about 0.4s. `bootorder.cjs` confirms the boot comes after
+    `js-ready` with the app on time, delayed 1.2s or delayed 3s, and with `enhance.js` delayed 8s.
 
 ### Production checks (all passed after the fixes)
 
@@ -245,9 +267,10 @@ suspected bug got a Playwright test that reproduced it before the fix and passed
   Cloudflare NEL headers. Replaying them on the local HTML (`page.route`) changed nothing and logged no errors.
   `/style-tile.html` on the live site answers with a 307 to `/style-tile`. The transition handles this: the
   same-page check compares against the current path, and the `ydx-nav` flag survives the redirect.
-- **JS disabled.** No loader, no `ydx-*` classes and no hidden content. The only `opacity:0` items are the hero
-  intro/description, which the app's own CSS sets with no JS. That is pre-existing.
-- **Failure cases.** The loader leaves by about 4.1–4.6s in the worst case:
+- **JS disabled.** No loader, no `ydx-*` classes and no hidden content. `enhance.css` still applies through
+  `<noscript>`. The only `opacity:0` element is the closing line of the closed menu `<dialog>`, which is
+  `display:none` anyway.
+- **Failure cases** (the loader's 4s cap is counted from first paint, so these times include page load):
 
   | Case | Result |
   |---|---|
