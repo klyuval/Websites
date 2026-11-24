@@ -144,3 +144,64 @@
 - The hand-off finds the first in-view `main h1`; a page without one simply gets no hand-off.
 - Client-side navigation was verified with the RSC payload served correctly (as on the live worker); the hard-load
   path was verified as served here. No minified bundle was edited.
+
+## Round 3 (code review + production hardening)
+
+Every line of `enhance.js`, `enhance.css` and the two inline `ydx` blocks was reviewed. Each suspected bug got a
+Playwright repro first (scripts in the round-3 scratch dir: `bugs.mjs`, `prod.mjs`, `flow.mjs`, `hyd.mjs`,
+`iframe.mjs`, `freeze.mjs`, `bf2.mjs`, `nojs.mjs`), then the same test was run again after the fix.
+
+### Bugs found and fixed
+
+| # | Bug | Repro | Fix |
+| --- | --- | --- | --- |
+| 1 | A slow or hung `enhance.css` held back the whole site: it was a render- and script-blocking stylesheet, so first paint **and** hydration waited for it (FCP 8.2s with the file delayed 8s) | `hyd.mjs cssDelay8` | Loaded non-blocking (`rel=preload as=style` swapped to `stylesheet` on load, `<noscript>` link for no-JS). FCP/hydration now ~0.3s whatever the file does. enhance.js waits up to 1.5s for the `--ydx-css` marker |
+| 2 | `enhance.js` was `defer`: a slow file held `DOMContentLoaded` and `load` back 8s (the app itself boots from an inline `import()` and was not delayed) | `hyd.mjs jsDelay8` | `async` (boot already waits for `DOMContentLoaded` when needed) |
+| 3 | `enhance.js` 404: the bootstrap only gave up after its 3s timer, so repeat visits showed a blank olive panel for 3s | `bugs.mjs js404`: 3.1s, now 0.27s | `onerror` on the script tag calls the bootstrap's give-up at once (`window.__ydxGiveUp`) |
+| 4 | `enhance.css` 404: the iris SVG, light meter, click shield and AF brackets were appended unstyled into the page flow (page grew by ~900px during the loader) | `bugs.mjs css404` | `:root{--ydx-css:1}` marker; without it the layer hands the arrival back to the site and creates no overlays (the shutter continuation still runs, it only needs the inline CSS) |
+| 5 | A throw inside a rAF callback (tween) left its promise pending forever, so the loader's catch never ran: arrival stayed half-clipped, iris over the page, `ydx-iris-run` stuck | `bugs.mjs throwIris` (fault injected in `draw`) | `tween` catches and rejects; a single `release()` restores everything |
+| 6 | A throw between creating the click shield and removing it left the transparent full-screen shield (z 10002) up: every click swallowed forever | `bugs.mjs throwShield` | `release()` removes shield, keydown listener, nudge interval, meter loop, veil, iris, all hold classes, and hides the arrival. Plus a last-resort watchdog (safety + 4s; 9s for the continuation) |
+| 7 | Language switch: a throw mid-blink left the opaque plate (z 10003) over the page and the buttons dead (`busy` never reset) | `bugs.mjs throwLang` | `try/finally`; the language still changes if the blink fails |
+| 8 | App bundle never/late arriving: after the iris opened an arrival React had not completed, the site's 1s `visibility` transition brought the whole proof back for a second | `bugs.mjs noApp` | `transition:none` on `html.ydx-arrival-off .studio-arrival` (inline CSS + enhance.css) |
+| 9 | Background tab / offscreen iframe: rAF never fires, so the loader stayed held until the tab was focused, then replayed | `bugs.mjs noRaf` (rAF stubbed) | `frames()` and `tween()` also finish on timers; the continuation's WAAPI wait is capped |
+| 10 | Running `enhance.js` twice (re-injected) doubled every listener, the AF cursor and the `history` patch | `bugs.mjs twice` | `window.__ydxEnhance` guard |
+| 11 | Hub iframe: after a hard navigation inside the frame `ydx-quick` stayed on `<html>` | `iframe.mjs` | removed at the end of the continuation |
+
+Smaller hardening: features start independently (`safe()`), so one failing cannot stop the loader; the meter loop
+stops if its node is gone; `arrive()` can never throw into the loader; wheel on the held proof opens it like a click;
+the light-meter readout is `direction:ltr` in Hebrew; the footer "develop" (transparent text + background-clip) is
+skipped in forced-colors mode.
+
+### Checked, not bugs
+
+- Double click / second link during the shutter: the site's shutter covers the page with `pointer-events:auto`, so a
+  second navigation or a wrong continuation record cannot happen (`bugs.mjs doubleRoute`).
+- Back-forward cache (needs a real headed browser; Playwright disables bfcache by default, and the preview server
+  sends `no-store`; tested with a header-free static server, headed under Xvfb): the restored page is clean, no closed
+  shutter, links work.
+- Back pressed 120ms into a transition: hard path loads the previous page normally (record discarded); in-place path
+  ends on the clicked route because the site's own shutter pushes after its cover animation (site behaviour, same
+  without ydx).
+- Keyboard activation of links (`detail 0`) skips both the site's shutter and the record, as intended.
+- Live headers (`curl -sI`): no CSP, X-Frame-Options or cache-control on documents, so nothing in ydx (inline
+  scripts/handlers, preload swap) is blocked. Tests were run with those document headers applied.
+- Feature support: `clip-path: path(evenodd)` is checked with `CSS.supports` (fade otherwise); `:has()` rules only
+  carry the about-nav fix and the menu overlay timing (degrade to the site's original look); WAAPI `translate`
+  keyframes are ignored where unsupported; all storage access is wrapped.
+
+### Production matrix (all end visible and usable, no new console errors)
+
+Normal first visit (open ~1.2s, done ~2.0s), repeat (~1.0s), reduced motion (fade), JS disabled (arrival hidden by the
+site's noscript rule; enhance.css via noscript), enhance.js 404 / enhance.css 404 / both, enhance.js delayed 8s
+(bootstrap gives up at 3s, site's own arrival), enhance.css delayed 8s (site paints and hydrates at once; layer gives
+up its overlays after 1.5s), app bundle delayed 8s (iris opens at the 4s safety), app bundle 404, rAF stopped, page
+frozen and resumed, hub iframe (cross-origin, done in ~0.6s, navigation inside works), and end-to-end flows on both
+the hard-navigation path (this mirror) and the in-place RSC path (live), desktop + iPhone 13: route change, Hebrew/
+English switch, keyboard navigation, back mid-transition. Zero console errors in all normal flows.
+
+### Remaining known limitations
+
+- When `enhance.css` fails, Chrome logs a "preloaded but not used" warning (only in that failure case).
+- If `enhance.js` is very slow (>3s) the site's own arrival is used for that page, without the iris.
+- A real background tab could not be produced in headless Chromium; it was emulated (rAF stubbed, lifecycle freeze).
+- Safari/Firefox behaviour was reasoned from the code (only Chromium is available here).
