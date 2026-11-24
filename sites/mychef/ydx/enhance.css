@@ -238,5 +238,12 @@ html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paus
   .hero__card .placecard__face { font-size: 28px; padding-inline: 20px; }
 }
 
+/* Quilt, first strip (phones, 360–430px): the fish plate's cream rim ran under the cream strip name, so the middle
+   of "ארוחה פרטית" / "Private dining" vanished. On the two-column phone quilt the plate sits a little higher and
+   smaller; the glass still overlaps its rim, as on the desktop table. */
+@media (max-width: 800px), (max-width: 1100px) and (orientation: portrait) {
+  .strip .piece:has(> img[src$="/plate-fish.webp"]) { top: 20%; width: 78%; inset-inline-start: 11%; }
+}
+
 /* Never let the overlays reach print. */
 @media print { .ydx-ld, .ydx-wipe { display: none !important; } }
