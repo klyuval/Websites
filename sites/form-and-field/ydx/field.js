@@ -191,14 +191,14 @@
   /* ---------- one frame ---------- */
   function frame(now) {
     if (!gl || lost || dead || gl.isContextLost()) return;
-    const dt = last ? Math.min(now - last, 50) : 16.7; last = now;
+    const el = last ? Math.min(now - last, 1000) : 16.7, dt = Math.min(el, 50); last = now;   // el: real time, for decays
     if (!reduce.matches) t = (t + dt / 1000) % 1000;
     frameN++;
     sy = scrollY;
     const dy = sy - lastSy; lastSy = sy;
-    const kv = 1 - Math.exp(-dt / 120);
-    vel += (dy / dt * 16.7 - vel) * kv;
-    reg += (Math.max(-14, Math.min(14, vel * 0.35)) - reg) * (1 - Math.exp(-dt / 90));
+    const kv = 1 - Math.exp(-el / 120);
+    vel += (Math.max(-120, Math.min(120, dy / el * 16.7)) - vel) * kv;   // a jump (transition, End key) counts as a fast scroll, no more
+    reg += (Math.max(-14, Math.min(14, vel * 0.35)) - reg) * (1 - Math.exp(-el / 90));
     if (Math.abs(vel) < 0.02) vel = 0;
     amp = Math.min(1, amp + dt / 1400);
 
