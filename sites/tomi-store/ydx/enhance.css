@@ -83,3 +83,9 @@ html.ydx-hdr-bg body:not(.in-page):not(.in-dial):not(.menu-open) .top::before { 
    column edge, and its cream button nearly vanished on the sand page */
 .acct-body > .drawer-empty { padding-inline: 0; }
 .acct-body > .drawer-empty .cta { background: var(--ink); color: #fff8ef; }
+/* checkout steps wrapped onto a second line at 360px (the 4th pill dropped below) */
+@media (max-width: 400px) {
+  .co-steps { gap: 5px; }
+  .co-steps li { padding-inline: 5px 10px; gap: 6px; font-size: 12.5px; }
+  .co-steps li::before { width: 24px; height: 24px; }
+}
