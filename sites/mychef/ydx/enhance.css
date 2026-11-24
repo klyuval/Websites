@@ -11,8 +11,10 @@
 /* ---------------------------------------------------------------------------------------------------------------
    1. Hold every entrance while the loader (or the language wipe) is covering the page, so the table is set
       in front of the guest, not behind the cloth.                                                            */
-html:is(.ydx-loading,.ydx-hold) [data-lay],
-html:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paused !important; }
+html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay],
+html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paused !important; }
+/* (Round 2: keyed to .ydx-on, which enhance.js sets, so if that script is slow or never arrives the table is still
+   set behind the CSS-only loader bail instead of staying invisible.) */
 
 /* ---------------------------------------------------------------------------------------------------------------
    2. Entrance choreography (desktop + mobile). Headlines rise line by line out of an invisible slot (whole lines,
@@ -79,6 +81,29 @@ html:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paused !imp
     background: #041413; opacity: 0; will-change: opacity;
   }
   .course[data-ydx-sunk] { border-radius: 16px; }
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+   3b. Round 2 ambient: the tea lights on the table are lit. A warm pool of light opens under each candle once its
+       table is set, then breathes irregularly like a flame in a draught. Only transform/opacity, and only while
+       that section is on screen ([data-ydx-vis], set by enhance.js), so nothing runs offscreen.               */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes ydx-glow-in { from { opacity: 0; } }
+  @keyframes ydx-breathe {
+    0%, 100% { transform: scale(1); }   18% { transform: scale(1.07); }  31% { transform: scale(.95); }
+    47% { transform: scale(1.04); }     63% { transform: scale(.98); }   78% { transform: scale(1.09); }  88% { transform: scale(.97); }
+  }
+  html.ydx-on .piece:has(> img[src*="/light-"])::before {
+    content: ""; position: absolute; z-index: -1; left: -85%; top: -85%; width: 270%; height: 270%;
+    border-radius: 50%; pointer-events: none; opacity: 0;
+    background: radial-gradient(closest-side, rgba(255,205,120,.34), rgba(255,184,92,.15) 42%, rgba(255,170,80,.05) 66%, transparent);
+  }
+  html.ydx-on [data-lay].is-laid .piece:has(> img[src*="/light-"])::before {
+    opacity: 1;
+    animation: ydx-glow-in 1.6s ease-out backwards calc(var(--i, 0) * 70ms + .7s), ydx-breathe 4.3s ease-in-out infinite calc(var(--i, 0) * -.9s);
+    animation-play-state: paused;
+  }
+  html.ydx-on [data-lay].is-laid[data-ydx-vis] .piece:has(> img[src*="/light-"])::before { animation-play-state: running; }
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
@@ -194,6 +219,24 @@ html:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paused !imp
    and the nowrap headline runs under them, so a bowl hid part of a word ("israélie|n"). Keep the words on top of the
    bowls, as the hero already sets its headline over the cutlery. */
 .chef h2 { position: relative; z-index: 2; }
+
+/* Round 2 fixes ------------------------------------------------------------------------------------------------ */
+
+/* Hero place card ran off the screen in the desktop layout below ~1100px (1024x768: "Your seat is waiti|",
+   "|המקום שלכם מח"; landscape phones 844x390 the same). It sits at 52% of the table column; keep that, but never
+   let it start later than the card's own width from the column's end. */
+@media (min-width: 801px) and (orientation: landscape), (min-width: 1101px) {
+  .hero__card { inset-inline-start: min(52%, calc(100% - 330px)); }
+}
+/* The wine glass sat on top of the language buttons (844x390 to ~1279px wide, worst in French), which made
+   "FR" / "עברית" hard to read. Below 1280px it is set a little lower on the cloth, clear of the header. */
+@media (min-width: 801px) and (max-width: 1279px) and (orientation: landscape) {
+  .hero__table > .piece:has(> img[src$="/wine.webp"]) { top: max(var(--y), 96px); }
+}
+/* French hero place card was cut with an ellipsis at 360px ("Votre place vous atte…"). */
+@media (max-width: 380px) {
+  .hero__card .placecard__face { font-size: 28px; padding-inline: 20px; }
+}
 
 /* Never let the overlays reach print. */
 @media print { .ydx-ld, .ydx-wipe { display: none !important; } }

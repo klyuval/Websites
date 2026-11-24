@@ -377,7 +377,12 @@
 
   // Ticker: scrolling speeds the marquee up, then it eases back to its own pace.
   let tracks = [], rate = 1, vel = 0, lastY = scrollY, tRaf = 0;
-  const refreshTracks = () => { tracks = $$('.ticker__track').flatMap(t => t.getAnimations()); };
+  let trackEls = [];
+  const refreshTracks = () => { // only re-read when React swapped the ticker nodes (scan runs on every mutation)
+    const els = $$('.ticker__track');
+    if (tracks.length && els.length === trackEls.length && els.every((e, i) => e === trackEls[i])) return;
+    trackEls = els; tracks = els.flatMap(t => t.getAnimations());
+  };
   function tickTicker() {
     tRaf = 0;
     const target = 1 + Math.min(vel, 80) / 9;

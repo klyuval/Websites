@@ -111,10 +111,10 @@ ydx-veil { pointer-events: none !important; }
    content's animationend, so the longer exit is honoured; the dim overlay is slowed to match. */
 @media (prefers-reduced-motion: no-preference) {
   html .mobile-menu[data-state=open] { animation: ydx-blind-in .5s cubic-bezier(.7, 0, .2, 1) both; }
-  html .mobile-menu[data-state=closed] { animation: ydx-blind-out .42s cubic-bezier(.76, 0, .16, 1) both; }
+  html .mobile-menu[data-state=closed] { animation: ydx-blind-out .38s cubic-bezier(.55, 0, .2, 1) both; }
   html .mobile-menu[data-state=closed] nav a,
-  html .mobile-menu[data-state=closed] > .eyebrow { animation: ydx-menu-out .3s cubic-bezier(.5, 0, .75, 0) both; }
-  html body:has(.mobile-menu) > [data-slot=dialog-overlay][data-state=closed] { animation-duration: .42s; }
+  html .mobile-menu[data-state=closed] > .eyebrow { animation: ydx-menu-out .22s cubic-bezier(.4, 0, .7, .2) both; }
+  html body:has(.mobile-menu) > [data-slot=dialog-overlay][data-state=closed] { animation-duration: .38s; }
 }
 @keyframes ydx-blind-in { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
 @keyframes ydx-blind-out { from { clip-path: inset(0); } to { clip-path: inset(0 0 100% 0); } }

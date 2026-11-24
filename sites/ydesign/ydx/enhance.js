@@ -132,7 +132,13 @@
     closeBtn.addEventListener('click', softClose, true);
     dlg.addEventListener('cancel', softClose, true);
 
-    // 2c. Arrow keys: the site maps ArrowRight to "next" on both pages, but in Hebrew "next" sits on the left with a
+    // 2c. Focus: the site focuses "Close" when the case opens, but the opening animation hides the panel for a moment
+    // (visibility), which drops focus to <body>; a keyboard user then had no focus inside the dialog. Put it back.
+    const refocus = () => { if (dlg.open && !dlg.contains(d.activeElement)) closeBtn.focus({ preventScroll: true }); };
+    new MutationObserver(() => { if (dlg.open) { setTimeout(refocus, 1000); setTimeout(refocus, 1600); } })
+      .observe(dlg, { attributes: true, attributeFilter: ['open'] });
+
+    // 2d. Arrow keys: the site maps ArrowRight to "next" on both pages, but in Hebrew "next" sits on the left with a
     // left-pointing arrow. Swap the keys on the RTL page, for the case dialog and the business-type radios.
     window.addEventListener('keydown', (e) => {
       if (e.ydx || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
@@ -147,6 +153,9 @@
       t.dispatchEvent(swap);
     }, true);
   }
+
+  // Keyboard users: see enhance.css (html.ydx-kbd), content that waits for a scroll reveal must be reachable by Tab.
+  addEventListener('keydown', (e) => { if (e.key === 'Tab') html.classList.add('ydx-kbd'); }, true);
 
   /* ---- 3. Reveal choreography --------------------------------------------------------------------------------------- */
   const reveal = (els, margin = '0px 0px -10% 0px') => {

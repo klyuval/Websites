@@ -71,6 +71,16 @@
   .nav__lang::before, .foot__row nav a::before, .link::before { content: ""; position: absolute; inset: -10px -8px; }
 }
 
+/* Keyboard: the bar hides on the way down (.is-away) and stayed hidden while Tab walked through its links. */
+.nav.is-away:focus-within { transform: none; }
+
+/* Keyboard: the contact form waits invisible (GSAP autoAlpha) until it scrolls into view, so Tab skipped the whole
+   form. Once someone uses Tab, the form is simply there. */
+html.ydx-kbd .contact__copy { visibility: visible !important; opacity: 1 !important; transform: none !important; }
+
+/* 360px Hebrew: "מתחילים פרויקט" was squeezed inside the bar button; trim its side padding on the narrowest phones. */
+@media (max-width: 380px) { .nav .btn--sm { padding-inline: 16px; } }
+
 /* The carousel label wrapped "CAFÉ, YOUR PICK" / "בית קפה, הבחירה שלכם" with a single orphan word at 360px. */
 [data-arc-label] { text-wrap: balance; }
 

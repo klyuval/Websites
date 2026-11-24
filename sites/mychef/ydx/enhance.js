@@ -45,6 +45,10 @@
     try { sessionStorage.setItem('ydx-seen', '1'); } catch (e) { /* storage blocked: fine */ }
     if (!loader || !loader.isConnected) { cls.remove('ydx-loading'); return; }
     const finish = () => { loader.remove(); cls.remove('ydx-loading'); cls.add('ydx-loaded'); };
+    // On a very slow connection the inline CSS may already have faded the loader out (its 3.9s bail) before this
+    // script arrived; don't bring it back just to lift it.
+    const cs = getComputedStyle(loader);
+    if (cs.visibility === 'hidden' || +cs.opacity < .5) { finish(); return; }
     if (RM || !loader.animate) {
       cls.remove('ydx-loading');
       cls.add('ydx-leaving');
@@ -60,7 +64,7 @@
     // being drawn off, and the page's own entrance is released as the lift starts: the plate, cutlery and headline
     // are being set while the hem passes over them, so there is never a blank frame.
     const dur = FRAME ? 460 : SHORT ? 520 : 760;
-    const ease = 'cubic-bezier(.7,0,.22,1)';
+    const ease = 'cubic-bezier(.62,0,.2,1)';
     loader.style.display = 'grid';
     loader.style.animation = 'none';
     const stage = loader.querySelector('.ydx-ld__stage');
@@ -75,10 +79,12 @@
         { borderRadius: '4px 4px 50% 50% / 4px 4px calc(16vh - 14px) calc(16vh - 14px)' }
       ], { duration: dur, easing: ease, fill: 'forwards', pseudoElement: '::after' });
     } catch (e) { /* no pseudo-element animation support: the stitching just stays square */ }
+    // the setting rides up with the cloth (a touch faster) and only fades once it is on its way out
     if (stage) stage.animate([
       { transform: 'none', opacity: 1 },
-      { transform: 'translateY(-14vh) scale(.97)', opacity: 0 }
-    ], { duration: dur * .62, easing: 'cubic-bezier(.55,0,.45,1)', fill: 'forwards' });
+      { transform: 'translateY(-6vh)', opacity: 1, offset: .35 },
+      { transform: 'translateY(-22vh) scale(.97)', opacity: 0 }
+    ], { duration: dur * .8, easing: ease, fill: 'forwards' });
     cls.remove('ydx-loading');
     lift.finished.then(finish, finish);
   }
@@ -180,7 +186,16 @@
     });
   };
 
+  /* Round 2: sections on screen are flagged [data-ydx-vis] so ambient loops (the candle light) only run there. */
+  const visIO = 'IntersectionObserver' in window && !RM
+    ? new IntersectionObserver(es => es.forEach(e => e.target.toggleAttribute('data-ydx-vis', e.isIntersecting)))
+    : null;
   function scan() {
+    if (visIO) document.querySelectorAll('[data-lay]').forEach(el => {
+      if (el._ydxVis) return;
+      el._ydxVis = true;
+      visIO.observe(el);
+    });
     if (!RM) document.querySelectorAll(WRITE).forEach(el => {
       if (el.hasAttribute('data-ydx-write')) return;
       el.setAttribute('data-ydx-write', '');
