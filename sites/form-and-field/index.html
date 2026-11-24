@@ -11,8 +11,89 @@
   <link rel="preload" href="assets/img/loupe.webp" as="image" type="image/webp">
   <link rel="stylesheet" href="vendor/lenis.css"><link rel="stylesheet" href="styles.css">
   <script src="vendor/lenis-1.3.26.min.js" defer></script><script src="study-logic.js" defer></script><script src="app.js" defer></script>
+  <!-- ydx: enhancement layer (loader mode, critical loader CSS, styles + script) -->
+  <script data-ydx>(function(h){var m='first';try{if(matchMedia('(prefers-reduced-motion: reduce)').matches)m='reduced';else if(window.self!==window.top)m='frame';else if(sessionStorage.getItem('ydx-ff-seen'))m='quick'}catch(e){}h.className+=' ydx-js ydx-loading ydx-l-'+m;h.setAttribute('data-ydx-mode',m);setTimeout(function(){h.classList.remove('ydx-loading')},6000)})(document.documentElement)</script>
+  <style data-ydx>
+    .ydx-loader{display:none}
+    .ydx-loading .ydx-loader{display:block}
+    .ydx-loader{position:fixed;inset:0;z-index:9999;overflow:hidden;color:#121210;--g:clamp(18px,3.4vw,58px);--F:min(calc((100vw - 2 * var(--g)) / 5.1),26svh);-webkit-user-select:none;user-select:none}
+    .ydx-cols,.ydx-plates{position:absolute;inset:0;display:flex}
+    .ydx-cols i,.ydx-plates i{flex:1 1 0;display:block;height:100%}
+    .ydx-cols i{background:#f3eee1;box-shadow:1px 0 0 #f3eee1}
+    .ydx-plates i:nth-child(1){background:#4a22ee}.ydx-plates i:nth-child(2){background:#ff3d9a}.ydx-plates i:nth-child(3){background:#62e9b4}.ydx-plates i:nth-child(4){background:#121210}.ydx-plates i:nth-child(5){background:#fffdf6}
+    .ydx-sheet{position:absolute;inset:0}
+    .ydx-grid,.ydx-grid::before,.ydx-grid::after{position:absolute;inset:0}
+    .ydx-grid::before,.ydx-grid::after{content:""}
+    .ydx-grid::before{background:linear-gradient(rgba(18,18,16,.075) 1px,transparent 1px) 0 0/100% 4.9vw}
+    .ydx-grid::after{background:linear-gradient(90deg,rgba(18,18,16,.075) 1px,transparent 1px) 0 0/4.9vw 100%}
+    .ydx-loader .crops{color:#121210}
+    .ydx-top,.ydx-meta{position:absolute;left:var(--g);right:var(--g);display:flex;justify-content:space-between;align-items:center;gap:16px}
+    .ydx-top{top:26px}
+    .ydx-meta{bottom:24px}
+    .ydx-spec{position:absolute;left:0;right:0;top:50%;height:var(--F);margin-top:calc(var(--F) * -.62);text-align:center}
+    .ydx-word{display:inline-block;font-family:Display,'Arial Black',sans-serif;font-size:var(--F);line-height:1;letter-spacing:-.058em;white-space:nowrap;font-weight:var(--w,200);position:relative;z-index:1}
+    .ydx-word b{display:inline-block;font-weight:inherit}
+    .ydx-word em{font-family:Editorial,Georgia,serif;font-style:italic;font-weight:500;letter-spacing:0;color:#ff3d9a;margin:0 .03em 0 .01em}
+    .ydx-word .ydx-star{font-family:Body,sans-serif;font-weight:400;font-size:.42em;color:#4a22ee;vertical-align:.95em;margin-left:.12em;letter-spacing:0}
+    .ydx-guide{position:absolute;left:var(--g);right:var(--g);height:0;transform-origin:0 50%}
+    .ydx-xh{top:calc(var(--F) * .3);border-top:1.5px dashed rgba(18,18,16,.42)}
+    .ydx-base{top:calc(var(--F) * .815);border-top:2px solid #ff3d9a;transform:scaleX(0)}
+    .ydx-note{position:absolute;font-family:Hand,cursive;font-size:clamp(20px,2vw,30px);line-height:1;color:#4a22ee;white-space:nowrap}
+    .ydx-n1{right:calc(var(--g) + 1vw);top:calc(var(--F) * .3 - 1.15em);transform:rotate(-3deg)}
+    .ydx-n2{left:calc(var(--g) + 1vw);top:calc(var(--F) * .815 + .35em);transform:rotate(-2deg);color:#ff3d9a}
+    .ydx-chips{display:inline-flex}
+    @media (max-width:860px){.ydx-n1{top:calc(var(--F) * -.62);right:var(--g)}}
+    .ydx-chips b{width:18px;height:18px;display:block;box-shadow:inset 0 0 0 1.5px rgba(18,18,16,.35)}
+    .ydx-chips b::after{content:"";display:block;width:100%;height:100%;background:var(--c);transform:scaleY(0);transform-origin:50% 100%;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+    .ydx-chips b.on::after{transform:none}
+    .ydx-read{display:inline-flex;gap:18px}
+    .ydx-read output{font:inherit}
+    @media (max-width:860px){
+      .ydx-loader{--F:calc((100vw - 2 * var(--g)) / 5.1)}
+      .ydx-grid::before{background-size:100% 9.8vw}.ydx-grid::after{background-size:9.8vw 100%}
+      .ydx-top,.ydx-meta{left:calc(var(--g) + 22px);right:calc(var(--g) + 22px)}
+      .ydx-top{flex-direction:column;align-items:flex-start;gap:4px;top:28px;font-size:10px}
+      .ydx-meta{flex-wrap:wrap;font-size:10px;gap:10px 14px}
+      .ydx-chips b{width:14px;height:14px}
+    }
+    @media (prefers-reduced-motion:no-preference){
+      .ydx-l-first .ydx-grid::before{animation:ydx-rh 1s .05s cubic-bezier(.65,0,.35,1) both}
+      .ydx-l-first .ydx-grid::after{animation:ydx-rv 1s .2s cubic-bezier(.65,0,.35,1) both}
+      .ydx-l-first .ydx-loader .crops i{animation:ydx-crop .6s cubic-bezier(.2,.8,.2,1) both}
+      .ydx-l-first .ydx-loader .crops i:nth-child(2){animation-delay:.06s}.ydx-l-first .ydx-loader .crops i:nth-child(3){animation-delay:.12s}.ydx-l-first .ydx-loader .crops i:nth-child(4){animation-delay:.18s}
+      .ydx-l-first .ydx-xh{animation:ydx-draw .8s .1s cubic-bezier(.65,0,.35,1) both}
+      .ydx-l-first .ydx-word b,.ydx-l-first .ydx-word em,.ydx-l-first .ydx-word .ydx-star{display:inline-block;animation:ydx-sort .55s calc(.12s + var(--i) * .045s) cubic-bezier(.2,.8,.2,1) both}
+      .ydx-l-first .ydx-note,.ydx-l-first .ydx-top,.ydx-l-first .ydx-meta{animation:ydx-fade .6s .4s both}
+      .ydx-loader .ydx-star{animation:ydx-spin 2.4s linear infinite}
+    }
+    @keyframes ydx-rh{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+    @keyframes ydx-rv{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0)}}
+    @keyframes ydx-crop{from{opacity:0;scale:1.8}to{scale:1}}
+    @keyframes ydx-draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+    @keyframes ydx-sort{from{opacity:0;transform:translate3d(0,-.5em,0) rotate(-8deg)}to{opacity:1;transform:none}}
+    @keyframes ydx-fade{from{opacity:0}to{opacity:1}}
+    @keyframes ydx-spin{to{rotate:360deg}}
+  </style>
+  <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
+  <script src="/ydx/enhance.js" defer></script><!-- ydx -->
 </head>
 <body>
+<!-- ydx: loading screen (a type-specimen proof sheet; enhance.js animates it out) -->
+<div class="ydx-loader" id="ydx-loader" aria-hidden="true">
+  <div class="ydx-plates"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="ydx-cols"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="ydx-sheet">
+    <div class="ydx-grid"></div>
+    <div class="crops"><i></i><i></i><i></i><i></i></div>
+    <div class="ydx-top mono"><span>Form &amp; Field — type specimen</span><span>Proof Nº 001 / Vol. 01</span></div>
+    <div class="ydx-spec">
+      <i class="ydx-guide ydx-xh"></i><i class="ydx-guide ydx-base" id="ydx-base"></i>
+      <span class="ydx-note ydx-n1">x-height</span><span class="ydx-note ydx-n2">baseline</span>
+      <span class="ydx-word" id="ydx-word"><b style="--i:0">f</b><b style="--i:1">o</b><b style="--i:2">r</b><b style="--i:3">m</b><em style="--i:4">&amp;</em><b style="--i:5">f</b><b style="--i:6">i</b><b style="--i:7">e</b><b style="--i:8">l</b><b style="--i:9">d</b><span class="ydx-star" style="--i:10">✳</span></span>
+    </div>
+    <div class="ydx-meta mono"><span id="ydx-status">In the making…</span><span class="ydx-chips"><b style="--c:#4a22ee"></b><b style="--c:#ff3d9a"></b><b style="--c:#62e9b4"></b><b style="--c:#121210"></b><b style="--c:#fffdf6"></b></span><span class="ydx-read"><span>wght <output id="ydx-wght">200</output></span><output id="ydx-pct">000%</output></span></div>
+  </div>
+</div>
 <a class="skip" href="#field-guide">Skip to the field guide</a>
 <header class="site-header">
   <a class="wordmark" href="#top" aria-label="Form and Field home">form<span>&amp;</span>field<span class="brand-star" aria-hidden="true">✳</span></a>
@@ -143,7 +224,7 @@
       <a href="#ch-2" data-field="mint"><span class="mono">02</span><b>Think in questions.</b><span class="mono">STRATEGY &amp; EMPATHY</span></a>
       <a href="#ch-3" data-field="paper2"><span class="mono">03</span><b>Give type a voice.</b><span class="mono">TYPOGRAPHY</span></a>
       <a href="#ch-4" data-field="pink" class="idx-colour"><span class="mono">04</span><b>Build relationships.</b><span class="mono">COMPOSITION &amp; COLOR</span></a>
-      <a href="#ch-5" data-field="ink"><span class="mono">05</span><b>Design the in-between.</b><span class="mono">INTERACTION &amp; MOTION</span></a>
+      <a href="#ch-5" data-field="ink"><span class="mono">05</span><b>Design the <span class="ydx-nowrap">in-between.</span></b><span class="mono">INTERACTION &amp; MOTION</span></a>
       <a href="#ch-6" data-field="yellow"><span class="mono">06</span><b>Refine with intent.</b><span class="mono">CRAFT &amp; CRITIQUE</span></a>
     </nav>
   </section>

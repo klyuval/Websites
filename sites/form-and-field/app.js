@@ -35,6 +35,8 @@
     lenis.on('virtual-scroll', schedule);
     lenis.on('scroll', schedule);
   }
+  /* ydx: let the enhancement layer jump instantly under a page transition (ydx/enhance.js) */
+  Object.defineProperty(window, 'ffLenis', { configurable: true, get: () => lenis });
   setupLenis();
   reduced.addEventListener('change', () => { setupLenis(); loupeReset(); });
   window.addEventListener('scroll', schedule, { passive: true });
