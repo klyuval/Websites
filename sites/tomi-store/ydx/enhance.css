@@ -9,7 +9,7 @@ html[data-ydx-l="he"] .ydx-cap { letter-spacing: .12em; }
   /* wireframe draws itself on the first visit, then the meridians turn like a cylinder rotating */
   html:not(.ydx-repeat):not(.ydx-frame) .ydx-wire .w:not(.ydx-surf) {
     stroke-dasharray: 1 1; stroke-dashoffset: 1;
-    animation: ydx-draw .9s cubic-bezier(.65,0,.35,1) forwards;
+    animation: ydx-draw .75s cubic-bezier(.65,0,.35,1) forwards;
   }
   html:not(.ydx-repeat):not(.ydx-frame) .ydx-wire .w:nth-child(2) { animation-delay: .08s; }
   html:not(.ydx-repeat):not(.ydx-frame) .ydx-wire .w:nth-child(3) { animation-delay: .22s; animation-duration: .7s; }

@@ -37,6 +37,9 @@
   .tabs button, .chips button { min-height: 44px; }
   .staff-link { display: inline-flex; align-items: center; min-height: 44px; }
   .hours a { padding-block: 10px; margin-top: 6px; }
+  /* English hand-note kept its desktop 16ch cap on phones, so it hugged the left edge in a
+     narrow block while the Hebrew note is centred across the hero. */
+  .english .hero__note { max-width: none; }
 }
 
 /* Dialog: soften what's behind the sheet a touch (keeps the site's ink tint). */

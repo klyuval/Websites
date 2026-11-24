@@ -186,7 +186,7 @@
   /* 4h. Process slabs: the covered slab sinks a little as the next layer lands. */
   .slab::after {
     content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-    background: #0b0a0f; opacity: calc(var(--ydx-p, 0) * .42);
+    background: #0b0a0f; opacity: calc(var(--ydx-p, 0) * .3);
   }
   .slab { transform-origin: 50% 0; }
 

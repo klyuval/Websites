@@ -175,7 +175,7 @@
         else el.classList.add('ydx-in');
         io.unobserve(el);
       }
-    }, { rootMargin: '0px 0px -18% 0px', threshold: 0.6 });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.4 });
     scan();
   }
   // wait until the loader has started to leave, so the first tapes are laid where people can see them

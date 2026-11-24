@@ -89,6 +89,19 @@ dialog.modal[open]::backdrop { animation: ydx-fade .22s ease both; }
   .tabs button.active, .filter-chips button.active, .day-toggles button.active { animation: ydx-lock .32s cubic-bezier(.2,.9,.3,1.5); }
   .set-input-row.done { animation: ydx-done .5s var(--ease); }
 
+  /* mobile drawer: nav plates slide in one after another as it opens */
+  .sidebar.mobile-open nav button { animation: ydx-in-side .42s var(--ease) both; }
+  .sidebar.mobile-open nav button:nth-child(2) { animation-delay: .04s; } .sidebar.mobile-open nav button:nth-child(3) { animation-delay: .08s; }
+  .sidebar.mobile-open nav button:nth-child(4) { animation-delay: .12s; } .sidebar.mobile-open nav button:nth-child(5) { animation-delay: .16s; }
+  .sidebar.mobile-open nav button:nth-child(6) { animation-delay: .20s; } .sidebar.mobile-open nav button:nth-child(n+7) { animation-delay: .24s; }
+
+  /* dialog lists (notifications, search, messages) cascade in with the sheet */
+  dialog.modal[open] :is(.notification-list, .search-results, .message-list) > * { animation: ydx-up .4s var(--ease) both; }
+  dialog.modal[open] :is(.notification-list, .search-results, .message-list) > :nth-child(2) { animation-delay: .04s; }
+  dialog.modal[open] :is(.notification-list, .search-results, .message-list) > :nth-child(3) { animation-delay: .08s; }
+  dialog.modal[open] :is(.notification-list, .search-results, .message-list) > :nth-child(4) { animation-delay: .12s; }
+  dialog.modal[open] :is(.notification-list, .search-results, .message-list) > :nth-child(n+5) { animation-delay: .16s; }
+
   /* live / unread indicators breathe */
   .live-dot, .sample-dot { animation: ydx-ping 2.4s ease-out infinite; }
   .bell i { animation: ydx-ping-red 2.4s ease-out infinite; }
@@ -130,6 +143,7 @@ dialog.modal[open]::backdrop { animation: ydx-fade .22s ease both; }
 }
 
 @keyframes ydx-fade { from { opacity: 0; } }
+@keyframes ydx-in-side { from { opacity: 0; translate: calc(var(--dir) * -18px) 0; } }
 @keyframes ydx-lock { 0% { scale: .9; } 60% { scale: 1.05; } 100% { scale: 1; } }
 @keyframes ydx-done { from { box-shadow: inset 0 0 0 999px #16a34a33; } }
 @keyframes ydx-up { from { opacity: 0; translate: 0 16px; } }

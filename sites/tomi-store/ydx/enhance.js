@@ -30,7 +30,7 @@
     var frame = html.classList.contains('ydx-frame');
     var repeat = html.classList.contains('ydx-repeat');
     var MIN = frame ? 0 : repeat ? 350 : 1000;
-    var ring = L.querySelector('.r'), lv = L.querySelector('.ydx-lv'), surf = L.querySelector('.ydx-surf');
+    var ring = L.querySelector('.r'), lv = L.querySelector('.ydx-lv'), surf = L.querySelector('.ydx-surf'), topE = L.querySelector('.ydx-top');
     var num = L.querySelector('.ydx-count b'), cap = L.querySelector('.ydx-cap');
     var src = document.querySelector('.loader-n');
     if (cap) cap.textContent = html.getAttribute('data-ydx-l') === 'en' ? 'TOMI · Loading' : 'TOMI · טוען';
@@ -53,7 +53,10 @@
       lv.setAttribute('y', y.toFixed(2));
       surf.setAttribute('cy', y.toFixed(2));
       surf.setAttribute('rx', y < 63 ? 12 : 22);
-      surf.style.strokeOpacity = p > 0.01 && p < 0.995 ? '0.9' : '0';
+      var mid = p > 0.01 && p < 0.995, rx = y < 63 ? 12 : 22;
+      surf.style.strokeOpacity = mid ? '0.9' : '0';
+      // the liquid's top face: a filled ellipse makes the rising level read as a 3D cylinder section
+      topE.setAttribute('cy', y.toFixed(2)); topE.setAttribute('rx', rx); topE.style.opacity = mid ? '1' : '0';
       num.textContent = String(Math.round(shown));
       if (readyAt && shown >= 99.5 && performance.now() >= MIN) exit();
       requestAnimationFrame(paint);

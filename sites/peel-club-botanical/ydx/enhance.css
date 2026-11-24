@@ -114,12 +114,12 @@ html.ydx-vt .ydx-vt-flap { visibility: visible; }
 }
 
 /* ------------------------------------------------------------------ design fixes */
-/* plate captions: no orphaned "USD" / "finish." on narrow plates */
+/* plate captions: no orphaned last word ("finish.") on narrow plates */
 .plate-caption p { text-wrap: pretty; }
-.plate-caption span { text-wrap: balance; }
 
-/* footer legal link is the only tap target under 44px tall on phones */
-.footer-bottom a { display: inline-flex; align-items: center; min-height: 44px; }
+/* footer legal link is the only tap target under 44px tall: grow its hit area without moving its underline */
+.footer-bottom a { position: relative; }
+.footer-bottom a::after { content: ""; position: absolute; inset: -9px -6px; }
 
 /* the loader wrapper must never catch input once it starts to leave */
 html:not([data-peel-entry=loading]):not([data-peel-entry=recovery]) #ydx-peel { pointer-events: none; }
