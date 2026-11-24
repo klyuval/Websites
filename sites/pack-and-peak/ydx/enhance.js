@@ -33,8 +33,8 @@
     if (!L || !html.classList.contains('ydx-loading')) { finishHold(); return; }
     var frame = html.classList.contains('ydx-frame');
     var repeat = html.classList.contains('ydx-repeat');
-    var climbMs = reduce ? 0 : frame ? 300 : repeat ? 420 : 1050;
-    var hardCap = frame ? 300 : repeat ? 1500 : 2600;  // ms since navigation start: never trap the user
+    var climbMs = reduce ? 0 : frame ? 260 : repeat ? 380 : 1050;
+    var hardCap = frame ? 0 : repeat ? 450 : 2600;  // ms since navigation start: never trap the user
     var trail = $('.ydx-l-trail', L), reveal = $('.ydx-l-reveal', L), dot = $('.ydx-l-dot', L), num = $('.ydx-l-num b', L);
     var len = 0; try { len = trail.getTotalLength(); } catch (e) {}
     var loaded = document.readyState === 'complete';
@@ -60,7 +60,7 @@
     }
     function summit() {
       L.classList.add('is-summit');
-      setTimeout(exit, reduce ? 250 : frame ? 60 : repeat ? 200 : 340);
+      setTimeout(exit, reduce ? 250 : frame ? 40 : repeat ? 150 : 340);
     }
     function exit() {
       try { sessionStorage.setItem('ydx-pp-seen', '1'); } catch (e) {}
@@ -71,7 +71,7 @@
         L.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).onfinish = cleanup;
         return;
       }
-      var dur = frame ? 420 : repeat ? 700 : 880;
+      var dur = frame ? 380 : repeat ? 600 : 880;
       var W = innerWidth, H = innerHeight, R = Math.min(H * .17, 160);
       var xs = [0, .05, .09, .14, .18, .23, .28, .32, .37, .42, .46, .51, .55, .6, .65, .7, .74, .79, .84, .89, .94, 1];
       var hs = [.22, .45, .3, .66, .5, .92, .55, .74, .4, .8, 1, .7, .86, .5, .64, .34, .6, .42, .72, .3, .5, .24];

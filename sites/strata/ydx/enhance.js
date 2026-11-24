@@ -200,7 +200,7 @@
             // Typing is measured in characters of the mono face: single lines only.
             const lh = parseFloat(getComputedStyle(el).lineHeight) || 16;
             if (el.getBoundingClientRect().height > lh * 1.6) k = 'lift';
-            else el.style.setProperty('--ydx-ch', String(el.textContent.trim().length + (el.querySelector('svg') ? 3 : 0)));
+            else el.style.setProperty('--ydx-ch', String(el.textContent.trim().length + (el.querySelector('svg') ? 4 : 0)));
           }
           if (k === 'lift') {
             // Stagger siblings of the same group (max 6 steps).
@@ -214,6 +214,14 @@
       }
     }
     scan();
+    // Items in the last few pixels of the page (footer bottom row) can never cross the -8% margin:
+    // reveal whatever is left once the visitor reaches the end.
+    addEventListener('scroll', () => {
+      if (scrollY + innerHeight < d.documentElement.scrollHeight - 4) return;
+      for (const el of root.querySelectorAll('[data-ydx-r]:not([data-ydx-in])')) {
+        if (el.getBoundingClientRect().top < innerHeight + 60) { show(el); if (io) io.unobserve(el); }
+      }
+    }, { passive: true });
     // The app re-renders parts of the tree (brief result, tabs): pick up new nodes.
     let pending = 0;
     new MutationObserver(() => {

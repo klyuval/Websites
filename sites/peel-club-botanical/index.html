@@ -21,10 +21,10 @@
       #ydx-peel .ydx-peel__inner{position:absolute;inset:0}
       #ydx-peel .ydx-peel__flap{display:none;position:absolute;top:0;right:0;height:100%;transform-origin:100% 50%;background:linear-gradient(to left,#fffaf0 0,#f4ebd6 6px,#efe2c4 55%,#e2d2ae 100%);box-shadow:-18px 0 34px -10px rgba(8,26,18,.42),inset -1px 0 0 rgba(255,255,255,.7)}
       #ydx-peel #peel-entry{gap:0;row-gap:0;overflow:hidden}
-      #peel-entry .ydx-art{width:auto;height:clamp(150px,31vh,270px);aspect-ratio:240/300;margin:0 0 -.4em;overflow:visible;position:relative;z-index:1}
+      #peel-entry .ydx-art{width:auto;height:clamp(170px,40vh,340px);aspect-ratio:240/300;margin:0 0 -.4em;overflow:visible;position:relative;z-index:1}
       #peel-entry .ydx-art .can{fill:rgba(244,235,214,.16);stroke:#0f3b2d;stroke-width:2.2;stroke-linejoin:round}
       #peel-entry .ydx-art .line{fill:none;stroke:#0f3b2d;stroke-width:2;stroke-linecap:round}
-      #peel-entry .ydx-art .label{fill:#f4ebd6}
+      #peel-entry .ydx-art .label{fill:#f4ebd6}#peel-entry .ydx-art .hatch{fill:none;stroke:#0f3b2d;stroke-width:1;opacity:.45}
       #peel-entry .ydx-art .label-text{fill:#b8380f;font:italic 900 30px "Fraunces Variable",Georgia,serif;letter-spacing:-1px}
       #peel-entry .ydx-art .label-small{fill:#0f3b2d;font:400 7.5px "Courier Prime","Courier New",monospace;letter-spacing:1.6px}
       #peel-entry .ydx-art .stem{fill:none;stroke:#0f3b2d;stroke-width:2.6;stroke-linecap:round}
@@ -45,7 +45,7 @@
         #peel-entry .ydx-art .label-g{clip-path:inset(0 100% 0 0);animation:ydx-wrap .62s cubic-bezier(.65,0,.2,1) .32s forwards}
         #peel-entry .ydx-art .lf{transform-box:fill-box;transform-origin:0 50%;transform:scale(0) rotate(-55deg);animation:ydx-unfurl .6s cubic-bezier(.3,1.5,.5,1) forwards;animation-delay:calc(.3s + var(--i) * 55ms)}
         #peel-entry .ydx-art .bloom{transform-box:fill-box;transform-origin:50% 50%;transform:scale(0) rotate(-120deg);animation:ydx-bloom .7s cubic-bezier(.3,1.4,.5,1) .72s forwards}
-        #peel-entry .ydx-art .bub{animation:ydx-fizz 1.6s cubic-bezier(.3,.1,.6,1) infinite;animation-delay:calc(.6s + var(--b) * 230ms)}
+        #peel-entry .ydx-art .bub{animation:ydx-fizz 1.5s cubic-bezier(.3,.1,.6,1) infinite;animation-delay:calc(.55s + var(--b) * 190ms)}
         #peel-entry .entry-caption{animation:ydx-tag .55s cubic-bezier(.3,1.4,.5,1) .15s both}
         #peel-entry strong{animation:ydx-rise .8s cubic-bezier(.22,1,.36,1) .05s both}
         #peel-entry strong em:before{animation:ydx-tape .55s cubic-bezier(.65,0,.25,1) .45s both}
@@ -58,7 +58,7 @@
       @keyframes ydx-wrap{to{clip-path:inset(0 0 0 0)}}
       @keyframes ydx-unfurl{to{transform:none}}
       @keyframes ydx-bloom{to{transform:none}}
-      @keyframes ydx-fizz{0%{opacity:0;transform:translate(0,0) scale(.4)}15%{opacity:.95}70%{opacity:.8}100%{opacity:0;transform:translate(var(--x,4px),-74px) scale(1.15)}}
+      @keyframes ydx-fizz{0%{opacity:0;transform:translate(0,0) scale(.4)}15%{opacity:.95}70%{opacity:.8}100%{opacity:0;transform:translate(var(--x,4px),-92px) scale(1.2)}}
       @keyframes ydx-tag{from{opacity:0;transform:translateY(-14px) rotate(-9deg)}}
       @keyframes ydx-rise{from{opacity:0;transform:translateY(.35em)}}
       @keyframes ydx-tape{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
@@ -73,10 +73,11 @@
     <div id="ydx-peel"><!-- ydx: peel wrapper (the cover peels away like a can label) --><div class="ydx-peel__inner">
     <div id="peel-entry" role="status" aria-live="polite" aria-atomic="true">
       <svg class="ydx-art" viewBox="0 0 240 300" aria-hidden="true" focusable="false"><!-- ydx: botanical loader art -->
-        <g><circle class="bub" cx="108" cy="88" r="3" style="--b:0;--x:-6px"/><circle class="bub" cx="126" cy="88" r="4.5" style="--b:1;--x:7px"/><circle class="bub" cx="142" cy="88" r="2.6" style="--b:2;--x:-3px"/><circle class="bub" cx="118" cy="88" r="2.2" style="--b:3;--x:9px"/><circle class="bub" cx="150" cy="88" r="3.6" style="--b:4;--x:4px"/><circle class="bub" cx="132" cy="88" r="2.8" style="--b:5;--x:-8px"/></g>
+        <g><circle class="bub" cx="104" cy="86" r="3.4" style="--b:0;--x:-7px"/><circle class="bub" cx="124" cy="88" r="5" style="--b:1;--x:8px"/><circle class="bub" cx="142" cy="86" r="3" style="--b:2;--x:-4px"/><circle class="bub" cx="116" cy="89" r="2.4" style="--b:3;--x:10px"/><circle class="bub" cx="152" cy="87" r="4.2" style="--b:4;--x:5px"/><circle class="bub" cx="132" cy="88" r="3.2" style="--b:5;--x:-9px"/><circle class="bub" cx="110" cy="88" r="4.4" style="--b:6;--x:3px"/><circle class="bub" cx="146" cy="89" r="2.2" style="--b:7;--x:-6px"/></g>
         <path class="can draw" pathLength="1" d="M70 104C70 96 76 92 84 91L156 91C164 92 170 96 170 104L172 268C172 280 164 286 152 286L88 286C76 286 68 280 68 268Z"/>
         <ellipse class="line draw" pathLength="1" cx="120" cy="92" rx="45" ry="6"/>
         <path class="line draw" pathLength="1" d="M70 112C95 117 145 117 170 112M69 258C95 264 145 264 171 258"/>
+        <path class="hatch draw" pathLength="1" d="M160 118L161.4 252M164.5 116L166 254M80 116L79 254"/>
         <g class="label-g"><path class="label" d="M69 128C95 134 145 134 171 128L171.6 242C145 248 95 248 68.6 242Z"/><text class="label-text" x="120" y="172" text-anchor="middle">PEEL</text><text class="label-text" x="120" y="202" text-anchor="middle">CLUB</text><text class="label-small" x="120" y="227" text-anchor="middle">BOTANICAL SODA</text></g>
         <path class="stem draw r" pathLength="1" d="M214 298C204 262 224 238 196 204"/>
         <g transform="translate(211.2 263.7) rotate(-42) scale(.8)"><g class="lf alt" style="--i:3"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g><g transform="translate(210.3 232.5) rotate(-147) scale(.85)"><g class="lf" style="--i:5"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g><g transform="translate(196 204) rotate(-84) scale(.7)"><g class="lf alt" style="--i:7"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g>

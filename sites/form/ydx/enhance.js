@@ -96,7 +96,7 @@
     // the bar is lifted a touch (a clean pull) before the curtain goes
     const lift = quick ? 0 : 170;
     if (lift) stage.querySelector('.ydx-bar').animate([{ transform: 'none' }, { transform: 'translateY(-10px)' }], { duration: lift + 200, easing: EASE_OUT, fill: 'forwards' });
-    setTimeout(() => { release(); choreograph(true); }, lift + 60);
+    setTimeout(() => { release(); pageWindow = performance.now() + 500; choreograph(true); }, lift + 60);
     slideOff(cur, stage, innerWidth, mode === 'frame' ? 300 : quick ? 380 : 620, lift).then(done, done);
   }
 
@@ -219,6 +219,9 @@
 
   /* ---------- watch the SPA ---------------------------------------------- */
   let lastState = null, lastKey = null, lastDir = html.dir, raf = 0;
+  // views often render twice (plan drafts / slots arrive from effects): keep
+  // choreographing new nodes for a short window after a view change
+  let pageWindow = 0;
   const mainRect = () => {
     const shell = d.querySelector('.main-shell');
     const top = d.querySelector('.topbar');
@@ -245,7 +248,7 @@
       // sign-in <-> studio, or the app's own boot screen handing over
       busyUntil = now + 700;
       wipe({ duration: 680, z: 80 });
-      if (st === 'app') setTimeout(() => choreograph(true), 40);
+      if (st === 'app') { pageWindow = now + 700; setTimeout(() => choreograph(true), 40); }
     } else if (loaderGone && st === 'app' && lastKey && key && key !== lastKey) {
       const pageChanged = lastKey.split('|')[0] !== page;
       if (now > busyUntil && pageChanged) {
@@ -254,9 +257,10 @@
         const r = mainRect();
         if (r && r.width > 0 && r.height > 0) wipe({ rect: r, area, label: crumb ? crumb.textContent.trim() : '', duration: 480 });
       }
+      pageWindow = now + 700;
       choreograph(true);
     } else if (loaderGone && st === 'app') {
-      choreograph(false);
+      choreograph(now < pageWindow);
     }
     if (html.dir !== lastDir) {
       if (loaderGone && lastDir && now > busyUntil) { busyUntil = now + 600; wipe({ duration: 560, z: 80 }); }

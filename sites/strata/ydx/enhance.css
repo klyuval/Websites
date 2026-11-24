@@ -98,7 +98,7 @@
 
   /* 4a. Mono labels type on like G-code streaming to the printer. */
   html.ydx-js [data-ydx-r="type"] {
-    clip-path: inset(-3px calc(100% - var(--ydx-n) * (1ch + .03em)) -3px -3px);
+    clip-path: inset(-3px calc(100% - var(--ydx-n) * (1ch + .03em) - min(2px, var(--ydx-n) * 2px)) -3px -3px);
   }
   html.ydx-js [data-ydx-r="type"][data-ydx-in] {
     animation: ydx-type calc(var(--ydx-ch, 20) * 24ms) linear var(--ydx-d, 0ms) both;

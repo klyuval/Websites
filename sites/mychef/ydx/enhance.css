@@ -188,5 +188,10 @@ html:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paused !imp
   .foot { padding-bottom: 92px; }
 }
 
+/* Chef section (desktop, FR/EN at 1280–1920 and HE at 1440): the three spice bowls are positioned in % of the block
+   and the nowrap headline runs under them, so a bowl hid part of a word ("israélie|n"). Keep the words on top of the
+   bowls, as the hero already sets its headline over the cutlery. */
+.chef h2 { position: relative; z-index: 2; }
+
 /* Never let the overlays reach print. */
 @media print { .ydx-ld, .ydx-wipe { display: none !important; } }

@@ -36,7 +36,7 @@
   // Minimum on-screen time per mode: first visit lets the three scoops land; repeat visits,
   // page-to-page arrivals and the hub's iframe preview are much shorter.
   const MIN = { first: 1250, repeat: 380, nav: 120, frame: 240, rm: 0 };
-  const HARD = 4000;
+  const HARD = L && L.mode === 'frame' ? 340 : 4000; // the hub's iframe preview stays under ~800ms total
 
   const whenLoad = new Promise(r => (d.readyState === 'complete' ? r() : w.addEventListener('load', r, { once: true })));
   const whenFonts = d.fonts && d.fonts.ready ? d.fonts.ready.catch(() => {}) : Promise.resolve();
@@ -62,7 +62,7 @@
       a ? a.finished.then(end, end) : end();
       return;
     }
-    const dur = mode === 'frame' ? 460 : mode === 'nav' ? 640 : 780;
+    const dur = mode === 'frame' ? 420 : mode === 'nav' ? 640 : mode === 'repeat' ? 620 : 780;
     // the stack squashes, then everything is pulled up; the drips stretch as the curtain rises
     anim(inner, [{ translate: '0 0', scale: '1 1', opacity: 1 }, { translate: '0 6px', scale: '1.04 .94', opacity: 1, offset: .25 }, { translate: '0 -70px', scale: '.96 1.04', opacity: 0 }],
       { duration: dur * .55, easing: 'cubic-bezier(.5,0,.7,.2)', fill: 'forwards' });

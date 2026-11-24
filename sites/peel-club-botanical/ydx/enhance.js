@@ -49,9 +49,9 @@
     Object.assign(inner.style, { inset: 'auto', left: (Wo - cx) + 'px', top: (Ho / 2 - cy) + 'px', width: W + 'px', height: H + 'px', transformOrigin: '50% 50%' });
     flap.style.display = 'block';
     flap.style.width = fw + 'px';
-    const u0 = D / 2 + fw + 24, u1 = -D / 2 - 30;
+    const u0 = D / 2 + fw * 0.6, u1 = -D / 2 - 30;
     const duration = opts.framed ? 520 : opts.quick ? 720 : 980;
-    const t = { duration, easing: 'cubic-bezier(.7,0,.22,1)', fill: 'forwards' };
+    const t = { duration, easing: 'cubic-bezier(.62,0,.2,1)', fill: 'forwards' };
     const a = wrap.animate([{ transform: `rotate(${PHI}deg) translateX(${u0}px)` }, { transform: `rotate(${PHI}deg) translateX(${u1}px)` }], t);
     inner.animate([{ transform: `translateX(${-u0}px) rotate(${-PHI}deg)` }, { transform: `translateX(${-u1}px) rotate(${-PHI}deg)` }], t);
     // the lifted part of the label: narrow as it starts to lift, widest mid-peel

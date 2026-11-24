@@ -19,6 +19,10 @@
    left while everything else on the RTL page starts on the right. */
 .host-site[dir=rtl] .footer-brand { text-align: right; }
 
+/* Staff page: the main column was capped at 1180px and centred, so its edges sat ~130px
+   inside the header's brand / language pills and the footer row. Align it to the same gutter. */
+.host-main { width: 100%; }
+
 /* Focus ring was ink-on-forest / ink-on-red (barely visible) in the dark sections. */
 .visit :focus-visible,
 .servings :focus-visible { outline-color: var(--cream); }
@@ -82,7 +86,7 @@ html.ydx-motion .btn { transition: transform .16s var(--ease), box-shadow .16s v
       transform-origin: 50% 100%;
       animation: ydx-brand linear both;
       animation-timeline: view();
-      animation-range: entry 5% cover 42%;
+      animation-range: entry 0% entry 100%;
     }
   }
 

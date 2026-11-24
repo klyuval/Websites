@@ -169,7 +169,7 @@
     });
     courses = [...document.querySelectorAll('.course')];
     hero = document.querySelector('.hero');
-        heroTable = hero && hero.querySelector('.hero__table');
+    heroTable = hero && hero.querySelector('.hero__table');
     magnets();
     onScroll();
   }
