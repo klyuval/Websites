@@ -187,3 +187,111 @@
   slab sink read well in the frame sequences, so they were not changed.
 - Loader images (about 160KB) still compete with the bundle on very slow lines. They are the same files the footer
   and hero use, so no bytes are wasted, and the loader degrades to the rail, nozzle and readout until they arrive.
+
+## Round 3
+
+A line-by-line review of the ydx layer (the inline boot code in `index.html`, `enhance.js` and `enhance.css`),
+plus production-condition tests. Each suspected bug was first reproduced with a focused Playwright script,
+then fixed and re-run. The scripts are in the round 3 scratch folder.
+
+### Production checks
+
+- **Live headers** (`curl -sI https://strata.ydesign.workers.dev/`): there is no CSP, X-Frame-Options or
+  nosniff, and `cache-control` is `public, max-age=0, must-revalidate`, so nothing in ydx can be blocked. One
+  thing does matter for ydx: **the host answers a missing file with the SPA fallback (200 `text/html`)**.
+  Today the live site does this for `/ydx/enhance.js`, which is not deployed yet. The local pages were also
+  served with these live headers and that fallback (a small static server).
+- **Test matrix.** Every case below ends with the page usable and visible and no new console errors. The only
+  messages are the expected 404 lines and the parse error of an HTML page served as JS:
+  - JS disabled, `enhance.js` 404, `enhance.css` 404, both 404, and each one served as the HTML fallback
+    (`jshtml`, `csshtml`, `bothhtml`);
+  - `enhance.js` delayed 8s, `enhance.css` delayed 8s, and the app bundle delayed 8s;
+  - a browser without Web Animations (`Element.prototype.animate` deleted);
+  - the hub iframe (`self !== top`);
+  - a real background tab (headful under xvfb, without Playwright's anti-throttling flags);
+  - reduced motion, a deep link, a keypress during the loader, and the shutter and mobile menu flows.
+
+### Bugs found and fixed
+
+1. **The app waited for ydx.** `enhance.js` was `defer` in `<head>`, ahead of the module bundle. Deferred and
+   module scripts run in document order, so a slow `enhance.js` delayed the whole app. With an 8s delay the
+   app rendered at 8.2s behind a static loader stuck at "LAYER 00". Fix: `enhance.js` is now `async` and
+   tolerates any load order. It boots at `readystatechange` → `interactive` (if it runs during parsing, the
+   loader and `#root` do not exist yet; DOMContentLoaded would wait for the bundle). After the change the app
+   renders at about 0.5s. If the app is up and `enhance.js` has not run 1.5s later, the inline poll drops
+   the loader. When `enhance.js` arrives, it runs in a "late" mode (`html.ydx-fail` is set): no
+   hide-before-reveal and no intro, only the interactions.
+2. **A slow `enhance.css` also blocked the app.** Module scripts wait for render-blocking stylesheets: with an
+   8s delay, first paint, the inline boot script and the app all came at 8.3s. Fix: the stylesheet now loads
+   non-blocking (`media="print"` swap, with a `<noscript>` fallback), and the loader's critical CSS is inline
+   as before. `enhance.js` sets up everything that needs the sheet (reveals, shutter, Z readout, magnetic
+   buttons, intro, menu-close animation) only once the sheet applies, checked with a `:root{--ydx-css:1}`
+   probe. If the sheet arrives after the loader has gone, reveals are skipped so nothing visible blinks out.
+3. **An 8s loader when `enhance.js` is replaced by the SPA fallback** (the live 404 behaviour). The `onerror`
+   only catches network errors. An HTML page served as JS is a syntax error, so the loader stayed up until
+   the 8s failsafe. Fix: a head helper `__ydxFail()`, called from `onerror` and from `onload` when the script
+   ran without setting `window.__ydxLoader`. Now the loader is gone at the first sample (500ms).
+4. **Page covered forever if the loader code threw.** For example, `car.animate is not a function` in a
+   browser without Web Animations. The inline failsafe skipped its cleanup because `__ydxLoader` was already
+   set. Fix:
+   - `loader()`, `tick`, the backstop and `finish` are wrapped and fall back to `kill()` (remove the cover,
+     release the hero);
+   - without WAAPI the loader exit is instant and the shutter is not installed;
+   - the exit has a 2s cleanup backstop;
+   - the inline failsafe now drops a cover that is still up 12s after it painted, whatever the cause;
+   - each setup runs on its own `try`, so one failing setup cannot take the others down.
+5. **Unstyled overlays when `enhance.css` is missing.** `#ydx-z` ("Z 000.0 MM") and the shutter markup were
+   appended to `<body>` without their styles and showed at the end of the page (+25px). They are now created
+   only once the CSS probe passes.
+6. **The shutter jump was undone by Lenis (desktop, common).** Clicking the nav CTA within about 0.5s of a
+   mouse-wheel scroll played "Your brief", then the page ended at y=1200 instead of the brief (6565). Lenis
+   ignores native scroll events while its own glide runs and re-applies its target. Fix: before the instant
+   jump, ydx resets Lenis through its middle-button `pointerdown` handler on window (a synthetic event; the
+   instance is not exposed), then scrolls. Wheel scrolling and short smooth hops behave as before.
+7. **Shutter stuck on screen.** If its animations were cancelled from outside or a step threw, the `.then`
+   had no rejection handler, so the shutter stayed `.on` with pointer-events on and `busy` set, which
+   blocked the page. Fix: the jump and the clean-up each run exactly once, on any outcome, with a 2s safety
+   timer.
+8. **"#top" during a shutter.** Keyboard Enter on the brand during a long jump ran React's Lenis glide to the
+   top, which overrode the shutter's jump (the label read "Our work" and the page ended at 0). Clicks on
+   "#top" are now swallowed while the shutter is busy, like the other hash links.
+9. **The mobile menu reopened (phones).** Pressing Escape, or tapping a menu link, within 250ms of tapping
+   the close button closed the menu, then the delayed `btn.click()` opened it again. The delayed click now
+   only happens if the menu is still open, inside `try/finally`.
+10. **Double include.** A second copy of `enhance.js` added a second shutter, Z readout and set of listeners.
+    The script is now idempotent: it returns early if `window.__ydxLoader` is set.
+11. **Background tab.** In a hidden tab rAF and animations stop while timers run. The 2400ms intro timer could
+    then expire before the intro had a frame, and the intro was cut short when the visitor came back. The
+    countdown now starts in a rAF, and the loader's cleanup backstop removes the cover while hidden. The
+    visitor comes back to the hero intro playing, with no frozen exit.
+12. **Robustness and compatibility:**
+    - `scrollTo({behavior:'instant'})` (which throws in older engines) is replaced by `scrollTo(0, y)`;
+    - the ticker's `getAnimations` and `updatePlaybackRate` are feature-checked, because a throw there would
+      have repeated on every scroll;
+    - the loader's T0 falls back to the inline script's mark where there is no paint timing (Safari), so the
+      inline and JS ceilings cannot cross.
+
+### Changed behaviour
+
+- The loader now stays up while the app has not rendered, for up to 9s after it painted (previously 4.2s,
+  then an empty page). It used to give way to a blank page at 4.5s when the bundle was slow. Now it holds at
+  layer 32 with the nozzle sweeping and hands over as soon as the app renders. The hub iframe preview still
+  never waits.
+- **Small polish (inline loader CSS):**
+  - safe-area insets for the loader's corner labels and footer (`viewport-fit=cover` is set, so landscape
+    iPhones put the notch over them);
+  - an `svh`-free fallback width for the stage.
+
+### Remaining known limitations
+
+- A real bfcache restore could not be exercised: the headless Chromium here reports `masked` for every
+  restore. By reasoning, timers and rAF resume on restore and `performance.now()` keeps counting, so a
+  restored loader hits its ceiling and leaves at once. The shutter has its 2s safety timer, and the delayed
+  menu close checks the state first.
+- The Lenis reset uses an internal handler (a middle-button `pointerdown` on window). If a future bundle
+  changes it, the synthetic event does nothing, and only the "click right after a wheel scroll" case returns.
+- Safari and Firefox were reasoned about from the code, since only Chromium is available. `:is()`,
+  `@property`, individual transform properties and `allow-discrete` all degrade to "no animation", never to
+  hidden content.
+- In a browser without Web Animations the site's own bundle throws (`R.animate is not a function`). That is
+  not ydx's code, and ydx no longer adds to it.
