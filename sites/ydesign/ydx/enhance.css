@@ -74,9 +74,11 @@
 /* The carousel label wrapped "CAFÉ, YOUR PICK" / "בית קפה, הבחירה שלכם" with a single orphan word at 360px. */
 [data-arc-label] { text-wrap: balance; }
 
-/* At 360px the English index cut "ALEXSTUDIO" to "ALEXSTU…" because the sector column never wrapped. */
+/* At 360px the English index cut "ALEXSTUDIO" to "ALEXSTU…" because the sector column never wrapped. On narrow
+   screens the name keeps its full width and the sector wraps into what is left. */
 @media (max-width: 420px) {
-  .index__sector { white-space: normal; max-width: 8.6em; text-align: end; font-size: 13.5px; line-height: 1.2; }
+  .index button { grid-template-columns: 28px minmax(min-content, 1fr) minmax(0, max-content); }
+  .index__sector { white-space: normal; text-align: end; line-height: 1.2; }
 }
 
 /* Phones: the steps slide under the pinned bench with a hard cut; a short paper fade softens that edge. */

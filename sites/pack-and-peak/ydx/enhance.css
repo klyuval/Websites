@@ -120,6 +120,36 @@ html.ydx-motion .pack-core[data-ydx-in] { animation: ydx-pack 1s cubic-bezier(.2
 html.ydx-motion .pack-foot:not([data-ydx-in]) { opacity: 0; }
 html.ydx-motion .pack-foot[data-ydx-in] { animation: ydx-rise .8s cubic-bezier(.2,.8,.2,1) both; }
 
+/* Round 2 — 8/8 packed: a red-white-red trail-blaze tag swings from the pack's top-left buckle.
+   Pseudo-element only (never DOM inside the app). Desktop sizes are container units of .pack-core;
+   phones use px (there the core is a shrink-to-fit flex item and inline-size containment collapses it).
+   The box is: a short ink cord on top (--s), then the framed blaze plate (--t tall, --b frame). */
+@media (min-width: 761px) { .pack-core { container-type: inline-size; } }
+.pack-core::after {
+  --s: 6cqw; --t: 10cqw; --b: max(2px, .6cqw);
+  content: ""; position: absolute; z-index: 2; pointer-events: none;
+  left: 23cqw; top: 15cqw; width: 14cqw; height: calc(var(--s) + var(--t));
+  background:
+    linear-gradient(var(--ink), var(--ink)) 50% 0 / var(--b) calc(var(--s) + 1px) no-repeat,
+    linear-gradient(var(--vermilion) 0 33.3%, #fff 33.3% 66.6%, var(--vermilion) 66.6%) var(--b) calc(100% - var(--b)) / calc(100% - 2 * var(--b)) calc(var(--t) - 2 * var(--b)) no-repeat,
+    linear-gradient(var(--ink), var(--ink)) 0 100% / 100% var(--t) no-repeat;
+  filter: drop-shadow(.6cqw 1cqw 0 rgb(11 26 40 / .28));
+  transform-origin: 50% 0; rotate: 7deg; scale: 0; opacity: 0;
+  transition: scale .2s, opacity .2s;
+}
+.pack-core:has(.pack-count.is-full)::after { scale: 1; opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .pack-core:has(.pack-count.is-full)::after { animation: ydx-tag 1.4s cubic-bezier(.3,1.2,.5,1) .5s both; }
+}
+@media (max-width: 760px) {
+  .pack-core::after { --s: 8px; --t: 17px; --b: 2px; left: calc(62% - 12px); top: 8%; width: 24px; filter: drop-shadow(2px 3px 0 rgb(11 26 40 / .28)); }
+}
+@keyframes ydx-tag {
+  0% { scale: 0; opacity: 0; rotate: -60deg; }
+  18% { scale: 1; opacity: 1; rotate: 34deg; }
+  40% { rotate: -22deg; } 60% { rotate: 16deg; } 78% { rotate: 2deg; } 100% { rotate: 7deg; scale: 1; opacity: 1; }
+}
+
 /* summit */
 html.ydx-motion .summit-actions:not([data-ydx-in]) > * { opacity: 0; }
 html.ydx-motion .summit-actions[data-ydx-in] > * { animation: ydx-rise .8s cubic-bezier(.2,.8,.2,1) .2s both; }

@@ -13,7 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400..900&family=Martian+Mono:wght@400..600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
     <noscript><link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400..900&family=Martian+Mono:wght@400..600&display=swap" rel="stylesheet" /></noscript>
     <link rel="preload" as="image" href="/img/w-physical-graphite.webp" type="image/webp" />
-    <link rel="preload" as="image" href="/img/w-strata-ghost.webp" type="image/webp" /><!-- ydx: loader silhouette (a CSS mask, otherwise discovered late) -->
+    <link rel="preload" as="image" href="/img/w-strata-ghost.webp" type="image/webp" crossorigin="anonymous" /><!-- ydx: loader silhouette (a CSS mask, otherwise discovered late) -->
     <title>STRATA | Ideas, made physical.</title>
     <!-- ydx: loading screen critical CSS (paints before the app bundle) -->
     <style data-ydx>
@@ -79,7 +79,7 @@
       // Failsafe if enhance.js never runs (a failed load is caught at once by its onerror; this covers a hang).
       (function(){var d=document.documentElement,l=document.getElementById('ydx-loader');
       // ydx: fade the silhouette in once its mask image has loaded (instead of popping in).
-      try{var g=new Image();g.onload=g.onerror=function(){l&&l.classList.add('yl-g')};g.src='/img/w-strata-ghost.webp'}catch(e){l&&l.classList.add('yl-g')}
+      try{var g=new Image();g.crossOrigin="anonymous";g.onload=g.onerror=function(){l&&l.classList.add('yl-g')};g.src='/img/w-strata-ghost.webp'}catch(e){l&&l.classList.add('yl-g')}
       try{if(!location.hash||location.hash==='#top')d.classList.add('ydx-hold','ydx-intro')}catch(e){}
       setTimeout(function(){if(window.__ydxLoader)return;l&&l.remove();d.classList.remove('ydx-hold','ydx-intro')},8000)})();
     </script>
