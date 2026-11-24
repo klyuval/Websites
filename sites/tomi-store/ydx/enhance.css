@@ -41,6 +41,17 @@ html.ink .ydx-shutter { color: #0e0d0c; }
   font-size: clamp(96px, 22vw, 360px);
 }
 
+/* the route curtain (the app's) and our language shutter share the stage's concentric-ring motif
+   instead of a flat colour block */
+.curtain, .ydx-shutter {
+  background-image: radial-gradient(circle at 50% 52%, rgba(255,248,239,.10) 0 15%, rgba(255,248,239,.07) 15.1% 30%,
+    rgba(255,248,239,.045) 30.1% 48%, rgba(255,248,239,.022) 48.1% 68%, transparent 68.1%);
+}
+html.ink .curtain, html.ink .ydx-shutter {
+  background-image: radial-gradient(circle at 50% 52%, rgba(14,13,12,.08) 0 15%, rgba(14,13,12,.055) 15.1% 30%,
+    rgba(14,13,12,.035) 30.1% 48%, rgba(14,13,12,.018) 48.1% 68%, transparent 68.1%);
+}
+
 /* ---------------------------------------------------------------- header */
 @media (prefers-reduced-motion: no-preference) {
   .top { transition: color .45s var(--ease-out), translate .55s var(--ease-out); }
@@ -85,7 +96,7 @@ html.ydx-hdr-bg body:not(.in-page):not(.in-dial):not(.menu-open) .top::before { 
 .acct-body > .drawer-empty .cta { background: var(--ink); color: #fff8ef; }
 /* checkout steps wrapped onto a second line at 360px (the 4th pill dropped below) */
 @media (max-width: 400px) {
-  .co-steps { gap: 5px; }
-  .co-steps li { padding-inline: 5px 10px; gap: 6px; font-size: 12.5px; }
-  .co-steps li::before { width: 24px; height: 24px; }
+  .co-steps { gap: 4px; }
+  .co-steps li { padding-inline: 4px 9px; gap: 5px; font-size: 12px; }
+  .co-steps li::before { width: 22px; height: 22px; font-size: 11px; }
 }

@@ -1,0 +1,194 @@
+/* ydx enhance.css: AlexStudio motion + design pass. Loaded after the site's own CSS on every page.
+   Palette taken from the site: ground #14180f / #171b12, paper #eee8d8 / #d8d2bc, proof gold #b8a67d / #8d805f,
+   cream ink #eeeadd. Type: Optical (display), Atelier Sans (body). */
+
+/* ---------------------------------------------------------------------------------------------------------------
+   1. Loader: hold / iris / fade states around the site's own arrival (StudioArrival)
+   ------------------------------------------------------------------------------------------------------------- */
+html.ydx-hold .studio-arrival,
+html.ydx-iris-run .studio-arrival { visibility: visible !important; transition: none !important; }
+html.ydx-hold .studio-arrival.arrival-complete { clip-path: inset(0) !important; }
+html.ydx-arrival-off .studio-arrival { visibility: hidden !important; }
+html.ydx-fade .studio-arrival {
+  visibility: visible !important; clip-path: inset(0) !important; opacity: 0;
+  transition: opacity .35s ease !important;
+}
+/* the "+" register mark becomes the light meter's pivot */
+.proof-register[data-ydx-meter] { opacity: 0; transition: opacity .3s; }
+
+ydx-meter {
+  position: fixed; z-index: 10001; left: 50%; top: 60%;
+  width: 132px; transform: translate(-50%, -50%);
+  pointer-events: none; text-align: center; color: #8d805f;
+  animation: ydx-meter-in .6s .1s cubic-bezier(.2, .8, .2, 1) both;
+  transition: opacity .3s ease, transform .4s cubic-bezier(.2, .8, .2, 1);
+}
+ydx-meter svg { display: block; width: 100%; height: auto; overflow: visible; }
+ydx-meter .ydx-m-arc { fill: none; stroke: #8d805f; stroke-width: .8; opacity: .55; }
+ydx-meter .ydx-m-tick { stroke: #8d805f; stroke-width: 1; }
+ydx-meter .ydx-m-tick.key { stroke: #d9c8a4; stroke-width: 1.4; }
+ydx-meter .ydx-m-minor { stroke: #8d805f; stroke-width: .6; opacity: .6; }
+ydx-meter .ydx-m-num { fill: #8d805f; font: 500 6.4px/1 "Atelier Sans", sans-serif; text-anchor: middle; letter-spacing: .02em; }
+ydx-meter .ydx-m-needle { stroke: #d9c8a4; stroke-width: 1.3; stroke-linecap: round; transition: stroke .3s; }
+ydx-meter .ydx-m-pivot { fill: #14180f; stroke: #b8a67d; stroke-width: 1; }
+ydx-meter b {
+  display: block; margin-top: 6px; font: 500 9px/1 "Atelier Sans", sans-serif; letter-spacing: .22em;
+  white-space: pre; color: #8d805f; transition: color .3s;
+}
+ydx-meter.is-set b, ydx-meter.is-set .ydx-m-needle { color: #eeeadd; stroke: #eeeadd; }
+ydx-meter.is-out { opacity: 0; transform: translate(-50%, -40%); }
+@keyframes ydx-meter-in { from { opacity: 0; transform: translate(-50%, -35%); } }
+@media (max-width: 699px) { ydx-meter { width: 108px; } }
+
+/* Aperture iris (loader exit, closed lens on repeat visits, language switch) */
+ydx-iris { position: fixed; inset: 0; z-index: 10003; pointer-events: none; display: block; contain: strict; }
+ydx-iris.is-over { z-index: 10001; }
+ydx-iris svg { display: block; width: 100%; height: 100%; }
+ydx-iris .ydx-blade { fill: #171b12; }
+ydx-iris .ydx-blade.alt { fill: #1c2116; }
+ydx-iris .ydx-edge { stroke: rgba(238, 232, 216, .14); stroke-width: 1; fill: none; }
+ydx-iris .ydx-ring { fill: none; stroke: rgba(216, 200, 164, .45); stroke-width: 1; }
+ydx-iris.is-over .ydx-blade { fill: rgba(238, 234, 221, .025); }
+ydx-iris.is-over .ydx-blade.alt { fill: rgba(5, 7, 3, .22); }
+ydx-iris.is-over .ydx-edge { stroke: rgba(238, 232, 216, .2); }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   2. Route shutter (the site's RouteTransition): the label develops like a print, a light sweep crosses the paper
+   ------------------------------------------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  div.route-shutter[data-active] .route-shutter-panel > * { animation: ydx-develop .6s .04s cubic-bezier(.2, .8, .2, 1) both; }
+  html[dir=rtl] div.route-shutter[data-active] .route-shutter-panel > span { animation-name: ydx-develop-rtl; }
+  div.route-shutter-panel::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; transform: translateX(-110%);
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 236, 190, .16) 50%, transparent 70%);
+  }
+  div.route-shutter[data-active] .route-shutter-panel::before { animation: ydx-sweep .95s .08s cubic-bezier(.3, .6, .3, 1) both; }
+  div.route-shutter[data-active] .route-shutter-panel:nth-child(2)::before { animation-delay: .16s; }
+}
+@keyframes ydx-develop {
+  from { clip-path: inset(-20% 100% -20% 0); opacity: .3; transform: translateY(6px); }
+  to { clip-path: inset(-20% 0 -20% 0); opacity: 1; transform: none; }
+}
+@keyframes ydx-develop-rtl {
+  from { clip-path: inset(-20% 0 -20% 100%); opacity: .3; transform: translateY(6px); }
+  to { clip-path: inset(-20% 0 -20% 0); opacity: 1; transform: none; }
+}
+@keyframes ydx-sweep { to { transform: translateX(110%); } }
+/* continuation veil after a hard navigation never blocks input */
+ydx-veil { pointer-events: none !important; }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   3. Mobile menu: numbered like the site's service index, staggered arrival, current page marked
+   ------------------------------------------------------------------------------------------------------------- */
+.mobile-menu { background: #14180f !important; }
+.mobile-menu nav { counter-reset: ydxm; }
+.mobile-menu nav a { counter-increment: ydxm; display: flex; align-items: baseline; gap: 14px; transition: color .25s; }
+.mobile-menu nav a::before {
+  content: counter(ydxm, decimal-leading-zero); flex: none; min-width: 2.2ch;
+  font: 500 11px/1 "Atelier Sans", sans-serif; letter-spacing: .06em; color: #b8a67d;
+  transform: translateY(-.9em);
+}
+.mobile-menu nav a[data-ydx-current] { color: #d9c8a4; }
+.mobile-menu nav a[data-ydx-current]::after {
+  content: ""; width: 7px; height: 7px; border-radius: 50%; background: #b8a67d; align-self: center; flex: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-menu[data-state=open] nav a { animation: ydx-menu-in .7s cubic-bezier(.16, 1, .3, 1) both; }
+  .mobile-menu[data-state=open] nav a:nth-child(1) { animation-delay: .06s; }
+  .mobile-menu[data-state=open] nav a:nth-child(2) { animation-delay: .1s; }
+  .mobile-menu[data-state=open] nav a:nth-child(3) { animation-delay: .14s; }
+  .mobile-menu[data-state=open] nav a:nth-child(4) { animation-delay: .18s; }
+  .mobile-menu[data-state=open] nav a:nth-child(5) { animation-delay: .22s; }
+  .mobile-menu[data-state=open] nav a:nth-child(6) { animation-delay: .26s; }
+  .mobile-menu[data-state=open] nav a:nth-child(7) { animation-delay: .3s; }
+  .mobile-menu[data-state=open] nav a:nth-child(8) { animation-delay: .34s; }
+  .mobile-menu[data-state=open] > .eyebrow { animation: ydx-fade-up .7s .4s cubic-bezier(.16, 1, .3, 1) both; }
+}
+@keyframes ydx-menu-in {
+  from { opacity: 0; transform: translateY(22px); clip-path: inset(0 0 100% 0); }
+  to { opacity: 1; transform: none; clip-path: inset(-20% -5% -20% -5%); }
+}
+@keyframes ydx-fade-up { from { opacity: 0; transform: translateY(10px); } }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   4. Autofocus brackets (pointer: fine only; created by enhance.js)
+   ------------------------------------------------------------------------------------------------------------- */
+ydx-af {
+  position: fixed; left: 0; top: 0; z-index: 9998; width: 26px; height: 26px; pointer-events: none;
+  color: #eee8d8; mix-blend-mode: difference; opacity: 0; transition: opacity .25s ease; will-change: transform;
+}
+ydx-af.is-on { opacity: .85; }
+ydx-af.is-on.is-muted { opacity: 0; }
+ydx-af i { position: absolute; width: 7px; height: 7px; border: 0 solid currentColor; transition: width .25s, height .25s; }
+ydx-af i:nth-child(1) { left: 0; top: 0; border-width: 1.5px 0 0 1.5px; }
+ydx-af i:nth-child(2) { right: 0; top: 0; border-width: 1.5px 1.5px 0 0; }
+ydx-af i:nth-child(3) { right: 0; bottom: 0; border-width: 0 1.5px 1.5px 0; }
+ydx-af i:nth-child(4) { left: 0; bottom: 0; border-width: 0 0 1.5px 1.5px; }
+ydx-af s { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px; border-radius: 50%; background: currentColor; transition: opacity .2s; }
+ydx-af.is-lock i { width: 10px; height: 10px; }
+ydx-af.is-lock s { opacity: 0; }
+ydx-af.is-fire i { animation: ydx-af-fire .32s cubic-bezier(.2, .8, .2, 1); }
+@keyframes ydx-af-fire { 40% { transform: scale(.7); } }
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) { ydx-af { display: none; } }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   5. Footer wordmark develops into view, like the arrival proof
+   ------------------------------------------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  html.ydx-js .site-footer .footer-top .brand[data-ydx-watch] {
+    background: linear-gradient(90deg, currentColor 0 40%, rgba(236, 233, 223, .13) 60% 100%) 100% 0 / 250% 100% no-repeat;
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    transition: background-position 1.6s cubic-bezier(.2, .8, .2, 1) .1s;
+  }
+  html.ydx-js .site-footer .footer-top .brand[data-ydx-in] { background-position: 0 0; }
+}
+
+/* Credits: contact prints develop as they scroll in (grey and underexposed -> full tone), staggered by column */
+@media (prefers-reduced-motion: no-preference) {
+  html.ydx-js .credit-item[data-ydx-dev] img {
+    transition: opacity .9s ease, filter 1.4s cubic-bezier(.2, .8, .2, 1), transform 1.4s cubic-bezier(.2, .8, .2, 1);
+  }
+  html.ydx-js .credit-item[data-ydx-dev]:not([data-ydx-in]) img { opacity: .15; filter: grayscale(1) brightness(.45) contrast(1.3); transform: scale(1.04); }
+  html.ydx-js .credit-item[data-ydx-dev]:nth-child(3n+2) img { transition-delay: .09s; }
+  html.ydx-js .credit-item[data-ydx-dev]:nth-child(3n) img { transition-delay: .18s; }
+  html.ydx-js .credit-item[data-ydx-dev] > span { transition: opacity .8s .3s ease; }
+  html.ydx-js .credit-item[data-ydx-dev]:not([data-ydx-in]) > span { opacity: 0; }
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+   6. Design fixes
+   ------------------------------------------------------------------------------------------------------------- */
+/* About: the opaque paper nav (82-100px tall, absolutely positioned) sat over the top of the "MEET ALEX." poster
+   heading and clipped its glyphs at every width. The nav's paper colour is the page colour, so it can be clear. */
+html body:has(.alex-biography) .site-nav.inner { background: transparent; }
+@media (max-width: 700px) {
+  .biography-poster { padding-top: 46px; }
+}
+/* Credits (RU, phones): "ВООБРАЖАЕМЫЙ" ran ~120px past the screen edge at 64px. */
+@media (max-width: 700px) {
+  html[lang=ru] body:has(.credits-list) .page-intro h1 { font-size: min(64px, 11.4vw) !important; }
+}
+/* Tap targets on phones: language buttons (38px tall), footer links (36px) and the hero footnote links (16px). */
+@media (pointer: coarse) {
+  .site-nav > .language-picker button { position: relative; }
+  .site-nav > .language-picker button::before { content: ""; position: absolute; inset: -3px 0; }
+  .room-footnote a { position: relative; }
+  .room-footnote a::before { content: ""; position: absolute; inset: -14px -6px; }
+}
+@media (max-width: 700px) {
+  .site-footer .footer-bottom nav a { min-height: 44px; }
+}
+/* Loader on short landscape screens (phones turned sideways): the proof frame, its "+" mark and the exposure bar
+   overlapped each other. Give the proof less height and a smaller wordmark. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .studio-arrival .arrival-register { top: 18px; }
+  .studio-arrival .arrival-proof { inset: 25% 9% 31%; }
+  .studio-arrival .proof-wordmark { font-size: min(11vw, 20vh); }
+  .studio-arrival .proof-register { display: none; }
+  .studio-arrival .arrival-bottom { inset: auto 9% 7%; }
+}
+/* Selection in the studio palette instead of the browser's blue */
+::selection { background: #b8a67d; color: #14180f; }
+
+/* click shield while the (already inert) arrival is held on screen */
+ydx-shield { position: fixed; inset: 0; z-index: 10002; display: block; background: transparent; cursor: pointer; }

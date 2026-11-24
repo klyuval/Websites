@@ -3,8 +3,8 @@
  *  - it never touches cart / checkout / auth / admin code paths,
  *  - it only adds classes on <html>, inline `translate`/CSS vars on existing nodes, and its own overlay elements
  *    appended to <body>.
- * Parts: 1. loader controller  2. header scroll behaviour  3. language-switch shutter
- *        4. magnetic buttons  5. cart-count nudge
+ * Parts: 1. loader controller  2. header scroll behaviour (+ cart-count pin)  3. language-switch shutter
+ *        4. magnetic buttons  5. ring cursor  6. page-title fit (inline font-size on overflowing titles only)
  */
 (function () {
   'use strict';
@@ -42,11 +42,14 @@
     }
     if (src) new MutationObserver(read).observe(src, { childList: true, characterData: true, subtree: true });
 
-    var TOP = 34, BOT = 168; // device silhouette span in the SVG viewBox
-    function paint() {
+    var TOP = 34, BOT = 168, last = performance.now(); // device silhouette span in the SVG viewBox
+    function paint(now) {
       if (finished) return;
       read();
-      shown += (target - shown) * (reduced ? 1 : 0.14);
+      // time-based easing (not per-frame) so a slow first WebGL frame on weak devices never stretches the loader
+      var dt = Math.min(200, (now || performance.now()) - last);
+      last = now || performance.now();
+      shown += (target - shown) * (reduced ? 1 : 1 - Math.exp(-dt / 110));
       if (Math.abs(target - shown) < 0.25) shown = target;
       var p = shown / 100, y = BOT - (BOT - TOP) * p;
       ring.style.strokeDasharray = shown.toFixed(2) + ' 100';
@@ -58,7 +61,6 @@
       // the liquid's top face: a filled ellipse makes the rising level read as a 3D cylinder section
       topE.setAttribute('cy', y.toFixed(2)); topE.setAttribute('rx', rx); topE.style.opacity = mid ? '1' : '0';
       num.textContent = String(Math.round(shown));
-      if (readyAt && shown >= 99.5 && performance.now() >= MIN) exit();
       requestAnimationFrame(paint);
     }
     requestAnimationFrame(paint);
@@ -67,9 +69,8 @@
       if (readyAt) return;
       readyAt = performance.now();
       target = 100;
-      window.__ydxReadyAt = Math.round(readyAt);
-      // never wait on our own fill animation for long
-      setTimeout(exit, Math.max(MIN - readyAt, 0) + (reduced ? 0 : 700));
+      // leave as soon as the minimum display time is met; the fill tops up during the exit choreography
+      setTimeout(exit, Math.max(0, MIN - readyAt));
     }
     if (html.classList.contains('ready')) onReady();
     else new MutationObserver(function (_, mo) {
@@ -84,6 +85,7 @@
     function exit() {
       if (exiting) return;
       exiting = true;
+      L.style.pointerEvents = 'none'; // the page is usable the moment the exit starts
       try { sessionStorage.setItem('ydx-tomi-seen', '1'); } catch (e) {}
       if (reduced || !L.animate) {
         var f = L.animate ? L.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, fill: 'forwards' }) : null;
@@ -136,7 +138,7 @@
       lastY = y;
       var past = y > innerHeight * 0.85;
       html.classList.toggle('ydx-hdr-bg', y > innerHeight * 0.6 && !body.classList.contains('in-page'));
-      if (!past || locked()) { acc = 0; html.classList.remove('ydx-hdr-hide'); return; }
+      if (!past || reduced || locked()) { acc = 0; html.classList.remove('ydx-hdr-hide'); return; }
       acc = (acc > 0) === (dy > 0) ? acc + dy : dy; // accumulate in one direction only
       if (acc > 28) html.classList.add('ydx-hdr-hide');
       else if (acc < -14) html.classList.remove('ydx-hdr-hide');
@@ -254,5 +256,32 @@
     document.addEventListener('pointerup', function () { c.classList.remove('down'); }, { passive: true });
     document.documentElement.addEventListener('pointerleave', function () { c.classList.remove('on'); });
     addEventListener('blur', function () { c.classList.remove('on'); });
+  })();
+  /* ------------------------------------------------------------------ 6. page-title fit
+   * The giant Karantina page titles are sized in vw; in English on phones ("Checkout", "Compare", "Shipping")
+   * they ran past the viewport edge and were clipped. Shrink a title only when it overflows its column. */
+  (function fitTitles() {
+    var host = document.querySelector('.pages');
+    if (!host) return;
+    function fit() {
+      host.querySelectorAll('.pg-title').forEach(function (h) {
+        h.style.fontSize = '';
+        var par = h.parentElement, ps = getComputedStyle(par);
+        var col = par.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight);
+        var w = h.scrollWidth;
+        // measure the widest line's real ink width
+        var r = document.createRange(); r.selectNodeContents(h);
+        w = Math.max(w > col ? w : 0, r.getBoundingClientRect().width);
+        if (w > col + 1) {
+          var fs = parseFloat(getComputedStyle(h).fontSize);
+          h.style.fontSize = Math.floor(fs * (col - 2) / w) + 'px';
+        }
+      });
+    }
+    var t = 0;
+    function later() { clearTimeout(t); t = setTimeout(fit, 30); }
+    new MutationObserver(later).observe(host, { childList: true });
+    addEventListener('resize', later);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(later);
   })();
 })();

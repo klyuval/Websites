@@ -1,0 +1,452 @@
+/* ydx enhance.js: AlexStudio motion pass (vanilla, no dependencies).
+ *
+ * The site already ships its own loader (StudioArrival: a proof "developing" with an exposure bar) and its own route
+ * shutter (RouteTransition). This file complements them rather than stacking new ones:
+ *   1. Loader: a light-meter needle that reads the arrival's --exposure, and an aperture iris that opens the proof
+ *      onto the page (instead of the plain wipe). Shorter on repeat visits, <=800ms inside the hub iframe.
+ *   2. Route continuation: on a hard navigation (static hosting answers the RSC fetch with a non-RSC type, so the
+ *      router falls back to a full load) the next document starts with the shutter closed and opens it, instead of
+ *      replaying the whole arrival after the shutter.
+ *   3. Language switch: a quick iris blink hides the text swap / RTL flip.
+ *   4. Pointer: autofocus brackets that lock onto links and buttons (fine pointers only).
+ *   5. Small things: footer wordmark "develops" into view, mobile-menu current page.
+ * Nothing here inserts into React-rendered nodes: overlays are custom elements appended to <body>, app nodes only get
+ * data-ydx-* attributes. Everything is skipped or reduced to fades under prefers-reduced-motion.
+ */
+(() => {
+  'use strict';
+  const d = document, html = d.documentElement;
+  const RM = matchMedia('(prefers-reduced-motion: reduce)');
+  const FINE = matchMedia('(hover: hover) and (pointer: fine)');
+  const cls = html.classList;
+  const has = (c) => cls.contains(c);
+  const store = {
+    get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* private mode */ } },
+    del(k) { try { sessionStorage.removeItem(k); } catch (e) { /* ignore */ } },
+  };
+  const raf = (fn) => requestAnimationFrame(fn);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const frames = (n = 2) => new Promise((r) => { const s = () => (--n <= 0 ? r() : raf(s)); raf(s); });
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  /* cubic-bezier(x1,y1,x2,y2) as a function of t (Newton + bisection on x) */
+  function bezier(x1, y1, x2, y2) {
+    const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+    const X = (u) => ((ax * u + bx) * u + cx) * u, Y = (u) => ((ay * u + by) * u + cy) * u, dX = (u) => (3 * ax * u + 2 * bx) * u + cx;
+    return (x) => {
+      let u = x;
+      for (let i = 0; i < 6; i++) { const e = X(u) - x, dv = dX(u); if (Math.abs(e) < 1e-5 || Math.abs(dv) < 1e-6) break; u -= e / dv; }
+      if (u < 0 || u > 1 || Math.abs(X(u) - x) > 1e-3) { let lo = 0, hi = 1; u = x; for (let i = 0; i < 30; i++) { if (X(u) < x) lo = u; else hi = u; u = (lo + hi) / 2; } }
+      return Y(u);
+    };
+  }
+  const ease = {
+    inOut: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
+    out: (t) => 1 - Math.pow(1 - t, 3),
+    in: (t) => t * t * t,
+    aperture: bezier(.62, 0, .18, 1), // a short hesitation, then the blades snap open and settle
+  };
+  const marks = (window.__ydxMarks = {}); // timings for QA (ms since navigation start)
+  const mark = (k) => { marks[k] = Math.round(performance.now()); };
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const svgEl = (tag, attrs) => { const e = d.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+  cls.add('ydx-js');
+
+  /* ------------------------------------------------------------------------------------------------------------
+   * Aperture iris. Seven blades: the hole is a regular heptagon; each blade edge is the extension of one side of it,
+   * so the wedges between consecutive edges tile everything outside the hole (like real blades). `over` = drawn over
+   * the arrival (translucent facets, arrival clipped by the hole) or as an opaque plate (language switch).
+   * ---------------------------------------------------------------------------------------------------------- */
+  const N = 7;
+  function makeIris(over) {
+    const root = d.createElement('ydx-iris');
+    root.setAttribute('aria-hidden', 'true');
+    if (over) root.className = 'is-over';
+    const svg = svgEl('svg', { width: '100%', height: '100%', preserveAspectRatio: 'none' });
+    const blades = [], edges = [];
+    for (let i = 0; i < N; i++) {
+      blades.push(svg.appendChild(svgEl('path', { class: 'ydx-blade' + (i % 2 ? ' alt' : '') })));
+    }
+    for (let i = 0; i < N; i++) edges.push(svg.appendChild(svgEl('path', { class: 'ydx-edge' })));
+    const ring = svg.appendChild(svgEl('path', { class: 'ydx-ring' }));
+    root.appendChild(svg);
+    d.body.appendChild(root);
+    let W = innerWidth, H = innerHeight;
+    const full = () => Math.hypot(W, H) / 2 / Math.cos(Math.PI / N) + 6;
+    /* p: 0 closed .. 1 fully open. Returns the hole as an SVG path string (also used to clip the arrival). */
+    function draw(p, rot) {
+      W = innerWidth; H = innerHeight;
+      const cx = W / 2, cy = H / 2, R = full() * p, L = Math.hypot(W, H) * 2;
+      const V = [], A = [];
+      for (let i = 0; i < N; i++) {
+        const a = rot + (i * 2 * Math.PI) / N - Math.PI / 2;
+        A.push(a); V.push([cx + R * Math.cos(a), cy + R * Math.sin(a)]);
+      }
+      // direction of side (i-1 -> i), extended past vertex i = edge of blade i
+      const dir = (i) => { const b = A[i] - Math.PI / N + Math.PI / 2; return [Math.cos(b), Math.sin(b)]; };
+      const far = (i) => { const u = dir(i); return [V[i][0] + u[0] * L, V[i][1] + u[1] * L]; };
+      const f = (pt) => pt[0].toFixed(1) + ' ' + pt[1].toFixed(1);
+      let hole = '';
+      for (let i = 0; i < N; i++) {
+        const j = (i + 1) % N, Fi = far(i), Fj = far(j);
+        blades[i].setAttribute('d', `M${f(V[i])}L${f(Fi)}L${f(Fj)}L${f(V[j])}Z`);
+        edges[i].setAttribute('d', `M${f(V[i])}L${f(Fi)}`);
+        hole += (i ? 'L' : 'M') + f(V[i]);
+      }
+      hole += 'Z';
+      ring.setAttribute('d', p > 0.002 ? hole : '');
+      return hole;
+    }
+    return { root, draw, size: () => [W, H], remove: () => root.remove() };
+  }
+
+  /* run p from a to b over ms; onFrame gets (p). Resolves at the end. */
+  function tween(ms, fn, easing = ease.inOut) {
+    return new Promise((res) => {
+      const s = performance.now();
+      const step = (now) => {
+        const t = clamp((now - s) / ms, 0, 1);
+        fn(easing(t), t);
+        if (t < 1) raf(step); else res();
+      };
+      raf(step);
+    });
+  }
+
+  /* ------------------------------------------------------------------------------------------------------------
+   * 1. Loader
+   * ---------------------------------------------------------------------------------------------------------- */
+  const arrival = () => d.querySelector('.studio-arrival');
+  const isDone = (a) => !a || a.classList.contains('arrival-complete');
+  const MODE = has('ydx-cont') ? 'cont' : has('ydx-frame') ? 'frame' : has('ydx-quick') ? 'repeat' : 'first';
+  const clipOK = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('clip-path', 'path(evenodd, "M0 0H1V1Z")');
+
+  /* Light meter: replaces the "+" register mark under the wordmark while the proof develops. */
+  function makeMeter(a) {
+    const reg = a.querySelector('.proof-register');
+    if (!reg) return null;
+    const m = d.createElement('ydx-meter');
+    m.setAttribute('aria-hidden', 'true');
+    const svg = svgEl('svg', { viewBox: '-60 -52 120 62' });
+    const STOPS = ['2.8', '4', '5.6', '8', '11', '16', '22']; // f/8 sits at the centre: correct exposure
+    const span = 100; // degrees of the scale
+    const arc = svgEl('path', { class: 'ydx-m-arc', d: describeArc(44, -span / 2, span / 2) });
+    svg.appendChild(arc);
+    STOPS.forEach((s, i) => {
+      const deg = -span / 2 + (span * i) / (STOPS.length - 1);
+      const r = (deg * Math.PI) / 180;
+      const x1 = Math.sin(r) * 44, y1 = -Math.cos(r) * 44, x2 = Math.sin(r) * 50, y2 = -Math.cos(r) * 50;
+      svg.appendChild(svgEl('line', { class: 'ydx-m-tick' + (s === '8' ? ' key' : ''), x1, y1, x2, y2 }));
+      const t = svgEl('text', { class: 'ydx-m-num', x: (Math.sin(r) * 34).toFixed(1), y: (-Math.cos(r) * 34 + 2.5).toFixed(1) });
+      t.textContent = s;
+      svg.appendChild(t);
+      for (let k = 1; k < 3 && i < STOPS.length - 1; k++) { // minor ticks
+        const dd = ((deg + (span / (STOPS.length - 1)) * (k / 3)) * Math.PI) / 180;
+        svg.appendChild(svgEl('line', { class: 'ydx-m-minor', x1: Math.sin(dd) * 46, y1: -Math.cos(dd) * 46, x2: Math.sin(dd) * 50, y2: -Math.cos(dd) * 50 }));
+      }
+    });
+    const needle = svgEl('line', { class: 'ydx-m-needle', x1: 0, y1: 4, x2: 0, y2: -47 });
+    svg.appendChild(needle);
+    svg.appendChild(svgEl('circle', { class: 'ydx-m-pivot', cx: 0, cy: 0, r: 3.2 }));
+    m.appendChild(svg);
+    const read = d.createElement('b');
+    m.appendChild(read);
+    d.body.appendChild(m);
+    // centred in the gap between the developing wordmark and the exposure bar
+    const mark = a.querySelector('.proof-wordmark'), bar = a.querySelector('.arrival-progress');
+    const place = () => {
+      const r = reg.getBoundingClientRect();
+      if (!r.width && !r.height) { m.style.display = 'none'; return; }
+      const top = mark ? mark.getBoundingClientRect().bottom : r.top;
+      const bot = bar ? bar.getBoundingClientRect().top : r.bottom + 60;
+      m.style.left = r.left + r.width / 2 + 'px';
+      m.style.top = (top + bot) / 2 + 'px';
+      m.style.display = bot - top < 96 ? 'none' : ''; // short landscape screens: no room, keep the plain "+"
+      reg.toggleAttribute('data-ydx-meter', bot - top >= 96);
+    };
+    place();
+    addEventListener('resize', place);
+    // needle physics: a damped spring toward the exposure value, plus a faint tremble while metering.
+    let ang = -span / 2 - 6, vel = 0, target = -span / 2, alive = true, settled = false, lastShown = '';
+    const exposure = () => parseFloat(a.style.getPropertyValue('--exposure')) || 0.08;
+    const tick = () => {
+      if (!alive) return;
+      const e = clamp(exposure(), 0, 1);
+      // exposure 1 => needle on f/8 (centre of the scale): "correct exposure"
+      target = -span / 2 + (span / 2) * clamp((e - 0.08) / 0.92, 0, 1) + (e < 1 ? Math.sin(performance.now() / 90) * 0.8 : 0);
+      vel += (target - ang) * 0.06; vel *= 0.78; ang += vel;
+      needle.setAttribute('transform', `rotate(${ang.toFixed(2)})`);
+      settled = e >= 1 && Math.abs(target - ang) < 0.6 && Math.abs(vel) < 0.15;
+      const idx = clamp(Math.round(((ang + span / 2) / span) * (STOPS.length - 1)), 0, STOPS.length - 1);
+      const txt = 'f/' + STOPS[idx] + (e >= 1 ? '  ·  1/125' : '');
+      if (txt !== lastShown) { read.textContent = txt; lastShown = txt; }
+      m.classList.toggle('is-set', e >= 1);
+      raf(tick);
+    };
+    raf(tick);
+    return {
+      settled: () => settled,
+      hide() { m.classList.add('is-out'); setTimeout(() => { alive = false; m.remove(); reg.removeAttribute('data-ydx-meter'); removeEventListener('resize', place); }, 400); },
+    };
+    function describeArc(r, a0, a1) {
+      const p = (deg) => { const t = (deg * Math.PI) / 180; return (Math.sin(t) * r).toFixed(2) + ' ' + (-Math.cos(t) * r).toFixed(2); };
+      return `M${p(a0)}A${r} ${r} 0 0 1 ${p(a1)}`;
+    }
+  }
+
+  /* Opens the arrival through the iris (an already drawn, closed iris can be passed in). */
+  async function irisOut(a, ms, iris) {
+    const fresh = !iris;
+    iris = iris || makeIris(true);
+    cls.add('ydx-iris-run');
+    const rot0 = 0.35;
+    const clip = (hole) => { const [W, H] = iris.size(); a.style.clipPath = `path(evenodd, "M0 0H${W}V${H}H0Z ${hole}")`; };
+    clip(iris.draw(0, rot0));
+    await frames(1);
+    cls.remove('ydx-hold', 'ydx-lens');
+    await tween(ms, (p, t) => {
+      clip(iris.draw(p, rot0 - p * 0.75));
+      if (fresh) iris.root.style.opacity = String(clamp(t * 8, 0, 1));
+    }, fresh ? ease.aperture : ease.out);
+    iris.remove();
+    a.style.clipPath = '';
+    cls.add('ydx-arrival-off');
+    cls.remove('ydx-iris-run', 'ydx-quick');
+  }
+
+  async function runLoader() {
+    const a = arrival();
+    store.set('ydx-seen', '1');
+    if (!a) { cls.remove('ydx-quick', 'ydx-cont'); return; }
+    if (MODE === 'cont') return runContinuation(a);
+    const reduce = RM.matches || !clipOK;
+    const quick = MODE !== 'first';
+    // Hold the arrival on screen (even once React marks it complete) until the iris opens it.
+    cls.add('ydx-hold');
+    const done = new Promise((res) => {
+      if (isDone(a)) return res();
+      const mo = new MutationObserver(() => { if (isDone(a)) { mo.disconnect(); res(); } });
+      mo.observe(a, { attributes: true, attributeFilter: ['class'] });
+    });
+    const meter = !quick && !reduce ? makeMeter(a) : null;
+    // Repeat visits / hub iframe: a closed lens instead of the full proof, opened as soon as React is listening.
+    let lens = null, nudge = 0;
+    const kick = () => { if (!isDone(a)) window.dispatchEvent(new Event('studio:navigation')); };
+    if (quick) {
+      kick(); nudge = setInterval(kick, 60);
+      if (!reduce) { lens = makeIris(true); lens.draw(0, 0.35); cls.add('ydx-lens'); }
+    }
+    const minShow = MODE === 'frame' ? 200 : quick ? 320 : 1100; // ms since navigation start
+    const safety = MODE === 'frame' ? 300 : quick ? 1200 : 4000;
+    // Safety: never trap the visitor. Ask the arrival to finish; if React never answers, open it anyway.
+    const timeout = wait(Math.max(0, safety - performance.now())).then(() => { kick(); return wait(MODE === 'frame' ? 0 : 250); });
+    await Promise.race([done, timeout]);
+    clearInterval(nudge);
+    mark('arrival-done');
+    // Once React has marked the arrival complete it is inert, so clicks would fall through to the hidden page.
+    // While we still hold it on screen, a transparent shield catches them and opens the iris right away instead.
+    let skip;
+    const skipped = new Promise((r) => { skip = r; });
+    const shield = d.createElement('ydx-shield');
+    shield.setAttribute('aria-hidden', 'true');
+    shield.addEventListener('pointerdown', (e) => { e.preventDefault(); skip(); });
+    const onKey = (e) => { if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ') skip(); };
+    d.body.appendChild(shield);
+    addEventListener('keydown', onKey);
+    const left = minShow - performance.now();
+    if (left > 0) await Promise.race([wait(left), skipped]);
+    if (meter) { // let the needle land on f/8 before the shutter opens (max 700ms)
+      const s = performance.now();
+      let skippedNow = false;
+      skipped.then(() => { skippedNow = true; });
+      while (!skippedNow && !meter.settled() && performance.now() - s < 700) await frames(1);
+      if (!skippedNow) await Promise.race([wait(140), skipped]);
+      meter.hide();
+    }
+    shield.remove();
+    removeEventListener('keydown', onKey);
+    mark('open');
+    if (reduce) {
+      cls.add('ydx-fade');
+      cls.remove('ydx-hold', 'ydx-quick');
+      setTimeout(() => { cls.add('ydx-arrival-off'); cls.remove('ydx-fade'); }, 400);
+      return;
+    }
+    await irisOut(a, MODE === 'frame' ? 380 : quick ? 560 : 940, lens);
+    mark('end');
+  }
+
+  /* Hard navigation continuation: the shutter that closed on the previous page opens here. */
+  async function runContinuation(a) {
+    const veil = d.querySelector('ydx-veil');
+    const kick = () => { if (!isDone(a)) window.dispatchEvent(new Event('studio:navigation')); };
+    const nudge = setInterval(kick, 50);
+    kick();
+    const done = new Promise((res) => {
+      if (isDone(a)) return res();
+      const mo = new MutationObserver(() => { if (isDone(a)) { mo.disconnect(); res(); } });
+      mo.observe(a, { attributes: true, attributeFilter: ['class'] });
+    });
+    await Promise.race([done, wait(2200)]);
+    clearInterval(nudge);
+    await Promise.race([d.fonts ? d.fonts.ready : Promise.resolve(), wait(900)]);
+    await frames(2); // let the locale re-render (he/ru, RTL) land behind the shutter
+    if (!veil) { cls.remove('ydx-cont'); return; }
+    const panels = veil.querySelectorAll('.route-shutter-panel');
+    const anims = [...panels].map((p, i) => p.animate(
+      [{ transform: 'translate3d(0,0,0)' }, { transform: `translate3d(0,${i ? 101 : -101}%,0)` }],
+      { duration: 620, easing: 'cubic-bezier(.65,0,.15,1)', fill: 'forwards' }));
+    await Promise.all(anims.map((x) => x.finished.catch(() => {})));
+    veil.remove();
+    cls.add('ydx-arrival-off');
+    cls.remove('ydx-cont');
+  }
+
+  /* Record route intent so the next document (after a hard navigation) can continue the shutter.
+     Mirrors RouteTransition's own conditions. */
+  function watchRoutes() {
+    addEventListener('click', (e) => {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.detail === 0 || RM.matches) return;
+      const link = e.target && e.target.closest && e.target.closest('a[href]');
+      if (!link || link.download || (link.target && link.target !== '_self') || link.hasAttribute('data-no-transition')) return;
+      const u = new URL(link.href, location.href);
+      if (u.origin !== location.origin || u.pathname === location.pathname) return;
+      const rec = { to: u.pathname, t: Date.now(), brand: 'AlexStudio', label: '' };
+      // RouteTransition writes its label synchronously during this same click; read it right after.
+      setTimeout(() => {
+        const sh = d.querySelector('div.route-shutter');
+        if (!sh || !sh.hasAttribute('data-active')) return; // their shutter did not run (prevented etc.)
+        rec.brand = (sh.querySelector('b') || {}).textContent || rec.brand;
+        rec.label = (sh.querySelector('.route-shutter-panel span') || {}).textContent || '';
+        store.set('ydx-route', JSON.stringify(rec));
+      }, 0);
+    }, true);
+    // A client-side (SPA) navigation consumes the shutter in-page: drop the record if this document survives it.
+    const forget = () => setTimeout(() => store.del('ydx-route'), 1800);
+    for (const k of ['pushState', 'replaceState']) {
+      const orig = history[k];
+      history[k] = function (...args) { const before = location.pathname; const r = orig.apply(this, args); if (location.pathname !== before) forget(); return r; };
+    }
+    addEventListener('popstate', forget);
+  }
+
+  /* ------------------------------------------------------------------------------------------------------------
+   * 3. Language switch: iris closes (opaque plate), language changes behind it, iris opens.
+   * ---------------------------------------------------------------------------------------------------------- */
+  function watchLanguage() {
+    let bypass = false, busy = false;
+    addEventListener('click', async (e) => {
+      if (bypass) return;
+      const btn = e.target && e.target.closest && e.target.closest('.language-picker button');
+      if (!btn || btn.getAttribute('aria-pressed') === 'true' || RM.matches || !clipOK) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      if (busy) return;
+      busy = true;
+      const iris = makeIris(false);
+      const rot0 = 0.2;
+      await tween(300, (p) => iris.draw(1 - p, rot0 + p * 0.5), ease.in);
+      bypass = true; btn.click(); bypass = false;
+      await frames(3);
+      await tween(460, (p) => iris.draw(p, rot0 + 0.5 - p * 0.5), ease.out);
+      iris.remove();
+      busy = false;
+    }, true);
+  }
+
+  /* ------------------------------------------------------------------------------------------------------------
+   * 4. Autofocus brackets (pointer: fine). They follow the pointer and lock onto interactive elements.
+   * ---------------------------------------------------------------------------------------------------------- */
+  function cursor() {
+    if (!FINE.matches || RM.matches) return;
+    const af = d.createElement('ydx-af');
+    af.setAttribute('aria-hidden', 'true');
+    af.innerHTML = '<i></i><i></i><i></i><i></i><s></s>';
+    d.body.appendChild(af);
+    const SEL = 'a[href],button,[role="button"],select,summary,label[for],input:not([type=range]),textarea';
+    const SKIP = '.studio-arrival,ydx-iris,.loupe-scene,.photo-loupe,[data-lenis-prevent] input[type=range]';
+    let x = -100, y = -100, cx = -100, cy = -100, w = 26, h = 26, cw = 26, ch = 26, lock = null, running = false, shown = false;
+    const loop = () => {
+      const big = af.classList.contains('is-wide') ? 40 : 26;
+      let tx = x, ty = y, tw = big, th = big;
+      if (lock) {
+        if (!lock.isConnected) lock = null;
+        else {
+          const r = lock.getBoundingClientRect();
+          tx = r.left + r.width / 2; ty = r.top + r.height / 2; tw = r.width + 14; th = r.height + 10;
+        }
+      }
+      w = tw; h = th;
+      const k = lock ? 0.3 : 0.24;
+      cx += (tx - cx) * k; cy += (ty - cy) * k; cw += (w - cw) * 0.25; ch += (h - ch) * 0.25;
+      af.style.transform = `translate3d(${(cx - cw / 2).toFixed(1)}px,${(cy - ch / 2).toFixed(1)}px,0)`;
+      af.style.width = cw.toFixed(1) + 'px'; af.style.height = ch.toFixed(1) + 'px';
+      if (Math.abs(tx - cx) + Math.abs(ty - cy) + Math.abs(w - cw) + Math.abs(h - ch) > 0.4) raf(loop);
+      else running = false;
+    };
+    const go = () => { if (!running) { running = true; raf(loop); } };
+    addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse' || (!shown && e.clientX <= 0 && e.clientY <= 0)) return;
+      x = e.clientX; y = e.clientY;
+      if (!shown) { shown = true; cx = x; cy = y; af.classList.add('is-on'); }
+      go();
+    }, { passive: true });
+    d.addEventListener('pointerover', (e) => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      if (t.closest(SKIP)) { af.classList.add('is-muted'); lock = null; return; }
+      af.classList.remove('is-muted');
+      const hit = t.closest(SEL);
+      const r = hit && hit.getBoundingClientRect();
+      lock = hit && r.width < 560 && r.height < 220 ? hit : null;
+      af.classList.toggle('is-lock', !!lock);
+      af.classList.toggle('is-wide', !!hit && !lock);
+      go();
+    }, { passive: true });
+    d.addEventListener('pointerdown', () => { af.classList.remove('is-fire'); void af.offsetWidth; af.classList.add('is-fire'); }, { passive: true });
+    d.documentElement.addEventListener('pointerleave', () => { af.classList.remove('is-on'); shown = false; });
+    addEventListener('scroll', () => { if (lock) go(); }, { passive: true });
+  }
+
+  /* ------------------------------------------------------------------------------------------------------------
+   * 5. Small reveals and route-aware state (re-run on DOM changes: routes re-render on the client).
+   * ---------------------------------------------------------------------------------------------------------- */
+  let io = null;
+  function scan() {
+    if (!io && 'IntersectionObserver' in window) {
+      io = new IntersectionObserver((list) => {
+        list.forEach((en) => { if (en.isIntersecting) { en.target.setAttribute('data-ydx-in', ''); io.unobserve(en.target); } });
+      }, { threshold: 0.2, rootMargin: '0px 0px -6% 0px' });
+    }
+    // credits: each contact print develops (grey, underexposed -> full tone) as it scrolls in
+    if (!RM.matches) d.querySelectorAll('.credit-item:not([data-ydx-watch])').forEach((el) => {
+      el.setAttribute('data-ydx-watch', ''); el.setAttribute('data-ydx-dev', '');
+      if (io) io.observe(el); else el.setAttribute('data-ydx-in', '');
+    });
+    d.querySelectorAll('.site-footer .footer-top .brand:not([data-ydx-watch])').forEach((el) => {
+      el.setAttribute('data-ydx-watch', '');
+      if (io) io.observe(el); else el.setAttribute('data-ydx-in', '');
+    });
+    // mobile menu: mark the current page (the desktop nav already has aria-current)
+    const here = location.pathname.replace(/\/$/, '') || '/';
+    d.querySelectorAll('.mobile-menu nav a[href]').forEach((a) => {
+      const p = new URL(a.href, location.href).pathname.replace(/\/$/, '') || '/';
+      const on = p === here;
+      a.toggleAttribute('data-ydx-current', on);
+      if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+  }
+
+  function boot() {
+    window.__ydxBooted = true;
+    mark('boot');
+    runLoader().catch(() => { cls.remove('ydx-hold', 'ydx-lens', 'ydx-quick', 'ydx-cont', 'ydx-iris-run'); d.querySelectorAll('ydx-iris,ydx-veil,ydx-meter').forEach((n) => n.remove()); });
+    watchRoutes();
+    watchLanguage();
+    cursor();
+    scan();
+    let pend = 0;
+    new MutationObserver(() => { if (!pend) pend = setTimeout(() => { pend = 0; scan(); }, 120); })
+      .observe(d.body, { childList: true, subtree: true });
+  }
+  if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();
+})();
