@@ -195,3 +195,136 @@ the test browser so the DOM and CSS motion ran at real speed. The app was not ch
 - `ydx/enhance.js`: the loader block is removed (it moved to boot.js). Added: header pin only on keyboard focus,
   the shutter ease, §7 curtain word mask and §8 dial notes clearance.
 - `ydx/enhance.css`: hero stats at 761–900 px, tablet header hit areas and the dial notes padding.
+
+## Round 3
+
+This round was a production-hardening review. I read every line of `boot.js`, `enhance.js`, `enhance.css` and the
+`ydx` blocks in `index.html`, then checked the layer under production conditions. The live response headers were
+applied to every local test: the strict CSP (`script-src 'self' https://challenges.cloudflare.com`, no inline
+scripts), `X-Frame-Options: DENY`, `frame-ancestors 'none'`, COOP and nosniff.
+
+I tested these conditions:
+- JS disabled.
+- Each ydx file returning 404, alone and in combination, and with the app bundle missing too.
+- Each ydx file and the bundle delayed by 8 s.
+- A model download that is slow or reports no progress.
+- No WebGL.
+- An app that never signals `ready`.
+- A frozen page (`Page.setWebLifecycleState`).
+- The hub iframe.
+- Reduced motion.
+- A real background tab and bfcache. Both need a plain headed Chromium under Xvfb driven over raw CDP, because
+  Playwright forces every page to be visible and turns bfcache off on its command line. A scratch proxy put the live
+  headers on that test too.
+
+Every bug below was reproduced with a focused script before the fix and checked with the same script after it.
+Scripts are in the round-3 scratch folder.
+
+### Bugs found and fixed
+
+1. **The loader could leave long before the page was ready.** This affected `boot.js` on every page, and is the
+   most important fix.
+   - The safety exit was "no progress 4 s after `load`, so the app is dead". The app only reports progress when a
+     model response has a Content-Length.
+   - On the live site, the CSP blocks the app's WASM decoder (`'unsafe-eval'`). The app then downloads the
+     uncompressed `/models/full/*.glb` with **no** progress callback. Chunked responses report nothing either.
+   - Repro: the model files were delayed. `load` came at 0.9 s, the loader left at 6 s and `ready` only came at
+     25 s, so the user saw an empty stage for about 19 s.
+   - Fix: the safety exit now fires only if the app's init never ran. The test is whether its route `.curtain`
+     exists, since the bundle creates it after the WebGL renderer and just before it starts loading models. From
+     that point the app always reaches `ready` through its own try/catch and 90 s cap.
+   - Two last-resort caps remain: 20 s after 100% progress, and 100 s after `load`.
+   - After the fix, slow models make the loader wait for `ready` (25 s). A missing bundle and the no-WebGL case
+     still exit 4 s after `load`. The never-`ready` case exits at the 100 s cap.
+2. **A thrown exit left the page covered forever.** `exit()` armed its fallback timer after the WAAPI calls. Any
+   throw left the loader opaque with no way out, and it no longer matched the CSS fallback because it already had
+   `.ydx-ctl`. Repro: I renamed `.ydx-mark` in the served HTML, which caused `TypeError … reading 'animate'` and
+   left the loader up. Fix: the timer is armed first and the animation block is wrapped so that a throw calls
+   `finish()`.
+3. **A background tab came back to a loader.** rAF and WAAPI do not run in hidden tabs, so a page that became
+   `ready` in the background only started its exit when the user returned. Repro (real background tab): ready at
+   2.6 s, and the loader was still up when the tab came to the front at 10 s. Fix: `ready` while hidden, or the tab
+   being hidden while the exit is pending, finishes at once. After the fix the loader was gone at 2.4 s, while the
+   tab was still in the background.
+4. **The language shutter could lose the click and flip the language later by itself.** If the in-sweep did not
+   finish (tab hidden mid-sweep, or a busy main thread), the 2.5 s timer hid the shutter without switching
+   language. The stale `onfinish` then flipped the language when the user came back to the tab. Repro: real
+   background tab, lang clicked, then the tab hidden. The page was still Hebrew after 4 s and turned English on
+   return. Fix: each sweep is a token, and the flip happens exactly once. It happens from `onfinish`, at once on
+   `visibilitychange` to hidden, or from the safety timer. The timer is armed before any animation call.
+5. **enhance.js running twice broke the language switch.** Two copies stacked two shutters and two cursors, and
+   each copy swallowed the other's pass-through click, so the language never changed (`lang` stayed `he`, 0 flips).
+   Fix: a `window.__ydxTomi` run-once guard. After the fix there is 1 shutter, 1 cursor and 1 flip.
+6. **A slow or missing `enhance.css` blocked the whole page.** The parser `<link>` was render-blocking and
+   script-blocking. With it delayed 8 s, first paint moved from 0.3 s to 8.1 s and app `ready` from 1.3 s to 9.1 s.
+   - Fix: `boot.js` injects the stylesheet, and `enhance.js` injects it too if `boot.js` failed. A script-inserted
+     sheet blocks nothing.
+   - The loader's motion CSS moved into the inline `<style data-ydx>`, so the loader needs nothing from that file.
+     After the fix, with it delayed 8 s, first paint was at 0.24 s and `ready` at 1.3 s.
+7. **`enhance.js` was `defer`.** It did not delay the app, because the module comes before it in document order.
+   But a slow copy held `DOMContentLoaded` and `load` (and with them the loader's safety timer). It is now `async`,
+   with its own DOM-ready wrapper. Each part only needs the static shell or waits for app nodes itself. After the
+   fix, with it delayed 8 s, `DOMContentLoaded` stays at 0.6 s.
+8. **Without enhance.css the shutter rendered as an unstyled block.** It appeared at the end of `<body>` and
+   added 21 px of page height during a language switch. The cursor had the same issue. Both now check that the
+   stylesheet applies (`position: fixed`) before they are used. Otherwise the language switch is the app's plain
+   one.
+9. **If `boot.js` failed, the brand loader was an uncontrolled cover.** Only `html.ready` hid it, so if the app
+   was dead as well it stayed forever. Now `html.ydx-b`, which only `boot.js` sets, is what shows the brand loader
+   and hides the app's counter. If `boot.js` fails, the page behaves exactly like the original site. The
+   `noscript` rule hides the app's counter, which can never finish without JS.
+10. **Minor fixes:**
+    - Magnetic buttons stayed offset when the pointer left the window over them. They now settle back on
+      `pointerleave` and `blur`.
+    - The page-title fit computed a negative column width while `.pages` was hidden (an invalid `-Infinitypx`
+      font size that the browser ignored). It now skips that case.
+    - The loader's screen-reader label follows the stored language.
+    - Dead code was deleted: `EASE_IO` and the unused `ydx-rm` class.
+
+### Verified (all with the live headers)
+
+- Commerce and functional flow on desktop 1440 (he and en) and iPhone 13. Add to cart, open the drawer, qty +, go
+  to checkout, switch language on checkout (the cart is kept and checkout stays) and switch back. On mobile, the
+  menu opens and navigates. All routes, the dial and the header hide/show work, and there is no horizontal
+  overflow.
+- **Console:** no CSP violation from ydx, and no ydx errors. The remaining messages belong to the app: the WASM
+  `'unsafe-eval'` CSP error with its "compressed model failed" fallback warnings, the GSAP "target not found"
+  warnings and the stubbed 401s.
+- **Every condition from the list above ends with a visible, usable page**, with two exceptions:
+  - JS off: the static shell is shown and not covered.
+  - Both `boot.js` and the bundle missing: see the limitations below.
+- **Load timing:** the hub iframe exits in under 0.9 s after `ready`. A frozen page resumed and finished within
+  0.25 s. With bfcache, leaving mid-loader or mid-sweep and coming back restores a clean page.
+- **Reduced motion:** the language switch is plain, with no shutter and no cursor.
+
+### Remaining known limitations
+
+- **Bundle bug, not patched (production): uncompressed models may never load.** Under the live CSP, the
+  uncompressed fallback download runs after the app's "downloaded, 15 s to decode" timer has started. On a slow
+  connection, that timer can fire before the uncompressed models arrive, so the app becomes `ready` with **no 3D
+  models**.
+  - The fix is `'wasm-unsafe-eval'` in the worker's CSP, or a source change. It is not a ydx change.
+- **`boot.js` is the only parser-blocking ydx file.** It has to run before first paint, and the CSP forbids inline
+  scripts. So a slow `boot.js` delays first paint by its own latency (8 s delay gives an 8 s first paint). It is
+  small, same-origin and fetched in parallel with the app's render-blocking CSS and bundle.
+- **If both `boot.js` and the bundle fail, the app's own counter covers the page forever.** That is the original
+  site's behaviour. Without the app there is no usable page to reveal.
+- **Cross-browser:** only Chromium is available here, so Safari and Firefox were checked by reasoning about the
+  code.
+  - Every newer feature is either guarded or degrades to nothing: `:has` sits in its own rule; `Element.animate` is
+    checked; the independent `translate` property is supported in Safari 14.1+ and Firefox 72+;
+    `backdrop-filter`/`mask-image` have `-webkit-` prefixes.
+  - No view transitions, scroll-driven animations, `@starting-style` or `inert` are used.
+- **No monkey-patches of app globals** (`history`, GSAP, Lenis) exist in the layer, so there was nothing to make
+  idempotent there.
+
+### Files (round 3)
+
+- `ydx/boot.js`: `ydx-b` flag, the enhance.css injection, the app-alive safety exit with its caps, the
+  hidden-tab finish and the throw-proof exit.
+- `ydx/enhance.js`: the run-once guard, the DOM-ready wrapper (async), the stylesheet fallback and check, the
+  shutter token and visibility handling, the magnet reset, the fit guard, and the dead code removed.
+- `ydx/enhance.css`: the loader motion block moved out (to the inline style), and the header comment updated.
+- `index.html`: the inline loader CSS is gated on `html.ydx-b` and now holds the loader motion. The enhance.css
+  `<link>` was removed (it is injected now), `enhance.js` is `defer` → `async`, and the `noscript` rule was
+  updated.

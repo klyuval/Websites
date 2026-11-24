@@ -175,3 +175,102 @@ staff dashboard.
   | Repeat visit | ~0.7–0.9s |
   | Failsafe without `enhance.js` | fades at 4.5s |
   | 3G-throttled | ~4s cap, never stuck |
+
+## Round 3
+
+This round was a production-hardening pass before the layer goes live. It covered a line-by-line review of
+`enhance.js`, `enhance.css` and the inline `ydx` blocks in both HTML files, then tests under live-like conditions.
+Every suspected bug got a focused Playwright repro, which was run against the round-2 files first and the round-3
+files after.
+
+Test setup:
+- Each local HTML response got the live response headers from `curl -sI`: `default-src 'self'`,
+  `script-src 'self' 'unsafe-inline'`, and the rest.
+- `/api/menu` was stubbed with live JSON.
+- The scripts are in `scratchpad/cassata-menu-r3/`: `bugs.mjs`, `matrix.mjs`, `regress.mjs`, `order.mjs` and
+  `cssdelay.mjs`.
+- `OLD=1` serves the round-2 snapshot for the before runs.
+
+### Bugs found and fixed
+
+| # | Bug | How it was reproduced | Fix |
+| --- | --- | --- | --- |
+| 1 | **A drip transition whose navigation never commits left the page covered and unclickable.** This happens when the visitor presses Stop or Esc, when the response is 204 or a download, or when a "leave site?" prompt is cancelled. The curtain stayed down with `pointer-events:auto`, and `leaving` stayed true. | `/host` routed to a 204. Clicking the staff link left the curtain down 8s later (`nav204`). | A 4.5s safety timer, cancelled on `pagehide`, lifts the curtain again with `uncover()` and resets the state. A same-document `popstate` during the pour does the same. |
+| 2 | **Clicking a link while the first-load curtain was still lifting killed the pour.** `cover()` cancels the lift animation, which rejects its `finished` promise. That rejection handler ran `park()` and hid the curtain that had just started pouring. | A link was clicked 150ms after the lift started. There was no curtain 330ms later (`clickDuringLift`). | `park()` does nothing while `leaving` is true. `lift()` doesn't animate if a pour has already started. |
+| 3 | **A bfcache restore during first load left cards invisible.** Reveals that intersected under the curtain are held until `lift()` releases them. The `pageshow` handler parked the loader without releasing them, so they stayed at `opacity:0`. | Load `/#menu` and fire `pageshow {persisted:true}` before the lift. Six cards in view stayed hidden (`bfcacheHeld`). | `pageshow` now runs `settle()`, which releases the held reveals and marks the page live. |
+| 4 | **A bfcache restore after a transition kept `leaving=true`,** so later link clicks navigated with no transition. | `bfcacheLeaving`: no second pour. | `pageshow` resets `leaving` and clears the pending timers. |
+| 5 | **A second activation during the pour navigated at once,** cutting the pour short. This was a second Enter on the still-focused link, or a second link. | Enter pressed twice 60ms apart started the request at 76ms instead of about 410ms (`doubleEnter`). | `cover()` now ignores calls once a pour is under way. The click is still `preventDefault`ed, so only one navigation happens. |
+| 6 | **If `enhance.js` arrived just after the inline failsafe fired** (in the 4.5–4.9s window), the failsafe then *removed* the loader. Later transitions animated a detached node, so there was no curtain. `lift()` also replayed the whole entrance: the header and hero vanished and flew in again on a page the visitor had been reading for 4.5s. | With `enhance.js` delayed 4.6s, there was no pour on the next click (`lateJs`). With it delayed 4.8s, the brand got a WAAPI entrance animation (`lateEntrance`). | The failsafe now *hides* the loader (`hidden`, `display:none`) and sets `__ydxLoader.failsafe`. `enhance.js` then treats the loader as already lifted and parks it after the fade (`park()` clears the failsafe's inline opacity and transition). The page counts as live at once, and `cover()` re-attaches the loader if it was ever detached. |
+| 7 | **`enhance.js` failing to run** (404, blocked, or a parse error) kept the loader up for the full 4.5s failsafe. | With `/ydx/enhance.js` returning 404, the page was covered for about 4.2–5.0s (`js404time`). | Deferred scripts run before `DOMContentLoaded`. If `__ydxTook` is still unset at that point, the inline script fades the loader out, with a 0.7s minimum. The page is now uncovered after about 0.5–1.3s. |
+| 8 | **`enhance.css` failing to load left an unstyled cursor node in the page:** a static `✳` glyph at the bottom of `<body>`, moved around by its inline transform. | With `/ydx/enhance.css` returning 404, `.ydx-cursor` had `position:static` and was visible (`css404cursor`). | `enhance.css` sets `:root{--ydx-css:1}`. The cursor is only created once that is set, and the sheet ghost checks it too. |
+| 9 | **`enhance.css` loaded slowly delayed the whole app.** It was a parser-inserted, render-blocking stylesheet, and that also blocks the inline scripts after it: the loader script, and TanStack's `$_TSR` stream barrier that hydration waits for. A slow or hung `enhance.css` therefore held back the loader, first paint and hydration. (Coordinator note. `enhance.js` itself did **not** delay the app here, because the app's module is `async`, not deferred.) | With `enhance.css` delayed 8s, first paint and hydration came at **8.2s** (`order.mjs`). With `enhance.js` delayed 8s, hydration was still at 0.24s. | The `<head>` `ydx-js` inline script now inserts the stylesheet itself, which makes it non-render-blocking and non-script-blocking, and exposes `window.__ydxCss`, which settles on load or error. A `<noscript><link>` keeps the design fixes without JS. The loader's lift also waits for the CSS (capped at 3s), so there is no unstyled flash. The cursor waits for it, however late it is. With `enhance.css` delayed 8s, first paint is now 0.24s and hydration 0.39s. |
+| 10 | **Running `enhance.js` twice** (a duplicated tag or a re-injection) booted everything twice: two cursors and duplicate listeners. | `addScriptTag('/ydx/enhance.js')` produced 2 cursors (`twice`). | There is now a `window.__ydxBooted` guard. |
+| 11 | **A thrown error at a bad moment could leave the curtain down.** `__ydxTook` (which disarms the inline failsafe) was set *before* the lift timers were armed. A throw inside `lift()` before its animation started also skipped `park()`. | Not reproducible with the current DOM. An injected throw in `entrance()` was already harmless because the curtain animation starts first. | `__ydxTook` is now set after the timers are armed. The 4.5s failsafe triggers on "`ydx-loading` still on `<html>`", whatever `enhance.js` did. `lift()` removes `ydx-loading` first, wraps its steps in `try` (calling `park()` on error, and `settle()` in `finally`), and `entrance()` is isolated. |
+
+### Smaller hardening
+
+- **Link interception:**
+  - It skips SVG `<a>` elements (their `href` is an object, not a string).
+  - It treats `href="#…"` (including a bare `#`) as an in-page link, so the page doesn't reload.
+  - On a cross-document Back or typed URL *during* the pour, a temporary `beforeunload` listener cancels the
+    deferred `location.href`, so the visitor's own navigation wins. Chromium already let Back win in testing
+    (`backMidPour` passed before and after), so this is for other engines.
+- **Swirl "churn" animation:** it is now tied to the actual `.visit__h` node. It is cancelled and recreated if React
+  replaces that node, instead of running forever on a detached one.
+- **Removed the `window.__ydxFlush` global.** It is a closure now.
+- **The "page is live" switch** (cards React mounts on screen are left to framer) used to wait on `load`, so it never
+  flipped if `load` never fired. It now follows the curtain: 400ms after the lift, or immediately when there was no
+  curtain.
+
+### Production-condition matrix (all with the live CSP, on `/` and `/host/`)
+
+| Condition | Result |
+| --- | --- |
+| Baseline, desktop and iPhone 13 | Passed. |
+| JS disabled | Content visible. The design fixes still apply through the `<noscript>` stylesheet. |
+| `enhance.js` 404 | Uncovered after about 1.2s. |
+| `enhance.css` 404 | Uncovered after about 2.1–2.5s. No cursor. |
+| Both 404 | Uncovered after about 1.2s. |
+| `enhance.js` delayed 8s | The failsafe fades the loader at about 5s. The late script neither re-lifts nor replays the entrance. The app was never delayed. |
+| App bundle delayed 8s | The loader lifts at its 4s cap. The page is visible and hydrates later. |
+| `/api/menu` down | Passed. |
+| Reduced motion | Passed. |
+| English | Passed. |
+| Hub iframe (local wrapper page) | `frame` mode, covered for about 0.1s, no cursor. The transition inside the iframe works and arrives in `frame` mode. |
+| CDP `Page.setWebLifecycleState` frozen for 5s mid-load, then active | Passed. |
+| Background tab | The page ends up visible and usable, with no reveal left hidden. See the note below on how this was simulated. |
+
+Background tab: headless Chromium here always reports `visible`, even with a second tab in front or the window
+minimized. The test therefore simulated it: `visibilityState` set to `hidden`, rAF stalled, timers aligned to 1s
+for 8s, then shown.
+
+Across every run: no CSP violations (a `securitypolicyviolation` listener caught none), no `inert`, no
+`overflow` or `pointer-events` lock, nothing left at `opacity:0` in view after scrolling, and no new console
+errors. The only warning is the app's own `/host` preload notice.
+
+### Regression checks after the changes
+
+These were run on desktop and iPhone 13:
+- The first-visit loader, then the lift.
+- The language scoop, by mouse and by keyboard.
+- The flavour sheet opening, then Escape. The ghost exit plays and is removed, and focus goes back to the card.
+- `/` → `/host` pour and arrival, the brand link back, and browser Back.
+
+Mobile CLS stays at 0.000 and desktop at about 0.004.
+
+### Known limitations (left as is)
+
+- **A real background tab could not be reproduced in this headless Chromium.** In a real background tab, Chromium
+  holds new Web Animations until the first frame. A page loaded in the background therefore shows its curtain
+  lifting (0.8s) when the visitor switches to it. That is intended and harmless.
+- **If `enhance.css` is very late** (more than about 4s while the app's own CSS is fine), the page can show for a
+  moment without the layer's design fixes. That includes the round-2 mobile hero-name CLS fix: CLS was 0.57 on
+  mobile with the CSS delayed 8s. This is the original site's behaviour. It was accepted to guarantee the layer
+  can never delay the app.
+- **If a navigation takes more than 4.5s to commit,** the curtain lifts again over the old page before the new
+  page replaces it.
+- **Safari and Firefox were reasoned about, not run.** Only Chromium is available here.
+  - `startViewTransition`, `animation-timeline`, `backdrop-filter`, `text-wrap` and `inert` are all
+    feature-checked or progressive.
+  - `getAnimations({subtree})` is wrapped in `try`.
+  - Storage access is wrapped everywhere.

@@ -11,7 +11,11 @@
  * Round 3: `ydx-b` (set here and only here) is what shows the brand loader and hides the app's own counter, so if
  * this file fails to load the page falls back to the app's original loader instead of an uncontrolled cover. The
  * exit can no longer throw before the loader is hidden, a page that becomes ready in a background tab is uncovered
- * at once (rAF and animations do not run there), and a last cap covers an app that reaches 100% but never `ready`.
+ * at once (rAF and animations do not run there), the 4 s safety exit now asks "did the app's init run?" instead of
+ * "did it report progress?", and two last caps cover an app that is alive but never reaches `ready`.
+ * This is the only parser-blocking ydx file (it has to run before first paint, and inline scripts are blocked by the
+ * CSP): a slow boot.js delays first paint by its own latency. It is small, same-origin and requested in parallel
+ * with the app's CSS and bundle, which block or gate the page anyway; enhance.css and enhance.js block nothing.
  */
 (function () {
   'use strict';
