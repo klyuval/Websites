@@ -118,3 +118,75 @@ the app's ready handshake.
   - links to `ydx/enhance.css` (after the app CSS) and `ydx/enhance.js` (deferred, before the app module).
 - `ydx/enhance.css` and `ydx/enhance.js`: the enhancement layer.
 - The minified bundles are not modified.
+
+## Round 2
+
+A second review of the first pass: loader, route transitions and overlays were recorded as frame sequences (CDP screencast,
+plus 10x slow motion through `Animation.setPlaybackRate`) on desktop 1440×900 and iPhone 13. Every route was checked at
+360, 390, 768, 1024, 1280, 1440 and 1920 wide, and on a landscape phone (844×390). Also checked:
+- CLS and long tasks, with the ydx layer on and with `/ydx/*` routed to 404;
+- slow 3G (400 kbps, 400 ms RTT) with a 4x CPU throttle;
+- scroll jank under a 4x CPU throttle;
+- a keyboard-only run (Tab order, focus ring, Escape on the menu and bag, focus return);
+- reduced motion, and the hub iframe.
+
+### Found and fixed
+- **The loader exit was a big layout shift (CLS 0.67, now 0.0001: only the app's own font-swap nudge on the header).** It hit desktop and mobile on every first load. Before
+  the peel, `enhance.js` rewrote the cover wrapper's `left/top/width/height` so it could rotate the wrapper. The
+  browser counted that as the whole viewport moving. Without the layer, the same load measured 0.002.
+  - The peel geometry is now static CSS in the inline `<style data-ydx>`: an oversized box whose right edge (the peel
+    line) is parked off-screen. The cover sits inside that box at the viewport.
+  - The exit now only adds transforms (`translateX(-S) rotate(21deg) translateX(u)` on the box and the matching
+    counter-transform on the cover), so it is no longer a layout shift.
+  - It uses `100dvh` where supported. The fallback slide-up (used if `enhance.js` is missing) now moves the
+    viewport-sized inner box.
+- **Scroll jank from my own round-2 "breeze" (caught before it shipped).** A continuous idle sway on the leafy cut-outs
+  kept the main thread producing frames (style, IntersectionObserver and hit-test work on every frame). Under a 4x CPU
+  throttle while scrolling, frames over 50 ms went from 4–5 (bare app) to 39, with 19 long tasks. It became a one-shot
+  settle (below). The final layer runs at p50/p90 17/17 ms, with 12 frames over 50 ms and 2 long tasks; the bare app
+  runs at 17/17 ms with 4 and 1.
+- **Story pages (`/good-company/*`), at 360 px and on landscape phones / small tablets (≤ about 850 px):** the
+  headline ("An invitation"), the intro paragraph and the typewriter tag ("Around the table · An unhurried
+  afternoon") ran past the right edge and were clipped. The cause was the nowrap tag: it set the minimum width of the
+  intro column. The columns now use `minmax(0, 1fr)` and the tag may wrap.
+- **Home, mobile:** the drifting orange-blossom branch lay over the "taste. / Better" lines of the manifesto headline
+  and hid letters. Below 760 px it now sits behind the headline. Desktop keeps its overlap, where it only touches the
+  corner of the full stop.
+- **Bag drawer, all viewports:** it vanished instantly on close, while the menu has a proper exit. A static, inert,
+  `aria-hidden` copy of the drawer, built from the node React just removed, now slides back out to the right in
+  420 ms on the menu's own exit easing. A copy of the backdrop fades with it. This is skipped during route transitions
+  and under reduced motion. Focus return is untouched (the app still sends focus to "Bag (n)").
+- **Slow networks:** if the app mounted after the 12 s deadline, the cover was dropped with no exit. A "timeout" finish
+  (which only happens once the app and its styles are in) now peels away like the others.
+- **Loader robustness:** the boot script treated *any* failed `<script>` as an app failure. A failed `/ydx/enhance.js`
+  therefore showed "The page couldn't finish loading" although the app was fine. ydx scripts are now ignored by that
+  check.
+- **Hub iframe:** the peel is shortened to 450 ms. In a graphics-off run, the cover was gone within 0.86 s of the
+  iframe navigating.
+
+### Added (second improvement loop)
+- **Breeze:** leafy cut-outs catch a little breeze once, as they first scroll into view. These are the branch, the
+  sprigs, and each flavour's herb (basil, mint, verbena, rosemary).
+  - The motion is a short, damped sway on the individual `rotate` property (about ±1.6–2.6°, 2.2–3 s). Each image gets
+    its own amplitude, direction and delay.
+  - Hero specimens are excluded, because they already pop on. It is off under reduced motion.
+
+### Audited and kept
+- **Loader:** the timing (1150 ms minimum on the first visit, 250 ms on later ones, a 4 s safety after mount) and the
+  peel look premium in the recordings. There is no blank frame and no double entrance. The hero arrives under the peel,
+  bottom-right first.
+  - Under slow 3G the cover stays until the app has mounted (about 13 s here, network-bound), then peels. It never shows
+    an empty root.
+  - Preloading the brand fonts costs roughly 1 s of competing bandwidth on 400 kbps. It is kept, because the app's
+    ready handshake waits for the same fonts anyway.
+  - Under SwiftShader, three.js shader compilation is one 11–16 s main-thread task, so neither timer can fire until it
+    ends. This happens in this container only; the cap behaves normally on real GPUs.
+- **Route peel, intro choreography, tape, magnetic pills, text-link underline, fizz and bag-count pop:** each was
+  rechecked and keeps its place. None double-animates an element the app already moves.
+- **Keyboard:** the order is skip link → header → hero → sections, and the focus ring is always visible. The menu and
+  bag trap focus while open, close on Escape and return focus to their buttons. While the loader is up, `#root` is
+  inert and focus stays on `<body>`, so nothing is trapped and nothing hidden can be focused.
+- **Screen readers:** every ydx overlay (peel art, flap, VT flap, fizz, bag copy) is `aria-hidden`, and the bag copy is
+  also `inert`.
+- **Reduced motion:** the loader fades in 280 ms, and there is no intro, route peel, breeze or bag exit. No console
+  errors appeared on any route at any width.
