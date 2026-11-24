@@ -48,7 +48,9 @@
     w.addEventListener('load', r, { once: true });
     if (NAV) setTimeout(r, 450);
   });
-  const whenFonts = d.fonts && d.fonts.ready ? d.fonts.ready.catch(() => {}) : Promise.resolve();
+  const whenFonts = d.fonts && d.fonts.ready
+    ? Promise.race([d.fonts.ready.catch(() => {}), new Promise(r => NAV && setTimeout(r, 600))])
+    : Promise.resolve();
   // "Data settled" = the app no longer shows its yellow "checking…" state (or 2.6s passed,
   // e.g. when the API is unreachable and the app stays in its waiting/error state).
   const whenData = new Promise(r => {

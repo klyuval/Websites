@@ -149,8 +149,8 @@
         L.animate([{ opacity: 1 }, { opacity: 0 }], { duration: mode === 'reduced' ? 260 : 180, fill: 'forwards' }).finished.then(cleanup, cleanup);
         return;
       }
-      const hold = mode === 'full' ? 170 : mode === 'repeat' ? 30 : 0;
-      const quick = mode !== 'full';
+      const hold = hurry ? 0 : mode === 'full' ? 170 : mode === 'repeat' ? 30 : 0;
+      const quick = mode !== 'full' || hurry;   // a keypress during the build gets the short exit
       const dur = quick ? 220 : 320, stag = quick ? 9 : 20, lead = quick ? 60 : 130;
       setTimeout(() => {
         L.classList.add('is-out');

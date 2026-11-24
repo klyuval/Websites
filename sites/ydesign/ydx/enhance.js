@@ -172,6 +172,9 @@
   // language back once the process section is out of view, unless the visitor picked a language themselves.
   const seg = $$('[data-seg="lang"] button');
   const proc = $('.proc');
+  // The Hebrew page is generated from the English one and kept English's aria-pressed="true", so the switch showed
+  // "English" selected over a Hebrew preview until the first change. The demo starts in the page's language.
+  seg.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === (rtl ? 'he' : 'en'))));
   if (seg.length && proc && 'IntersectionObserver' in window) {
     let picked = false, timer = 0;
     seg.forEach((b) => b.addEventListener('click', (e) => { if (e.isTrusted) picked = true; }));
