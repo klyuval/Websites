@@ -95,3 +95,106 @@
     loader's critical `<style data-ydx>`, and links to `enhance.css` and `enhance.js` (`defer`)
   - as the first child of `<body>`: the `<ydx-loader>` markup
 - No minified bundle was edited.
+
+## Round 2
+
+A second review of the first pass, done as a first-time visitor and as QA.
+
+### What I audited
+
+- **Loader and transitions as frame sequences.** I recorded them with CDP screencast at 25–90ms per frame, on
+  desktop 1440 and on iPhone 13. That covered:
+  - the first visit, a repeat visit, the iframe version and reduced motion
+  - the language wipe for each language
+  - the booking dialog opening and closing with Escape
+  - scrolling through the course stack
+- **Slow network.** I throttled to 400kbps with 400ms RTT and 4x CPU.
+- **CLS and long tasks.** I measured both with and without the ydx layer. To remove the layer, `/ydx/*` was routed
+  to 404 and the inline boot, style and loader were stripped. I also used CDP `Performance.getMetrics` to time a
+  scripted scroll through the whole page, comparing the round-1 files with the new ones.
+- **Keyboard and screen reader.** I tabbed through the whole page, checking the focus ring, the order, and what
+  happens when Tab is pressed during the loader. I also checked that Escape closes the dialog and that the
+  overlays are `aria-hidden`.
+- **Layout sweep.** I checked 360, 390, 768, 844x390 (landscape phone), 1024, 1280, 1440 and 1920, each in
+  Hebrew, English and French. Each run looked for horizontal scroll, text pushed off the screen and clipped text,
+  and took scroll-walk screenshots to judge by eye.
+
+### Found and fixed
+
+1. **Scrolling the course stack was janky (desktop).** This was the biggest problem.
+   - **Cause:** the round-1 "sink" wrote a custom property on each full-screen course on every scroll frame.
+     That re-styled every node inside the course and repainted it (scale, border-radius and a dimming
+     `::before`).
+   - **Before:** long tasks of up to ~850ms in one scroll-through. The scripted scroll cost about 225–675ms of
+     style recalc and about 1.2–2.5s of main-thread work.
+   - **Change:** the sink is now two paused Web Animations, scrubbed through `currentTime`:
+     - a `transform` on the course, which is layer-promoted only while it is sticky
+     - an `opacity` on its `::before` shade, which has its own layer
+     The rounded corners are a single transition, switched by `[data-ydx-sunk]`.
+   - **After:** style recalc is about 25–35ms. There are no long tasks during scroll, against several before.
+     CLS is still 0 with and without the layer.
+2. **The hand-off from the loader had a blank frame and the lift could not be seen.** The cloth is the same teal
+   as the hero, and the page's entrance was held until 30% of the lift. So guests saw the setting fade, then an
+   empty teal screen for about 150–250ms, and only then the table being set.
+   - The entrance is now released the moment the lift starts, so the plate, cutlery and headline are being set as
+     the hem passes over them.
+   - The hem now casts a shadow, and its dashed stitching curves with it (WAAPI on `::after`), so it reads as a
+     cloth being drawn off.
+   - The setting rides up with the cloth and fades only on the way out.
+   - The ease is gentler: 760ms on the first visit, 520ms on a repeat visit, 460ms in an iframe.
+3. **On a slow connection the loader stayed up about 5s, and could have hidden the page for good.**
+   - The timings were measured from navigation start. On slow 3G the first paint came at about 4.4s, so the
+     script cap had already run out and the CSS bail decided instead.
+   - Now the minimum (1.05s, the full plating sequence) and the cap (3.5s) are measured from the loader's first
+     paint (`performance.getEntriesByType('paint')`). The CSS-only bail moved from 4.6s to 3.9s.
+   - If the CSS bail has already faded the loader before `enhance.js` arrives, the script no longer brings it
+     back just to lift it.
+   - The "hold the entrances while covered" rule is now keyed to `html.ydx-on`. Before, a missing or slow
+     `enhance.js` would have left every table piece paused at opacity 0 forever.
+4. **Hero place card ran off the screen in the desktop layout below about 1100px.**
+   - At 1024x768: "Your seat is waiti|" in English, "|המקום שלכם מח" in Hebrew, and the same in French. It
+     happened on 844x390 landscape phones too.
+   - Fix: `inset-inline-start: min(52%, 100% - 330px)`. Nothing moves at 1440 and above.
+5. **The wine glass sat on the language buttons** from 844 to about 1279px wide (landscape), worst in French.
+   Below 1280px it now sits clear of the header (`top: max(var(--y), 96px)`).
+6. **French hero place card was cut at 360px** ("Votre place vous atte…" with an ellipsis). It is now 28px below
+   381px wide, and fits.
+7. **The first quilt strip's name disappeared on phones.** The middle of "ארוחה פרטית" / "Private dining" ran
+   over the fish plate's cream rim, cream text on a cream plate. This was already the case before round 1. On the
+   two-column phone quilt the plate is now a little higher and smaller, which matches the challah strip next to
+   it.
+
+### Added (second improvement loop)
+
+- **The tea lights are lit.** A warm pool of light opens under each candle once its table is set, then breathes
+  irregularly, like a flame in a draught.
+  - It appears on the hero, the first two courses, the hosting section and the invitation.
+  - It is a `::before` under the candle. It animates only `transform` and `opacity`.
+  - It runs only while its section is on screen (`[data-ydx-vis]` from an IntersectionObserver) and is off with
+    reduced motion.
+  - It is very quiet on purpose: an ambient detail you notice on the second look, not an effect.
+
+### Checked and kept
+
+- **The rest of round 1** was kept after review:
+  - the language wipe (about 0.7s of motion; the covered hold in between is React re-mounting the page)
+  - the line-by-line headline rise
+  - the handwriting write-on
+  - the magnetic buttons
+  - the booking stagger
+  - the smooth FAQ
+- **The booking dialog's own exit** (a fade and tilt) is good as it is, so I did not add one.
+- **Keyboard:**
+  - Focus is always visible (a 3px ring in each cloth's colour), and the order is logical.
+  - Escape closes the dialog and gives focus back to its trigger.
+  - The loader never traps focus. Tab during it lands on the skip link, and the loader lifts within about 1–2s.
+- **Reduced motion:** the loader is a 260ms fade, with no sink, no glow and no wipe.
+- **Iframe:** the loader is gone within about 0.8s.
+- **Errors:** no console errors on desktop or mobile, across language switches, FAQ, dialog and dock.
+
+### Left alone
+
+- **Collage overlaps of headline and cutlery** at short landscape heights, such as "Votre histoire." touching the
+  knife at 844x390. Same reasoning as round 1.
+- **The handwriting write-on still reveals both lines of a wrapped hint at the same time.** I judged that
+  acceptable for a two-line scribble.

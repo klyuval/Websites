@@ -5,6 +5,7 @@
  *    appended to <body>.
  * Parts: (1. loader -> ydx/boot.js)  2. header scroll behaviour (+ cart-count pin)  3. language-switch shutter
  *        4. magnetic buttons  5. ring cursor  6. page-title fit (inline font-size on overflowing titles only)
+ *        7. route-curtain word mask (round 2)
  */
 (function () {
   'use strict';
@@ -82,7 +83,7 @@
       // panel travels in the new reading direction: ->en moves left-to-right, ->he right-to-left
       var a = toEn ? ['inset(0 100% 0 0)', 'inset(0 0 0 0)', 'inset(0 0 0 100%)'] : ['inset(0 0 0 100%)', 'inset(0 0 0 0)', 'inset(0 100% 0 0)'];
       var tx = toEn ? [-60, 0, 60] : [60, 0, -60];
-      var inA = sh.animate([{ clipPath: a[0] }, { clipPath: a[1] }], { duration: 340, easing: 'cubic-bezier(.7,0,.84,0)', fill: 'forwards' });
+      var inA = sh.animate([{ clipPath: a[0] }, { clipPath: a[1] }], { duration: 340, easing: 'cubic-bezier(.6,0,.3,1)', fill: 'forwards' });
       sh.firstChild.animate([{ transform: 'translateX(' + tx[0] + 'px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 420, easing: EASE_OUT, fill: 'forwards' });
       inA.onfinish = function () {
         passing = true;
@@ -185,5 +186,36 @@
     new MutationObserver(later).observe(host, { childList: true });
     addEventListener('resize', later);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(later);
+  })();
+
+  /* ------------------------------------------------------------------ 7. route curtain: masked word (round 2)
+   * The app's GSAP route curtain grows with scaleY (0 -> 1 -> 0), so its "TOMI" was squashed into a flat smear for
+   * most of the move. We counter-scale the word so it keeps its shape and travels with the curtain's band, which
+   * clips it like a mask. We only read the curtain's transform (GSAP still owns it) and
+   * write a transform on its <b>, which nothing else animates. Runs only while GSAP is writing the curtain. */
+  (function curtainMask() {
+    if (reduced) return; // the app skips its curtain under reduced motion
+    function hook(kr) {
+      var b = kr.querySelector('b');
+      if (!b || kr.__ydx) return;
+      kr.__ydx = 1;
+      new MutationObserver(function () {
+        if (kr.style.display === 'none') { b.style.transform = ''; return; }
+        var m = getComputedStyle(kr).transform;
+        var v = m && m !== 'none' ? m.slice(m.indexOf('(') + 1, -1).split(',').map(parseFloat) : [1, 0, 0, 1];
+        var sy = v.length === 6 ? v[3] : v[5]; // matrix() or matrix3d()
+        // un-squash about the word's own centre: it then rides in the middle of the visible band (bottom ->
+        // centre on the way in, centre -> top on the way out) and the band's edges clip it like a mask
+        if (!(sy > 0.999) && sy > 0) {
+          b.style.transform = 'scaleY(' + (1 / Math.max(sy, 0.02)).toFixed(4) + ')';
+        } else b.style.transform = '';
+      }).observe(kr, { attributes: true, attributeFilter: ['style'] });
+    }
+    var kr = document.querySelector('.curtain');
+    if (kr) hook(kr);
+    else new MutationObserver(function (_, mo) {
+      var k = document.querySelector('.curtain');
+      if (k) { mo.disconnect(); hook(k); }
+    }).observe(document.body, { childList: true });
   })();
 })();
