@@ -1,7 +1,6 @@
 /* ==========================================================================
    Pack & Peak — ydx design + motion layer (vanilla, no dependencies)
-   - Loader: contours draw in, the trail climbs to a summit flag while the
-     altimeter counts up; leaves through a Dolomite-ridge wipe.
+   - Loader: see the inline script in index.html (readable source notes in CHANGES.md).
    - Chapter-jump transition (dock / CTA jumps of 2+ chapters).
    - Scroll reveals, counters, magnetic buttons, map reticle, altimeter pill.
    The page is a React app hydrated on `document`: we never add/remove/reorder
@@ -25,79 +24,10 @@
   if (!reduce) html.classList.add('ydx-motion');
 
   /* ------------------------------------------------------------------ *
-   * 1. Loader
+   * 1. Loader: driven by the inline <script data-ydx> at the top of <head>
+   *    (so it is alive from the first paint, even before this file arrives).
+   *    It dispatches `ydx:ready` and sets window.__ydxDone when it is gone.
    * ------------------------------------------------------------------ */
-  function runLoader() {
-    var L = document.getElementById('ydx-loader');
-    clearTimeout(window.__ydxFallback);
-    if (!L || !html.classList.contains('ydx-loading')) { finishHold(); return; }
-    var frame = html.classList.contains('ydx-frame');
-    var repeat = html.classList.contains('ydx-repeat');
-    var climbMs = reduce ? 0 : frame ? 260 : repeat ? 380 : 1050;
-    var hardCap = frame ? 0 : repeat ? 450 : 2600;  // ms since navigation start: never trap the user
-    var trail = $('.ydx-l-trail', L), reveal = $('.ydx-l-reveal', L), dot = $('.ydx-l-dot', L), num = $('.ydx-l-num b', L);
-    var len = 0; try { len = trail.getTotalLength(); } catch (e) {}
-    var loaded = document.readyState === 'complete';
-    if (!loaded) addEventListener('load', function () { loaded = true; }, { once: true });
-    var t0 = performance.now(), released = false, relP = 0, relT = 0, cur = 0, done = false;
-
-    function render(p) {
-      reveal.style.strokeDashoffset = String(1 - p);
-      if (len) { var pt = trail.getPointAtLength(len * p); dot.setAttribute('cx', pt.x.toFixed(1)); dot.setAttribute('cy', pt.y.toFixed(1)); }
-      num.textContent = fmt(SUMMIT * p);
-    }
-    // The climb takes at least climbMs; it parks at ~90-98% until the page has loaded (or hardCap hits).
-    function tick(now) {
-      if (done) return;
-      var el = now - t0, base = climbMs ? easeInOut(clamp(el / climbMs, 0, 1)) : 1, p;
-      if (!released && (loaded || now >= hardCap)) { released = true; relT = Math.max(now, t0 + climbMs); relP = cur; }
-      if (!released) p = el < climbMs ? Math.min(base, .9) : .9 + .08 * (1 - Math.exp(-(el - climbMs) / 900));
-      else if (relT <= t0 + climbMs) p = base;
-      else p = relP + (1 - relP) * easeOut(clamp((now - relT) / 280, 0, 1));
-      cur = p; render(p);
-      if (released && p >= .999) { done = true; render(1); summit(); return; }
-      raf(tick);
-    }
-    function summit() {
-      L.classList.add('is-summit');
-      setTimeout(exit, reduce ? 250 : frame ? 40 : repeat ? 150 : 340);
-    }
-    function exit() {
-      try { sessionStorage.setItem('ydx-pp-seen', '1'); } catch (e) {}
-      L.style.pointerEvents = 'none';
-      html.classList.add('ydx-in');
-      if (reduce) {
-        finishHold();
-        L.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).onfinish = cleanup;
-        return;
-      }
-      var dur = frame ? 380 : repeat ? 600 : 880;
-      var W = innerWidth, H = innerHeight, R = Math.min(H * .17, 160);
-      var xs = [0, .05, .09, .14, .18, .23, .28, .32, .37, .42, .46, .51, .55, .6, .65, .7, .74, .79, .84, .89, .94, 1];
-      var hs = [.22, .45, .3, .66, .5, .92, .55, .74, .4, .8, 1, .7, .86, .5, .64, .34, .6, .42, .72, .3, .5, .24];
-      var ridge = function (base, k) {
-        var pts = ['0px 0px', W + 'px 0px'];
-        for (var i = xs.length - 1; i >= 0; i--) pts.push((xs[i] * W).toFixed(1) + 'px ' + (base - hs[i] * R * k).toFixed(1) + 'px');
-        return 'polygon(' + pts.join(',') + ')';
-      };
-      var ease = 'cubic-bezier(.76,0,.24,1)';
-      var panel = $('.ydx-l-panel', L), under = $('.ydx-l-under', L);
-      panel.animate([{ clipPath: ridge(H + R, 1) }, { clipPath: ridge(0, 1) }], { duration: dur, easing: ease, fill: 'forwards' });
-      $$('.ydx-l-map, .ydx-l-alt, .ydx-l-cap, .ydx-l-top', L).forEach(function (n) {
-        n.animate([{ translate: '0 0', opacity: 1 }, { translate: '0 -10vh', opacity: 0 }], { duration: dur * .7, easing: 'cubic-bezier(.6,0,.4,1)', fill: 'forwards' });
-      });
-      under.animate([{ clipPath: ridge(H + R, .8) }, { clipPath: ridge(0, .8) }], { duration: dur, delay: frame ? 45 : 75, easing: ease, fill: 'forwards' })
-        .onfinish = cleanup;
-      setTimeout(finishHold, frame ? 60 : 180);       // hero intro starts as the ridge passes
-    }
-    function cleanup() {
-      if (L.parentNode) L.parentNode.removeChild(L);
-      html.classList.remove('ydx-loading');
-      document.dispatchEvent(new CustomEvent('ydx:ready'));
-    }
-    raf(tick);
-  }
-  function finishHold() { html.classList.remove('ydx-hold'); html.classList.add('ydx-in'); }
 
   /* ------------------------------------------------------------------ *
    * 2. Scroll reveals (attributes only; the app never owns data-ydx-*)
@@ -405,7 +335,6 @@
    * ------------------------------------------------------------------ */
   function scanAll() { scanReveals(); watchReadout(); watchDock(); watchCount(); reticle(); }
   function boot() {
-    runLoader();
     scanAll();
     altimeter();
     magnets();

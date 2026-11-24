@@ -12,8 +12,10 @@
   var MASK_RATIO = 309 / 820;
   if (motionOK()) html.classList.add('ydx-motion');
   // decode the smear mask early: the loader exit and the page wipe are both cut from it
-  var maskImg = new Image(); maskImg.src = MASK;
-  var maskReady = maskImg.decode ? maskImg.decode().catch(function () {}) : Promise.resolve();
+  // (the loader's inline .ydx-l-warm element also uses it as a CSS mask: Chrome hides an element whose mask image is still
+  //  pending, so the URL must already be loaded in the style system before the exit applies it, or the page flashes)
+  var maskImg = new Image(), maskOK = false; maskImg.src = MASK;
+  var maskReady = (maskImg.decode ? maskImg.decode() : Promise.resolve()).then(function () { maskOK = true; }, function () {});
 
   /* ------------------------------------------------------------------ helpers */
   function ss(fn) { try { return fn(w.sessionStorage); } catch (e) { return null; } }
@@ -39,14 +41,16 @@
   /* ------------------------------------------------------------------ 1. loader exit */
   var L = w.__ydxL || { mode: 'full', t0: Date.now() };
   var loader = d.getElementById('ydx-loader');
-  var MIN = { full: 1150, short: 200, frame: 330, nav: 60, reduced: 300 }[L.mode] || 900;
+  // minimum display, counted from the moment the choreography starts (L.go, set inline once its assets are ready)
+  var MIN = { full: 1400, short: 200, frame: 330, nav: 60, reduced: 300 }[L.mode] || 900;
   var released = false;
   function releaseHero() { if (!released) { released = true; html.classList.remove('ydx-loading'); } }
   function finishLoader() {
     if (!loader || loader.dataset.out) return;
     loader.dataset.out = '1';
     var done = function () { releaseHero(); if (loader) loader.remove(); loader = null; html.classList.add('ydx-ready'); };
-    if (L.mode === 'reduced' || !loader.animate) {
+    // no mask yet (very slow network, safety timeout): a plain fade rather than a mask that would blank the loader
+    if (L.mode === 'reduced' || !loader.animate || !maskOK) {
       releaseHero();
       var a0 = anim(loader, [{ opacity: 1 }, { opacity: 0 }], { duration: 320, easing: 'ease', fill: 'forwards' });
       return a0 ? (a0.onfinish = done) : done();
@@ -64,7 +68,7 @@
     if (stage) anim(stage, [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.06)' }], { duration: dur * 0.45, easing: 'ease-in', fill: 'forwards' });
     var a = anim(loader, maskFrames(cx, cy, w0, w1, true), { duration: dur, easing: 'cubic-bezier(.7,0,.25,1)', fill: 'forwards' });
     // hand over to the hero's own entrance a beat into the reveal
-    setTimeout(releaseHero, L.mode === 'nav' ? 40 : dur * 0.28);
+    setTimeout(releaseHero, L.mode === 'nav' ? 40 : dur * 0.12);
     if (a) a.onfinish = done; else done();
   }
   if (loader) {
@@ -73,14 +77,19 @@
       if (d.readyState === 'complete') res(); else w.addEventListener('load', res, { once: true });
     });
     var fonts = (d.fonts && d.fonts.ready) ? Promise.race([d.fonts.ready, new Promise(function (r) { setTimeout(r, 1200); })]) : Promise.resolve();
-    var minWait = new Promise(function (res) { setTimeout(res, Math.max(0, MIN - (Date.now() - L.t0))); });
-    Promise.all([ready, fonts, minWait, maskReady]).then(finishLoader);
-    setTimeout(finishLoader, 4000); // hard safety: never trap the visitor
+    var minWait = new Promise(function (res) {
+      (function chk() { if (L.go || !loader) setTimeout(res, Math.max(0, MIN - (Date.now() - (L.go || L.t0)))); else setTimeout(chk, 40); })();
+    });
+    // two frames after everything is ready, so the freshly applied mask is resolved before the hole starts to open
+    Promise.all([ready, fonts, minWait, maskReady]).then(function () { requestAnimationFrame(function () { requestAnimationFrame(finishLoader); }); });
+    setTimeout(finishLoader, Math.max(0, 4000 - (Date.now() - L.t0))); // hard safety, counted from first paint: never trap the visitor
+    // a keyboard visitor who starts tabbing skips the intro, so focus never lands on controls hidden behind the loader
+    d.addEventListener('keydown', function (e) { if (/^(Tab|Enter|Escape| )$/.test(e.key)) finishLoader(); });
   } else releaseHero();
   // bfcache restore (style-tile page; the home bundle reloads itself on pageshow.persisted)
   w.addEventListener('pageshow', function (e) {
     if (!e.persisted) return;
-    var wipe = d.getElementById('ydx-wipe'); if (wipe) wipe.remove();
+    d.querySelectorAll('.ydx-wipe').forEach(function (el) { el.remove(); });
     if (loader) { loader.remove(); loader = null; } releaseHero();
   });
 
@@ -93,15 +102,16 @@
     if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search)) return;
     if (!motionOK()) { ss(function (s) { s.setItem('ydx-nav', String(Date.now())); }); return; }
     e.preventDefault();
-    var wipe = d.createElement('div');
-    wipe.id = 'ydx-wipe'; wipe.setAttribute('aria-hidden', 'true');
-    d.body.appendChild(wipe);
-    var x = e.clientX || innerWidth / 2, y = e.clientY || innerHeight / 2;
+    // two coats, like a lipstick stroke: a pigment lead in the active family, then the burgundy that the next page opens from
+    // (the lead keeps the wipe visible on the burgundy footer, where a burgundy-only wipe disappeared)
+    var mk = function (cls) { var el = d.createElement('div'); el.className = 'ydx-wipe ' + cls; el.setAttribute('aria-hidden', 'true'); el.dataset.tone = html.dataset.family || html.dataset.tone || 'rose'; d.body.appendChild(el); return el; };
+    var lead = mk('ydx-wipe-lead'), wipe = mk('ydx-wipe-deep'); wipe.id = 'ydx-wipe';
+    var x = e.clientX || innerWidth / 2, y = e.clientY || innerHeight / 2, cw = coverWidth(x, y);
     var go = function () { ss(function (s) { s.setItem('ydx-nav', String(Date.now())); }); location.href = url.href; };
-    // a burgundy swatch smears out from the click point and floods the screen
-    var an = anim(wipe, maskFrames(x, y, 0, coverWidth(x, y), false), { duration: 480, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
+    anim(lead, maskFrames(x, y, 0, cw, false), { duration: 440, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
+    var an = anim(wipe, maskFrames(x, y, 0, cw, false), { duration: 420, delay: 110, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
     if (an) an.onfinish = go; else go();
-    setTimeout(function () { if (wipe.isConnected) wipe.remove(); }, 3500); // navigation cancelled → give the page back
+    setTimeout(function () { if (wipe.isConnected) { wipe.remove(); lead.remove(); } }, 3500); // navigation cancelled → give the page back
   });
 
   /* ------------------------------------------------------------------ 3. reveals (IntersectionObserver + WAAPI, never CSS transitions so the site's own transitions survive) */
@@ -150,10 +160,10 @@
     var v = VARIANTS[el.dataset.ydxR] || VARIANTS.up, i = +el.dataset.ydxI || 0, delay = i * 90;
     if (el.dataset.ydxR === 'chars') {
       el.querySelectorAll('.ydx-c').forEach(function (c, k) {
-        anim(c, [{ opacity: 0, transform: 'translateY(.55em) rotate(8deg)' }, { opacity: 1, transform: 'none' }], { duration: 700, delay: 80 + k * 22, easing: OUT, fill: 'backwards' });
+        anim(c, [{ opacity: 0, transform: 'translateY(.55em) rotate(8deg)' }, { opacity: 1, transform: 'none' }], { duration: 700, delay: 80 + k * 22, easing: OUT, fill: 'backwards', id: 'ydx-r' });
       });
     } else {
-      anim(el, v.kf, { duration: v.dur, delay: delay, easing: v.ease || OUT, fill: 'backwards' });
+      anim(el, v.kf, { duration: v.dur, delay: delay, easing: v.ease || OUT, fill: 'backwards', id: 'ydx-r' });
     }
     el.classList.add('ydx-in');
   }
@@ -173,9 +183,14 @@
   }
   function setupReveals() {
     if (!motionOK() || !('IntersectionObserver' in w)) return;
-    io = new IntersectionObserver(function (ents) {
-      ents.forEach(function (en) { if (en.isIntersecting) { reveal(en.target); io.unobserve(en.target); } });
-    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+    var cb = function (ents, obs) {
+      ents.forEach(function (en) { if (en.isIntersecting) { reveal(en.target); obs.unobserve(en.target); } });
+    };
+    var ioMain = new IntersectionObserver(cb, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+    // things in the last screen of the page (footer copyright line) may never get 8% above the fold: no margin for those
+    var ioEnd = new IntersectionObserver(cb, { threshold: 0 });
+    var endY = d.documentElement.scrollHeight - innerHeight * 0.5;
+    io = { observe: function (el) { (el.getBoundingClientRect().bottom + scrollY > endY ? ioEnd : ioMain).observe(el); } };
     REVEALS.forEach(function (r) {
       var list = d.querySelectorAll(r[0]);
       list.forEach(function (el, k) {
@@ -184,6 +199,14 @@
         if (r[2]) el.dataset.ydxI = String(Array.prototype.indexOf.call(el.parentElement.children, el) % 6);
         io.observe(el);
       });
+    });
+    // keyboard: a focused control must never sit inside a still-hidden or half-faded reveal
+    d.addEventListener('focusin', function (e) {
+      for (var el = e.target; el && el !== d.body; el = el.parentElement) {
+        if (!el.dataset || !el.dataset.ydxR) continue;
+        if (!el.classList.contains('ydx-in')) { el.classList.add('ydx-in'); continue; }
+        if (el.getAnimations) el.getAnimations().forEach(function (a) { if (a.id === 'ydx-r') a.finish(); });
+      }
     });
     // Latin (Bodoni italic) taglines: letters are fine to split for Latin — never Hebrew
     d.querySelectorAll('.section-meta .latin, .material-copy > .latin:first-child, .material-index, .footer-bottom .latin, .stage-label').forEach(function (el) {

@@ -123,3 +123,40 @@ html.ydx-vt .ydx-vt-flap { visibility: visible; }
 
 /* the loader wrapper must never catch input once it starts to leave */
 html:not([data-peel-entry=loading]):not([data-peel-entry=recovery]) #ydx-peel { pointer-events: none; }
+
+/* ================================================================== round 2 */
+
+/* mobile: the drifting orange branch sat on top of "taste. / Better" and hid letters; keep it behind the headline there */
+@media (max-width: 760px) {
+  .manifesto-branch { z-index: 0; }
+}
+
+/* breeze: botanical cut-outs (branches, sprigs, basil, mint, verbena, rosemary) sway a little while on screen.
+ * `rotate`/`translate` are individual properties, so they compose with the app's own transforms; the class is only
+ * set by an IntersectionObserver while the image is visible. */
+@media (prefers-reduced-motion: no-preference) {
+  html.ydx-js img.ydx-sway {
+    animation: ydx-sway var(--ydx-sd, 7s) cubic-bezier(.45, 0, .55, 1) var(--ydx-sdel, 0s) infinite alternate both;
+  }
+}
+@keyframes ydx-sway {
+  from { rotate: calc(var(--ydx-sa, 1.3deg) * -1); translate: 0 1px; }
+  to   { rotate: var(--ydx-sa, 1.3deg); translate: 0 -2px; }
+}
+
+/* bag drawer exit: the app unmounts the drawer instantly; a static, inert copy slides back out (the menu already has
+ * an exit of its own). Built from the removed node in enhance.js, appended to <body>. */
+.ydx-bag-ghost {
+  position: fixed; inset: 0 0 0 auto; z-index: 2147482000; margin: 0; display: block;
+  animation: none !important; pointer-events: none;
+}
+.ydx-bag-ghost-backdrop { position: fixed; inset: 0; z-index: 2147481999; background: rgba(8, 26, 18, .55); pointer-events: none; }
+
+/* story pages ("An invitation to linger"…), phones and landscape phones: the nowrap typewriter tag ("Around the table ·
+ * An unhurried afternoon") set the minimum width of the intro column, which pushed the intro paragraph (and at 360px the
+ * headline too) past the right edge, where it was clipped. Let the columns shrink and the tag wrap. */
+.recipe-heading > div { grid-template-columns: minmax(0, 1fr); }
+.recipe-heading .tag { white-space: normal; max-width: 100%; }
+@media (max-width: 700px) {
+  .recipe-heading, .recipe-body { grid-template-columns: minmax(0, 1fr); }
+}

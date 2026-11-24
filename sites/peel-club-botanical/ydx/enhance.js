@@ -11,6 +11,8 @@
  *  6. theme-color    the browser chrome follows the section colour under the header
  *  7. magnetic       pills and carousel arrows lean toward a fine pointer
  *  8. fizz           bubbles rise out of "Add to sample bag"; the header bag count pops when it goes up
+ *  9. breeze (r2)    botanical cut-outs sway gently while on screen
+ * 10. bag exit (r2)  the bag drawer slides back out instead of vanishing
  */
 (() => {
   'use strict';
@@ -37,23 +39,20 @@
       queueMicrotask(() => intro(0, true));
       return a ? a.finished.then(done, done) : done();
     }
-    const W = innerWidth, H = innerHeight, D = Math.hypot(W, H);
+    // r2: the box geometry is static CSS in index.html (no layout change here, so the exit is not a layout shift).
+    // S = distance from the inner box centre (viewport centre) to the parked peel edge; the counter-transform uses it.
+    const wr = wrap.getBoundingClientRect(), ir = inner.getBoundingClientRect();
+    const W = ir.width, H = ir.height, D = Math.hypot(W, H);
+    const S = wr.right - (ir.left + W / 2);
     const PHI = 21;
-    const fw = Math.round(Math.max(64, Math.min(150, W * 0.1)));
-    const Wo = D + fw + 80, Ho = D + 80;
-    const cx = W / 2, cy = H / 2;
-    Object.assign(wrap.style, {
-      inset: 'auto', left: (cx - Wo) + 'px', top: (cy - Ho / 2) + 'px', width: Wo + 'px', height: Ho + 'px',
-      overflow: 'hidden', transformOrigin: '100% 50%', boxShadow: '0 0 46px rgba(8,26,18,.3)'
-    });
-    Object.assign(inner.style, { inset: 'auto', left: (Wo - cx) + 'px', top: (Ho / 2 - cy) + 'px', width: W + 'px', height: H + 'px', transformOrigin: '50% 50%' });
     flap.style.display = 'block';
-    flap.style.width = fw + 'px';
+    const fw = flap.getBoundingClientRect().width || 100;
+    wrap.style.boxShadow = '0 0 46px rgba(8,26,18,.3)';
     const u0 = D / 2 + fw * 0.6, u1 = -D / 2 - 30;
     const duration = opts.framed ? 520 : opts.quick ? 720 : 980;
     const t = { duration, easing: 'cubic-bezier(.62,0,.2,1)', fill: 'forwards' };
-    const a = wrap.animate([{ transform: `rotate(${PHI}deg) translateX(${u0}px)` }, { transform: `rotate(${PHI}deg) translateX(${u1}px)` }], t);
-    inner.animate([{ transform: `translateX(${-u0}px) rotate(${-PHI}deg)` }, { transform: `translateX(${-u1}px) rotate(${-PHI}deg)` }], t);
+    const a = wrap.animate([{ transform: `translateX(${-S}px) rotate(${PHI}deg) translateX(${u0}px)` }, { transform: `translateX(${-S}px) rotate(${PHI}deg) translateX(${u1}px)` }], t);
+    inner.animate([{ transform: `translateX(${S - u0}px) rotate(${-PHI}deg)` }, { transform: `translateX(${S - u1}px) rotate(${-PHI}deg)` }], t);
     // the lifted part of the label: narrow as it starts to lift, widest mid-peel
     flap.animate([{ transform: 'scaleX(.3)' }, { transform: 'scaleX(1)', offset: 0.5 }, { transform: 'scaleX(.75)' }], t);
     // the page underneath arrives while the label lifts (bottom-right first, like the peel)
@@ -253,14 +252,77 @@
     bagCount = n;
   }
 
+  /* ---------------------------------------------------------------- 9. breeze (r2) */
+  // Botanical cut-outs sway a little while visible. The class is toggled by an IntersectionObserver, so nothing animates
+  // off screen; each image gets its own period, phase and amplitude so a cluster never moves in lockstep.
+  // leafy cut-outs only: branch-*, sprig-*, and the herb of each flavour (lemon-basil-basil, pineapple-mint-mint…)
+  const SWAY_SRC = /\/(branch|sprig)[^/]*\.webp$|-(basil|mint|leaves|verbena|rosemary)(-s)?\.webp$/;
+  let swayIO = null, swayN = 0;
+  const swaySeen = new WeakSet();
+  function scanSway() {
+    if (reduced() || !('IntersectionObserver' in window)) return;
+    if (!swayIO) swayIO = new IntersectionObserver((entries) => {
+      for (const e of entries) e.target.classList.toggle('ydx-sway', e.isIntersecting);
+    }, { rootMargin: '80px 0px' });
+    document.querySelectorAll('#root img.cut').forEach((img) => {
+      if (swaySeen.has(img) || !SWAY_SRC.test(img.getAttribute('src') || '')) return;
+      swaySeen.add(img);
+      const i = swayN++;
+      img.style.setProperty('--ydx-sd', (6.2 + (i * 1.7) % 3.4).toFixed(2) + 's');
+      img.style.setProperty('--ydx-sdel', (-((i * 2.3) % 6)).toFixed(2) + 's');
+      img.style.setProperty('--ydx-sa', (1 + (i % 3) * 0.35).toFixed(2) + 'deg');
+      swayIO.observe(img);
+    });
+  }
+
+  /* ---------------------------------------------------------------- 10. bag drawer exit (r2) */
+  // React unmounts the bag <dialog> at once. When that happens (and no route transition is running), a static, inert
+  // copy of the drawer slides back out to the right while a copy of the backdrop fades, mirroring the menu's own exit.
+  let bagScroll = 0;
+  document.addEventListener('scroll', (e) => {
+    const t = e.target;
+    if (t && t.matches && t.matches('.bag-dialog .dialog-inner')) bagScroll = t.scrollTop;
+  }, { capture: true, passive: true });
+  function bagExit(node) {
+    if (reduced() || html.classList.contains('ydx-vt') || !document.body.animate) return;
+    const ghost = document.createElement('div');
+    ghost.className = node.className.replace(/\bis-closing\b/, '') + ' ydx-bag-ghost';
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.inert = true;
+    for (const c of node.childNodes) ghost.appendChild(c.cloneNode(true));
+    ghost.querySelectorAll('[id]').forEach((el) => el.removeAttribute('id'));
+    const back = document.createElement('div');
+    back.className = 'ydx-bag-ghost-backdrop';
+    back.setAttribute('aria-hidden', 'true');
+    document.body.append(back, ghost);
+    const inner = ghost.querySelector('.dialog-inner');
+    if (inner) inner.scrollTop = bagScroll;
+    const ease = 'cubic-bezier(.64,0,.78,0)';
+    const a = ghost.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], { duration: 420, easing: ease, fill: 'forwards' });
+    back.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 380, easing: 'ease-out', fill: 'forwards' });
+    const drop = () => { ghost.remove(); back.remove(); };
+    a.finished.then(drop, drop);
+    setTimeout(drop, 900);
+  }
+  function watchRemovals(muts) {
+    for (const m of muts) for (const n of m.removedNodes) {
+      if (n.nodeType !== 1) continue;
+      const d = n.matches('.bag-dialog') ? n : n.querySelector && n.querySelector('.bag-dialog');
+      if (d) { bagExit(d); bagScroll = 0; return; }
+    }
+  }
+
   /* ---------------------------------------------------------------- wiring */
   function boot() {
     whenRevealed(startObservers);
     // React re-renders on every route: rescan for new headings/plates (debounced)
     let pending = 0;
     const root = document.getElementById('root');
-    if (root) new MutationObserver(() => { if (!pending) pending = requestAnimationFrame(() => { pending = 0; scan(); queueTone(); checkBag(); }); })
-      .observe(root, { childList: true, subtree: true });
+    if (root) new MutationObserver((muts) => {
+      watchRemovals(muts); // r2: synchronous, so the drawer copy is painted in the same frame the real one disappears
+      if (!pending) pending = requestAnimationFrame(() => { pending = 0; scan(); queueTone(); checkBag(); scanSway(); });
+    }).observe(root, { childList: true, subtree: true });
+    whenRevealed(scanSway);
     addEventListener('scroll', queueTone, { passive: true });
     addEventListener('resize', queueTone, { passive: true });
     addEventListener('popstate', () => setTimeout(queueTone, 400));

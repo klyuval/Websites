@@ -36,16 +36,25 @@
   // Minimum on-screen time per mode: first visit lets the three scoops land; repeat visits,
   // page-to-page arrivals and the hub's iframe preview are much shorter.
   const MIN = { first: 1250, repeat: 380, nav: 120, frame: 240, rm: 0 };
-  const HARD = L && L.mode === 'frame' ? 340 : 4000; // the hub's iframe preview stays under ~800ms total
+  // the hub's iframe preview stays under ~800ms total; a page-to-page arrival is capped well
+  // under the first-visit 4s so the drip transition never feels like a second loading screen
+  const HARD = L && L.mode === 'frame' ? 340 : L && L.mode === 'nav' ? 1500 : 4000;
+  const NAV = !!(L && L.mode === 'nav');
 
-  const whenLoad = new Promise(r => (d.readyState === 'complete' ? r() : w.addEventListener('load', r, { once: true })));
+  // Page-to-page arrivals don't wait for every image (`load`); the DOM, fonts and data are
+  // what the first screen needs, and images fade in on their own.
+  const whenLoad = new Promise(r => {
+    if (d.readyState === 'complete') return r();
+    w.addEventListener('load', r, { once: true });
+    if (NAV) setTimeout(r, 450);
+  });
   const whenFonts = d.fonts && d.fonts.ready ? d.fonts.ready.catch(() => {}) : Promise.resolve();
   // "Data settled" = the app no longer shows its yellow "checking…" state (or 2.6s passed,
   // e.g. when the API is unreachable and the app stays in its waiting/error state).
   const whenData = new Promise(r => {
     const t = performance.now();
     (function poll() {
-      if (!$('.is-wait') || performance.now() - t > 2600) return r();
+      if (!$('.is-wait') || performance.now() - t > (NAV ? 1100 : 2600)) return r();
       setTimeout(poll, 90);
     })();
   });

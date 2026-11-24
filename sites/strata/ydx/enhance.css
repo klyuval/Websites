@@ -56,6 +56,17 @@
   .slicer input { height: 44px; }
 }
 
+/* Nav focus ring: the site's currentColor ring was bone on bone/lime sections (nearly invisible on the
+   brand, links and menu button). Two-tone ring: a bone line inside an ink halo, legible on any section. */
+.nav a:focus-visible, .nav button:focus-visible {
+  outline: 2px solid var(--bone); outline-offset: 2px; box-shadow: 0 0 0 6px var(--ink);
+}
+
+/* Project sheet: its two-column grid only existed on [open], so during the close fade the sheet fell back
+   to a single column and visibly re-laid out. Keep the columns while it fades out. */
+.sheet:not([open]) { grid-template-columns: 1fr 1.1fr; }
+@media (max-width: 860px) { .sheet:not([open]) { grid-template-columns: 1fr; } }
+
 /* Visible focus on the loader-free controls that relied on UA defaults. */
 .faq summary:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
 .footer-word:focus-visible { outline: 3px solid var(--lime); outline-offset: 6px; }
@@ -66,8 +77,7 @@
 #ydx-loader.is-out .yl-bands i { box-shadow: inset 0 3px 0 var(--c, #c6f24e); }
 #ydx-loader .yl-bands i:nth-child(3n+2) { --c: #ff6a1a; }
 #ydx-loader .yl-bands i:nth-child(3n+3) { --c: #4a2cf0; }
-.yl-word .yl-ghost, .yl-word .yl-ink { transition: opacity .3s; }
-#ydx-loader.no-img .yl-ghost { opacity: 0; }
+.yl-word .yl-ink { transition: opacity .3s; }
 
 /* ---------- 3. Layer shutter (section-jump transition) ------------------ */
 #ydx-shutter {
@@ -110,7 +120,8 @@
   html.ydx-js [data-ydx-r="print"][data-ydx-in] {
     animation: ydx-print .8s steps(11, end) var(--ydx-d, 0ms) both;
   }
-  @keyframes ydx-print { from { clip-path: inset(100% 0 -4px 0); } to { clip-path: inset(-4px 0 -8px 0); } }
+  /* Horizontal insets are negative so outlines, overhangs and italics are never shaved off at rest. */
+  @keyframes ydx-print { from { clip-path: inset(100% -8px -4px -8px); } to { clip-path: inset(-4px -8px -8px -8px); } }
 
   /* FAQ title: same print reveal as the other display headings, with the nozzle line. */
   html.ydx-js .faq-title[data-ydx-r="print"] { position: relative; }
@@ -135,7 +146,12 @@
   html.ydx-js .seam[data-ydx-r][data-ydx-in] i:nth-child(2) { transition-delay: .11s; }
   html.ydx-js .seam[data-ydx-r][data-ydx-in] i:nth-child(3) { transition-delay: .22s; }
 
-  /* 4e. Hero intro, played as the loader hands over. */
+  /* 4e. Hero intro, played as the loader hands over. ydx-intro is already on <html> from the first paint
+         (inline script), so while ydx-hold is still there every intro animation waits, paused, in its first
+         frame. Nothing can show early and then re-enter. */
+  html.ydx-hold.ydx-intro:not(.ydx-fail) :is(.nav > *, .hero-out > span, .sel, .hero-vase figcaption, .hero-strip > *) {
+    animation-play-state: paused;
+  }
   html.ydx-intro .nav > * { animation: ydx-drop .6s var(--ease) both; }
   html.ydx-intro .nav > :nth-child(2) { animation-delay: .06s; }
   html.ydx-intro .nav > :nth-child(3) { animation-delay: .12s; }
@@ -144,7 +160,9 @@
 
   html.ydx-intro .hero-out > span { animation: ydx-print .7s steps(10, end) both; }
   html.ydx-intro .hero-out > span:nth-child(2) { animation-delay: .12s; }
-  html.ydx-intro .sel { animation: ydx-marquee .7s cubic-bezier(.65, 0, .25, 1) .18s both; }
+  /* backwards fill only: once dragged open the clip goes away, so a kicker wider than the box
+     (landscape phones) is not left cut off for the rest of the intro. */
+  html.ydx-intro .sel { animation: ydx-marquee .7s cubic-bezier(.65, 0, .25, 1) .18s backwards; }
   @keyframes ydx-marquee {
     from { clip-path: inset(-40px 100% 100% -14px); }
     to { clip-path: inset(-40px -14px -14px -14px); }

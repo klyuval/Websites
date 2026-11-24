@@ -44,7 +44,7 @@
     inOut: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
     out: (t) => 1 - Math.pow(1 - t, 3),
     in: (t) => t * t * t,
-    aperture: bezier(.62, 0, .18, 1), // a short hesitation, then the blades snap open and settle
+    aperture: bezier(.5, 0, .1, 1), // r2: shorter hesitation (was .62,0,.18,1, which read as a stall), then a firm open
   };
   const marks = (window.__ydxMarks = {}); // timings for QA (ms since navigation start)
   const mark = (k) => { marks[k] = Math.round(performance.now()); };
@@ -174,7 +174,7 @@
       const e = clamp(exposure(), 0, 1);
       // exposure 1 => needle on f/8 (centre of the scale): "correct exposure"
       target = -span / 2 + (span / 2) * clamp((e - 0.08) / 0.92, 0, 1) + (e < 1 ? Math.sin(performance.now() / 90) * 0.8 : 0);
-      vel += (target - ang) * 0.06; vel *= 0.78; ang += vel;
+      vel += (target - ang) * 0.13; vel *= 0.7; ang += vel; // r2: stiffer (lands in ~250ms instead of ~700ms)
       needle.setAttribute('transform', `rotate(${ang.toFixed(2)})`);
       settled = e >= 1 && Math.abs(target - ang) < 0.6 && Math.abs(vel) < 0.15;
       const idx = clamp(Math.round(((ang + span / 2) / span) * (STOPS.length - 1)), 0, STOPS.length - 1);
@@ -204,7 +204,9 @@
     clip(iris.draw(0, rot0));
     await frames(1);
     cls.remove('ydx-hold', 'ydx-lens');
+    let handed = false;
     await tween(ms, (p, t) => {
+      if (!handed && p > 0.12) { handed = true; arrive(0); }
       clip(iris.draw(p, rot0 - p * 0.75));
       if (fresh) iris.root.style.opacity = String(clamp(t * 8, 0, 1));
     }, fresh ? ease.aperture : ease.out);
@@ -212,6 +214,38 @@
     a.style.clipPath = '';
     cls.add('ydx-arrival-off');
     cls.remove('ydx-iris-run', 'ydx-quick');
+  }
+
+  /* r2: first-screen hand-off. The page's hero type is static once mounted, and on a first load / hard navigation it
+     mounted behind the loader, so the page simply "was there" when the aperture or shutter opened. As the opening
+     clears, the hero heading rises into its line (the site's own optical-type-in: clip from below + 25px rise) and
+     the copy under it follows (the site's atelier-arrive). WAAPI only, fill backwards: nothing stays on the nodes. */
+  const TYPE_EASE = 'cubic-bezier(.16,1,.3,1)';
+  function arrive(delay = 0) {
+    if (RM.matches || !d.body.animate) return;
+    const H = innerHeight;
+    const inView = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.bottom > 0 && r.top < H * 0.92; };
+    const h1 = [...d.querySelectorAll('main h1')].find(inView);
+    if (!h1 || h1.hasAttribute('data-ydx-arrived')) return;
+    h1.setAttribute('data-ydx-arrived', '');
+    setTimeout(() => h1.removeAttribute('data-ydx-arrived'), 1600);
+    const kids = [...h1.children];
+    const textAtTop = [...h1.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+    const blocky = kids.length > 1 && !textAtTop && kids.every((k) => /^(block|flex|grid|table)/.test(getComputedStyle(k).display));
+    const lines = blocky ? kids : [h1];
+    lines.forEach((el, i) => el.animate(
+      [{ clipPath: 'inset(-10% -4% 100% -4%)', translate: '0 25px' }, { clipPath: 'inset(-10% -4% -12% -4%)', translate: '0 0' }],
+      { duration: 900, delay: delay + i * 90, easing: TYPE_EASE, fill: 'backwards' }));
+    // the copy that follows the heading in the same block (eyebrow above it too), at most four pieces
+    const box = h1.parentElement;
+    if (!box || box === d.querySelector('main')) return;
+    let k = 0;
+    [...box.children].forEach((el) => {
+      if (el === h1 || k >= 4 || !inView(el) || el.querySelector('h1') || getComputedStyle(el).position === 'absolute') return;
+      const before = el.compareDocumentPosition(h1) & Node.DOCUMENT_POSITION_FOLLOWING;
+      el.animate([{ opacity: 0, translate: '0 18px' }, { opacity: 1, translate: '0 0' }],
+        { duration: 700, delay: delay + (before ? 0 : 160 + lines.length * 90 + k++ * 80), easing: TYPE_EASE, fill: 'backwards' });
+    });
   }
 
   async function runLoader() {
@@ -236,8 +270,13 @@
       kick(); nudge = setInterval(kick, 60);
       if (!reduce) { lens = makeIris(true); lens.draw(0, 0.35); cls.add('ydx-lens'); }
     }
-    const minShow = MODE === 'frame' ? 200 : quick ? 320 : 1100; // ms since navigation start
-    const safety = MODE === 'frame' ? 300 : quick ? 1200 : 4000;
+    // r2: count from when the loader was first painted, not from navigation start. On a slow network the first paint
+    // can come many seconds after navigation; measured from navigation start the safety had already expired, so the
+    // proof flashed for a frame and opened onto a half-built page.
+    const fcp = (performance.getEntriesByName('first-contentful-paint')[0] || {}).startTime;
+    const t0 = fcp ? Math.min(fcp, performance.now()) : performance.now();
+    const minShow = MODE === 'frame' ? 200 : quick ? 320 : Math.max(1100, t0 + 750);
+    const safety = MODE === 'frame' ? 300 : quick ? Math.max(1200, t0 + 900) : Math.max(4000, t0 + 3200);
     // Safety: never trap the visitor. Ask the arrival to finish; if React never answers, open it anyway.
     const timeout = wait(Math.max(0, safety - performance.now())).then(() => { kick(); return wait(MODE === 'frame' ? 0 : 250); });
     await Promise.race([done, timeout]);
@@ -250,7 +289,7 @@
     const shield = d.createElement('ydx-shield');
     shield.setAttribute('aria-hidden', 'true');
     shield.addEventListener('pointerdown', (e) => { e.preventDefault(); skip(); });
-    const onKey = (e) => { if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ') skip(); };
+    const onKey = (e) => { if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ' || e.key === 'Tab') skip(); }; // r2: Tab too (focus was moving behind the held proof)
     d.body.appendChild(shield);
     addEventListener('keydown', onKey);
     const left = minShow - performance.now();
@@ -259,8 +298,8 @@
       const s = performance.now();
       let skippedNow = false;
       skipped.then(() => { skippedNow = true; });
-      while (!skippedNow && !meter.settled() && performance.now() - s < 700) await frames(1);
-      if (!skippedNow) await Promise.race([wait(140), skipped]);
+      while (!skippedNow && !meter.settled() && performance.now() - s < 420) await frames(1);
+      if (!skippedNow) await Promise.race([wait(90), skipped]); // r2: was up to 700 + 140ms of static hold
       meter.hide();
     }
     shield.remove();
@@ -272,7 +311,7 @@
       setTimeout(() => { cls.add('ydx-arrival-off'); cls.remove('ydx-fade'); }, 400);
       return;
     }
-    await irisOut(a, MODE === 'frame' ? 380 : quick ? 560 : 860, lens);
+    await irisOut(a, MODE === 'frame' ? 380 : quick ? 560 : 800, lens);
     mark('end');
   }
 
@@ -291,15 +330,28 @@
     clearInterval(nudge);
     await Promise.race([d.fonts ? d.fonts.ready : Promise.resolve(), wait(900)]);
     await frames(2); // let the locale re-render (he/ru, RTL) land behind the shutter
+    // r2: the pictures in the first screen popped in right after the shutter opened. Give them a short chance to
+    // decode behind the closed shutter (capped; images that are slow just fade in as before).
+    await Promise.race([firstScreenImages(), wait(650)]);
     if (!veil) { cls.remove('ydx-cont'); return; }
     const panels = veil.querySelectorAll('.route-shutter-panel');
     const anims = [...panels].map((p, i) => p.animate(
       [{ transform: 'translate3d(0,0,0)' }, { transform: `translate3d(0,${i ? 101 : -101}%,0)` }],
       { duration: 620, easing: 'cubic-bezier(.65,0,.15,1)', fill: 'forwards' }));
+    arrive(170);
     await Promise.all(anims.map((x) => x.finished.catch(() => {})));
     veil.remove();
     cls.add('ydx-arrival-off');
     cls.remove('ydx-cont');
+  }
+
+  function firstScreenImages() {
+    const H = innerHeight, W = innerWidth;
+    const imgs = [...d.querySelectorAll('main img')].filter((im) => {
+      const r = im.getBoundingClientRect();
+      return r.width > 40 && r.bottom > 0 && r.top < H && r.right > 0 && r.left < W;
+    });
+    return Promise.all(imgs.map((im) => (im.complete ? Promise.resolve() : im.decode ? im.decode().catch(() => {}) : Promise.resolve())));
   }
 
   /* Record route intent so the next document (after a hard navigation) can continue the shutter.
@@ -312,6 +364,7 @@
       const u = new URL(link.href, location.href);
       if (u.origin !== location.origin || u.pathname === location.pathname) return;
       const rec = { to: u.pathname, t: Date.now(), brand: 'AlexStudio', label: '' };
+      const fromH1 = d.querySelector('main h1');
       // RouteTransition writes its label synchronously during this same click; read it right after.
       setTimeout(() => {
         const sh = d.querySelector('div.route-shutter');
@@ -319,10 +372,28 @@
         rec.brand = (sh.querySelector('b') || {}).textContent || rec.brand;
         rec.label = (sh.querySelector('.route-shutter-panel span') || {}).textContent || '';
         store.set('ydx-route', JSON.stringify(rec));
+        spaWatch(fromH1);
       }, 0);
     }, true);
     // A client-side (SPA) navigation consumes the shutter in-page: drop the record if this document survives it.
     const forget = () => setTimeout(() => store.del('ydx-route'), 1800);
+    // r2: a client-side navigation (live worker) does not go through history.pushState as patched here (the router
+    // keeps its own reference), so watch for it directly after a recorded click: once this document shows the new
+    // heading while the site's shutter is still closed, drop the record and play the first-screen hand-off.
+    function spaWatch(old) {
+      const s0 = performance.now();
+      const poll = () => {
+        const sh = d.querySelector('div.route-shutter');
+        const h = d.querySelector('main h1');
+        if (h && h !== old) {
+          store.del('ydx-route');
+          if (sh && sh.hasAttribute('data-active')) arrive(140);
+          return;
+        }
+        if (performance.now() - s0 < 4000) raf(poll);
+      };
+      raf(poll);
+    }
     for (const k of ['pushState', 'replaceState']) {
       const orig = history[k];
       history[k] = function (...args) { const before = location.pathname; const r = orig.apply(this, args); if (location.pathname !== before) forget(); return r; };

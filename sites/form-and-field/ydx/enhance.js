@@ -23,15 +23,25 @@
   /* ================= 1. loader ================= */
   const loader = $('#ydx-loader');
   let heroPlayed = false;
+  clearTimeout(window.__ydxFS);                            // the inline failsafe only covers a missing enhance.js
   if (loader && html.classList.contains('ydx-loading')) runLoader();
-  else d.addEventListener('DOMContentLoaded', () => heroIntro(0), { once: true });
+  else { if (loader) loader.remove(); d.addEventListener('DOMContentLoaded', () => heroIntro(0), { once: true }); }
 
   function runLoader() {
-    const MIN = { first: 1450, quick: 380, frame: 220, reduced: 300 }[mode] || 1200;
-    const HARD = mode === 'frame' ? 800 : 4000;           // never trap anyone
+    /* times are counted from the moment the sheet was painted (inline head script), not from navigation start,
+       so a slow HTML download does not eat the minimum, and a slow script download cannot stretch the cap */
+    const T0 = window.__ydxT0 || 0;
+    const MIN = T0 + ({ first: 1450, quick: 380, frame: 220, reduced: 300 }[mode] || 1200);
+    const HARD = T0 + (mode === 'frame' ? 420 : 4000);   // never trap anyone (the hub's iframe preview stays under ~.8s in all)
+    const late = performance.now() > HARD - 250;          // enhance.js arrived too late for the full show
     const word = $('#ydx-word'), base = $('#ydx-base'), wght = $('#ydx-wght'), pct = $('#ydx-pct'), status = $('#ydx-status');
     const chips = $$('.ydx-chips b', loader);
     let loaded = d.readyState === 'complete', p = mode === 'first' ? 0 : 1, gone = false, lastW = -1;
+    if (mode === 'first') {                                // pick up where the CSS-only ink creep (slow networks) got to
+      const cw = parseFloat(getComputedStyle(word).getPropertyValue('--w')) || 200;
+      p = Math.min(0.9, Math.max(0, (cw - 200) / 600));
+      word.style.animation = base.style.animation = 'none';
+    }
     window.addEventListener('load', () => { loaded = true; }, { once: true });
 
     const paint = () => {
@@ -44,13 +54,15 @@
     };
     paint();
 
+    let lastT = 0;
     const tick = now => {
       if (gone) return;
       /* the type waits for the sorts to be set (~.55s), then inks up with time; it can only finish once the page has loaded */
       if (mode === 'first') {                                // repeat visits arrive already inked (p = 1)
-        const t = Math.max(0, now - 420) / (MIN - 420);
+        const t = Math.max(0, now - T0 - 420) / (MIN - T0 - 420);
         const goal = loaded ? Math.min(1, t) : Math.min(0.9, t * 0.9);
-        p += (goal - p) * 0.14;
+        const k = 1 - Math.pow(0.86, Math.min(6, (now - (lastT || now - 16.7)) / 16.7)); lastT = now;   // frame-rate independent
+        p = Math.max(p, p + (goal - p) * k);                // ink never runs backwards
         if (goal === 1 && 1 - p < 0.004) p = 1;
         paint();
       }
@@ -71,20 +83,29 @@
         else done();
         return;
       }
-      const first = mode === 'first', frame = mode === 'frame';
-      const dur = first ? 640 : frame ? 340 : 460, st = first ? 56 : frame ? 22 : 34, lag = first ? 110 : frame ? 50 : 70, sheetOut = first ? 210 : frame ? 40 : 90;
-      const sheet = $('.ydx-sheet', loader);
-      /* the proof lifts off first: letters leave in reading order */
-      $$('.ydx-word > *', loader).forEach((b, i) => b.animate(
-        [{ transform: 'none', opacity: 1 }, { transform: 'translate3d(0,-.35em,0)', opacity: 0 }],
-        { duration: first ? 380 : 220, delay: i * (first ? 14 : 6), easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' }));
-      sheet.animate([{ opacity: 1 }, { opacity: 0 }], { duration: first ? 380 : 220, delay: first ? 60 : 0, easing: 'linear', fill: 'forwards' });
+      const first = mode === 'first' && !late, frame = mode === 'frame';
+      const dur = first ? 660 : frame ? 340 : 460, st = first ? 56 : frame ? 22 : 34, lag = first ? 120 : frame ? 50 : 70, sheetOut = first ? 60 : 0;
+      /* the printed proof is torn into the five strips and carried off with them (each strip holds a copy of the
+         sheet, offset to its own column), so the wordmark leaves as paper instead of fading to grey */
+      const sheet = $('.ydx-sheet', loader), cols = $$('.ydx-cols > i', loader);
+      if (sheet) {
+        const star = $('.ydx-star', sheet), turn = star ? getComputedStyle(star).rotate : 'none';   // the clones stand still: keep the star's angle
+        cols.forEach((c, i) => {
+          const k = sheet.cloneNode(true);
+          k.classList.add('ydx-clone');
+          k.querySelectorAll('[id]').forEach(n => { n.id = ''; });
+          const ks = $('.ydx-star', k); if (ks) ks.style.rotate = turn;
+          k.style.left = (-i * 100) + '%';
+          c.append(k);
+        });
+        sheet.style.visibility = 'hidden';
+      }
       /* paper strips, then the colour bar under them */
-      $$('.ydx-cols i', loader).forEach((c, i) => c.animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(0,-101%,0)' }],
+      cols.forEach((c, i) => c.animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(0,-101%,0)' }],
         { duration: dur, delay: sheetOut + i * st, easing: INOUT, fill: 'forwards' }));
-      $$('.ydx-plates i', loader).forEach((c, i) => c.animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(0,-101%,0)' }],
+      $$('.ydx-plates > i', loader).forEach((c, i) => c.animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(0,-101%,0)' }],
         { duration: dur, delay: sheetOut + lag + i * st, easing: INOUT, fill: 'forwards' }));
-      heroIntro(sheetOut + lag + st * 2 + dur * 0.35);
+      heroIntro(sheetOut + lag + st + dur * 0.28);              // the cover starts printing while the plates are still passing
       setTimeout(done, sheetOut + lag + st * 4 + dur + 40);
     }
   }
@@ -103,7 +124,7 @@
     const lens = $('.loupe-view'), img = $('.loupe-img');
     if (img) img.style.transformOrigin = '37.4% 38.97%';      // the lens centre inside the photographed loupe
     [lens, img].forEach(el => el && el.animate(
-      [{ opacity: 0, scale: '.55', rotate: '-24deg' }, { opacity: 1, offset: 0.45 }, { opacity: 1, scale: '1', rotate: '0deg' }],
+      [{ opacity: 0, scale: '.55', rotate: '-24deg' }, { opacity: 1, offset: 0.1 }, { opacity: 1, scale: '1', rotate: '0deg' }],   // opaque at once: a see-through lens read as a muddy ghost
       { ...b, duration: 1000, delay: delay + 380, easing: 'cubic-bezier(.3,1.35,.5,1)' }));
     const flood = $('.flood');                                 // the violet disc behind the lens must not show around it
     if (flood) flood.animate([{ opacity: 0 }, { opacity: 0, offset: 0.7 }, { opacity: 1 }], { ...b, duration: 1000, delay: delay + 380, easing: 'linear' });
@@ -130,12 +151,14 @@
   const shutter = d.createElement('div');
   shutter.className = 'ydx-shutter'; shutter.setAttribute('aria-hidden', 'true');
   shutter.innerHTML = '<div class="ydx-sh-cols"><i></i><i></i><i></i><i></i><i></i></div><div class="ydx-sh-label"><span class="mono ydx-sh-k"></span><strong class="display ydx-sh-t"></strong><i class="reg"></i></div>';
-  let busy = false;
+  let busy = false, settle = () => {};                     // settle: set by the reveals below
   const ready = () => d.body.append(shutter);
   if (d.body) ready(); else d.addEventListener('DOMContentLoaded', ready, { once: true });
 
-  const targetTop = el => {
-    const pad = parseFloat(getComputedStyle(html).scrollPaddingTop) || 0, m = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+  /* flush: a transition lands a colour field exactly at the top. With the 70px scroll padding a strip of the previous
+     field showed above it, so pink plates lifted onto a mint band. The floating header pills sit fine over the field. */
+  const targetTop = (el, flush) => {
+    const pad = flush ? 0 : parseFloat(getComputedStyle(html).scrollPaddingTop) || 0, m = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
     return Math.max(0, el.getBoundingClientRect().top + scrollY - pad - m);
   };
   const textOf = el => { if (!el) return ''; const c = el.cloneNode(true); c.querySelectorAll('.chapter-no-sr,.bp-note,svg').forEach(n => n.remove()); c.querySelectorAll('br').forEach(n => n.replaceWith(' ')); return c.textContent.replace(/\s+/g, ' ').trim(); };
@@ -173,22 +196,25 @@
     }
     shutter.classList.add('on');
     const cols = $$('.ydx-sh-cols i', shutter), label = $('.ydx-sh-label', shutter);
-    const COVER = 220, REVEAL = 270, ST = 20;
+    const COVER = 200, REVEAL = 260, ST = 16;
     cols.forEach((c, i) => c.animate([{ transform: 'translate3d(0,101%,0)' }, { transform: 'translate3d(0,0,0)' }],
       { duration: COVER, delay: i * ST, easing: 'cubic-bezier(.7,0,.3,1)', fill: 'forwards' }));
     label.animate([{ opacity: 0, transform: 'translate3d(0,calc(-50% + 22px),0)' }, { opacity: 1, transform: 'translate3d(0,-50%,0)' }],
-      { duration: 160, delay: COVER, easing: OUT, fill: 'forwards' });   // only once the plates have closed
-    await wait(COVER + ST * 4 + 30);
+      { duration: 150, delay: COVER, easing: OUT, fill: 'forwards' });   // only once the plates have closed
+    await wait(COVER + ST * 4 + 20);
     /* jump while covered */
-    const top = targetTop(target), lenis = window.ffLenis;
+    const top = targetTop(target, target.matches('.sec[data-field], #top')), lenis = window.ffLenis;
+    settle(target);                                            // the plates already showed this headline: no second entrance
     if (lenis) lenis.scrollTo(top, { immediate: true, force: true }); else window.scrollTo({ top, behavior: 'instant' });
     if (!target.hasAttribute('tabindex')) { target.setAttribute('tabindex', '-1'); target.setAttribute('data-ydx-ft', ''); }
     try { target.focus({ preventScroll: true }); } catch (e) { /* old browser */ }
-    await wait(90);
-    label.animate([{ opacity: 1, transform: 'translate3d(0,-50%,0)' }, { opacity: 0, transform: 'translate3d(0,calc(-50% - 26px),0)' }],
-      { duration: 180, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' });
+    await wait(70);
+    /* the label is gone before the plates open: on a plate of the same colour as the field it would otherwise
+       cross-dissolve with the real headline underneath */
+    label.animate([{ opacity: 1, transform: 'translate3d(0,-50%,0)' }, { opacity: 0, transform: 'translate3d(0,calc(-50% - 20px),0)' }],
+      { duration: 120, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' });
     const anims = cols.map((c, i) => c.animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(0,-101%,0)' }],
-      { duration: REVEAL, delay: 40 + i * ST, easing: INOUT, fill: 'forwards' }));
+      { duration: REVEAL, delay: 85 + i * ST, easing: INOUT, fill: 'forwards' }));
     await Promise.all(anims.map(a => a.finished.catch(() => {})));
     shutter.classList.remove('on');
     cols.concat(label).forEach(el => el.getAnimations().forEach(a => a.cancel()));
@@ -265,6 +291,10 @@
     if (en.target.classList.contains('ydx-split-wait')) playHead(en.target); else playEl(en.target);
   }), { rootMargin: '0px 0px -8% 0px', threshold: 0 });
   heads.forEach(h => h.classList.contains('ydx-split-wait') && io.observe(h));
+  settle = target => {
+    const h = $('h1, h2, h3', target);
+    if (h && h.classList.contains('ydx-split-wait')) { io.unobserve(h); h.classList.remove('ydx-split-wait'); }
+  };
   rvEls.forEach(el => el.classList.contains('ydx-rv-wait') && io.observe(el));
 
   /* footer colour bar */

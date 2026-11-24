@@ -7,12 +7,13 @@
 .ydx-c { display: inline-block; }
 
 /* ---------------------------------------------------------------- page wipe (out-transition) */
-#ydx-wipe {
+.ydx-wipe {
   position: fixed; inset: 0; z-index: 2147483001; pointer-events: auto;
   background: #4a0d22;
   -webkit-mask: url(/ydx/smear-mask.webp) 50% 50% / 0 0 no-repeat;
   mask: url(/ydx/smear-mask.webp) 50% 50% / 0 0 no-repeat;
 }
+.ydx-wipe-lead { background: var(--hi); }
 
 /* ---------------------------------------------------------------- reveal states (JS plays WAAPI; this only hides until then) */
 html.ydx-motion [data-ydx-r]:not(.ydx-in) { opacity: 0; }
@@ -42,10 +43,12 @@ html.ydx-motion [data-ydx-r]:not(.ydx-in) { opacity: 0; }
 @media (prefers-reduced-motion: no-preference) {
   #mobile-menu {
     transition: clip-path .62s cubic-bezier(.7, 0, .2, 1), display .62s allow-discrete, overlay .62s allow-discrete;
-    clip-path: inset(0 0 100% 0 round 0 0 50% 50%);
+    clip-path: inset(0 0 100% 0 round 0 0 60vw 60vw / 0 0 16vh 16vh);
   }
-  #mobile-menu[open] { clip-path: inset(0 0 0 0 round 0); }
-  @starting-style { #mobile-menu[open] { clip-path: inset(0 0 100% 0 round 0 0 50% 50%); } }
+  /* the swatch's bottom edge is convex (fixed radii, so it stays a soft curve all the way down, instead of a flat blind);
+     the open state overshoots the box by 18vh so the curve ends off-screen */
+  #mobile-menu[open] { clip-path: inset(0 0 -18vh 0 round 0 0 60vw 60vw / 0 0 16vh 16vh); }
+  @starting-style { #mobile-menu[open] { clip-path: inset(0 0 100% 0 round 0 0 60vw 60vw / 0 0 16vh 16vh); } }
   #mobile-menu::backdrop { transition: opacity .5s, display .62s allow-discrete, overlay .62s allow-discrete; opacity: 0; }
   #mobile-menu[open]::backdrop { opacity: 1; }
   @starting-style { #mobile-menu[open]::backdrop { opacity: 0; } }

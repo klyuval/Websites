@@ -16,13 +16,18 @@ html:not(.ydx-loading) .ydx-loader{pointer-events:none}
 .ydx-l-track{position:absolute;inset:0;pointer-events:none;animation:ydx-track calc(720ms*var(--k)) cubic-bezier(.62,.02,.3,1) calc(120ms*var(--k)) both}
 .ydx-l-stick{position:absolute;left:95%;top:58%;width:10%;max-width:none;height:auto;transform-origin:50% 0;transform:rotate(-112deg);animation:ydx-lift calc(380ms*var(--k)) cubic-bezier(.5,0,.75,0) calc(800ms*var(--k)) both;filter:drop-shadow(0 10px 14px rgba(20,0,8,.35))}
 .ydx-l-word{position:absolute;inset:0;display:grid;place-items:center;font:900 calc(var(--sw)*.27)/1 "Negia Display","Noto Serif Hebrew",serif;font-stretch:68%;letter-spacing:-.012em;color:#4a0d22;direction:rtl;padding-bottom:4%;animation:ydx-swipe calc(640ms*var(--k)) cubic-bezier(.62,.02,.3,1) calc(300ms*var(--k)) both}
-.ydx-l-kiss{position:absolute;left:-7%;top:-34%;width:21%;max-width:none;height:auto;transform:rotate(-14deg);animation:ydx-stamp calc(460ms*var(--k)) cubic-bezier(.3,1.5,.5,1) calc(860ms*var(--k)) both}
+.ydx-l-kiss{position:absolute;left:-5%;top:-34%;width:21%;max-width:none;height:auto;transform:rotate(-14deg);animation:ydx-stamp calc(460ms*var(--k)) cubic-bezier(.3,1.5,.5,1) calc(860ms*var(--k)) both}
 .ydx-l-tag{position:absolute;left:0;right:0;top:calc(100% + 4.5vh);text-align:center;font:600 .72rem/1 Heebo,system-ui,sans-serif;letter-spacing:.34em;direction:ltr;color:#f08ba0;animation:ydx-fade calc(600ms*var(--k)) ease calc(700ms*var(--k)) both}
 @keyframes ydx-swipe{from{clip-path:inset(-20% -2% -20% 100%)}to{clip-path:inset(-20% -2% -20% -2%)}}
 @keyframes ydx-track{from{transform:translateX(0)}to{transform:translateX(-100%)}}
 @keyframes ydx-lift{to{opacity:0;transform:rotate(-100deg) translate(-40%,-30%)}}
 @keyframes ydx-stamp{from{opacity:0;transform:rotate(-24deg) scale(1.9)}to{opacity:1;transform:rotate(-14deg) scale(1)}}
 @keyframes ydx-fade{from{opacity:0;transform:translateY(8px)}}
+.ydx-loader:not(.is-go) .ydx-l-stage>*{animation-play-state:paused}
+.ydx-l-warm{position:absolute;left:0;top:0;width:2px;height:2px;background:#4a0d22;-webkit-mask:url(/ydx/smear-mask.webp) 0 0/2px 2px no-repeat;mask:url(/ydx/smear-mask.webp) 0 0/2px 2px no-repeat}
+@media (max-width:760px){.ydx-l-kiss{left:-1%;top:-30%}}
+/* slow network: the cut-outs did not arrive in time, so the wordmark writes itself alone, in tint */
+.is-lite .ydx-l-smear,.is-lite .ydx-l-track,.is-lite .ydx-l-kiss{display:none}.is-lite .ydx-l-word{color:#fde5e6}
 [data-ydx-load=frame] .ydx-loader{--k:.32}
 [data-ydx-load=short] .ydx-loader *,[data-ydx-load=reduced] .ydx-loader *{animation:none!important}
 [data-ydx-load=short] .ydx-l-stick,[data-ydx-load=reduced] .ydx-l-stick{opacity:0}
@@ -36,7 +41,7 @@ html.ydx-loading .hero-line,html.ydx-loading .hero-lips,html.ydx-loading .hero-s
 </head>
 <body>
 <!-- ydx: loader markup, injected by script so it never shows without JS -->
-<script data-ydx>(function(d){var l=d.createElement('div');l.id='ydx-loader';l.className='ydx-loader';l.setAttribute('aria-hidden','true');l.innerHTML='<div class="ydx-l-stage"><div class="ydx-l-smear"><img src="/img/smear-a-rose-s.webp" alt="" width="820" height="309"></div><div class="ydx-l-word">נגיעה</div><span class="ydx-l-track"><img class="ydx-l-stick" src="/img/lipstick-rose.webp" alt="" width="237" height="1000"></span><img class="ydx-l-kiss" src="/img/kiss-rose.webp" alt="" width="480" height="355"><span class="ydx-l-tag">NEGIA · LIP ATELIER</span></div>';d.body.insertBefore(l,d.body.firstChild)})(document)</script>
+<script data-ydx>(function(d,w){var l=d.createElement('div');l.id='ydx-loader';l.className='ydx-loader';l.setAttribute('aria-hidden','true');l.innerHTML='<i class="ydx-l-warm"></i><div class="ydx-l-stage"><div class="ydx-l-smear"><img src="/img/smear-a-rose-s.webp" alt="" width="820" height="309"></div><div class="ydx-l-word">נגיעה</div><span class="ydx-l-track"><img class="ydx-l-stick" src="/img/lipstick-rose.webp" alt="" width="237" height="1000"></span><img class="ydx-l-kiss" src="/ydx/kiss-loader.webp" alt="" width="300" height="221"><span class="ydx-l-tag">NEGIA · LIP ATELIER</span></div>';d.body.insertBefore(l,d.body.firstChild);var L=w.__ydxL||{},go=function(x){if(!L.go){L.go=Date.now();l.classList.add('is-go');if(x===1)l.classList.add('is-lite')}};if(L.mode!=='full')return go();var ps=[].map.call(l.querySelectorAll('img'),function(i){return i.decode?i.decode().catch(function(){}):0});try{ps.push(d.fonts.load('900 64px "Negia Display"','נגיעה').catch(function(){}))}catch(e){}Promise.all(ps).then(go);setTimeout(function(){go(1)},1300)})(document,window)</script>
 
 <a class="skip-link" href="#main">דילוג לתוכן</a>
 <div class="page">

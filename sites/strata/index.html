@@ -8,8 +8,12 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400..900&family=Martian+Mono:wght@400..600&display=swap" rel="stylesheet" />
+    <!-- ydx: Google Fonts no longer block first paint, so the loader shows at once on slow networks (it covers the font swap) -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400..900&family=Martian+Mono:wght@400..600&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400..900&family=Martian+Mono:wght@400..600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400..900&family=Martian+Mono:wght@400..600&display=swap" rel="stylesheet" /></noscript>
     <link rel="preload" as="image" href="/img/w-physical-graphite.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/img/w-strata-ghost.webp" type="image/webp" /><!-- ydx: loader silhouette (a CSS mask, otherwise discovered late) -->
     <title>STRATA | Ideas, made physical.</title>
     <!-- ydx: loading screen critical CSS (paints before the app bundle) -->
     <style data-ydx>
@@ -28,7 +32,8 @@
       .yl-sel b{position:absolute;width:9px;height:9px;margin:-5px;background:#17151c;border:1.5px solid rgba(244,239,226,.7)}
       .yl-sel b:nth-child(2){left:100%}.yl-sel b:nth-child(3){top:100%}.yl-sel b:nth-child(4){left:100%;top:100%}
       .yl-word{position:relative;aspect-ratio:1555/388}
-      .yl-ghost{position:absolute;inset:0;background:#f4efe2;opacity:.9;-webkit-mask:url(/img/w-strata-ghost.webp) 0 0/100% 100% no-repeat;mask:url(/img/w-strata-ghost.webp) 0 0/100% 100% no-repeat}
+      .yl-ghost{position:absolute;inset:0;background:#f4efe2;opacity:0;transition:opacity .3s;-webkit-mask:url(/img/w-strata-ghost.webp) 0 0/100% 100% no-repeat;mask:url(/img/w-strata-ghost.webp) 0 0/100% 100% no-repeat}
+      #ydx-loader.yl-g .yl-ghost{opacity:.9}
       .yl-ink{position:absolute;inset:0;width:100%;height:100%;clip-path:inset(100% 0 0 0)}
       .yl-gantry{position:absolute;inset:0;pointer-events:none;transform:translate3d(0,100%,0)}
       .yl-car{position:absolute;left:0;top:0;width:100%;height:0;transform:translateX(6%)}
@@ -38,11 +43,12 @@
       .yl-seam{position:absolute;left:0;right:0;bottom:0;display:grid}
       .yl-seam i{display:block;height:5px;transform:scaleX(0);transform-origin:0 50%}
       .yl-seam i:nth-child(1){background:#c6f24e}.yl-seam i:nth-child(2){background:#ff6a1a}.yl-seam i:nth-child(3){background:#4a2cf0}
-      html.ydx-hold .hero-word{transform:translate3d(0,150vh,0);opacity:0}
-      html.ydx-hold .hero-vase img{animation:none;opacity:0}
+      html.ydx-fail #ydx-loader{display:none}
+      html.ydx-hold:not(.ydx-fail) .hero-word{transform:translate3d(0,150vh,0);opacity:0}
+      html.ydx-hold:not(.ydx-fail) .hero-vase img{animation:none;opacity:0}
       @media (max-width:560px){.yl-tr{display:none}.yl-stage{width:88vw}.yl-foot{bottom:26px;flex-direction:column}}
     </style>
-    <script src="/ydx/enhance.js" defer></script><!-- ydx -->
+    <script src="/ydx/enhance.js" defer onerror="document.documentElement.classList.add('ydx-fail')"></script><!-- ydx: if it fails to load, ydx-fail drops the loader and the hero hold at once -->
     <script type="module" crossorigin src="/assets/index-CkiVEG1F.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-C1lfMyBM.css">
     <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
@@ -69,9 +75,13 @@
     </div>
     <noscript><style>#ydx-loader{display:none}</style></noscript><!-- ydx -->
     <script data-ydx>
-      // ydx: hold the hero's own print animation until the loader hands over; failsafe if enhance.js never runs.
-      (function(){var d=document.documentElement;try{if(!location.hash||location.hash==='#top')d.classList.add('ydx-hold')}catch(e){}
-      setTimeout(function(){if(window.__ydxLoader)return;var l=document.getElementById('ydx-loader');l&&l.remove();d.classList.remove('ydx-hold')},4500)})();
+      // ydx: hold the hero (its own print + the intro, paused in its first frame) until the loader hands over.
+      // Failsafe if enhance.js never runs (a failed load is caught at once by its onerror; this covers a hang).
+      (function(){var d=document.documentElement,l=document.getElementById('ydx-loader');
+      // ydx: fade the silhouette in once its mask image has loaded (instead of popping in).
+      try{var g=new Image();g.onload=g.onerror=function(){l&&l.classList.add('yl-g')};g.src='/img/w-strata-ghost.webp'}catch(e){l&&l.classList.add('yl-g')}
+      try{if(!location.hash||location.hash==='#top')d.classList.add('ydx-hold','ydx-intro')}catch(e){}
+      setTimeout(function(){if(window.__ydxLoader)return;l&&l.remove();d.classList.remove('ydx-hold','ydx-intro')},8000)})();
     </script>
     <div id="root"></div>
   </body>

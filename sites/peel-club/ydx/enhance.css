@@ -96,6 +96,36 @@ dialog .close:focus-visible,.recipe-tabs button:focus-visible{outline-color:var(
   .route-next a .wide .icon{display:inline-block;vertical-align:-.04em;margin-left:-.12em}
 }
 
+/* ---------- 7. round 2 ---------- */
+
+/* Hero foot, 701-1180px (tablets, small laptops, landscape phones): the desktop 3-column row was too narrow. The
+   tagline broke into four ragged lines and the cue into a six-line sliver jammed against the swatches.
+   Stack the tagline over its button; under 900px the cue gets its own centred line above the row. */
+@media (701px<=width<=1180px){
+  .hero__cta{flex-direction:column;align-items:flex-start;gap:14px}
+  .hero__desc{white-space:nowrap}
+}
+@media (701px<=width<=900px){
+  .hero__foot{grid-template-columns:minmax(0,1fr) auto;row-gap:18px}
+  .hero__cue{grid-column:1/-1;grid-row:1;flex-direction:row;justify-content:center;gap:1.6em;padding-bottom:0}
+}
+
+/* Mobile menu: the panel is the same flat field as the hero below it, so it ended on an invisible line that just
+   sliced the can in half. Close it with the brand's rip edge (pith band + zest line, as on the flavour wipe). */
+@media (width<=900px){
+  .header nav::after{content:"";position:absolute;left:0;right:0;top:100%;height:13px;pointer-events:none;
+    background:linear-gradient(var(--pith) 0 9px,var(--on) 9px 13px)}
+}
+
+/* Wavy section edges settle like a poured surface: flat as they come up the screen, full wave once in view.
+   Scroll-driven (same mechanism as the site's own rise/roll), so it costs nothing on the main thread. */
+@media (prefers-reduced-motion:no-preference){
+  @supports (animation-timeline:view()){
+    .edge{transform-origin:50% 100%;animation:ydx-pour linear both;animation-timeline:view();animation-range:entry 0% cover 45%}
+    @keyframes ydx-pour{0%{scale:1 .15}60%{scale:1 1.12}100%{scale:1 1}}
+  }
+}
+
 /* Reduced motion: the transition overlay is a plain fade */
 @media (prefers-reduced-motion:reduce){
   .ydx-fizz{display:none}

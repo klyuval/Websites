@@ -152,3 +152,29 @@ html.ydx-motion .btn { transition: transform .16s var(--ease), box-shadow .16s v
 .ydx-cursor.is-down i { scale: .16; }
 .ydx-cursor.is-hot.is-down i { scale: .85; }
 @media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) { .ydx-cursor { display: none; } }
+
+/* ================================================================== */
+/* Round 2                                                             */
+/* ================================================================== */
+
+/* Phones/tablets (≤820px): the hero stage is a one-column grid and the flavour name sits in
+   flow. During every flavour change framer keeps the outgoing name mounted next to the
+   incoming one, so for ~250ms there were TWO names stacked and the coupe, copy and rail
+   jumped 196px down and back (CLS ≈0.37 every 5s). Pin every name to the same cell so the
+   outgoing and incoming names overlap, as they do on desktop. */
+@media (max-width: 820px) {
+  .hero__stage > .hero__name { grid-area: 1 / 1; }
+}
+
+/* Short, wide viewports (landscape phones, small laptop windows): the hero never gets shorter
+   than 620px, but the coupe was sized from the viewport (76svh), so at 844×390 it shrank to
+   a 296px cup sitting at the very bottom of the stage while the split name floated empty
+   above it. Size the coupe from the hero's real 620px floor instead. */
+@media (min-width: 821px) and (max-height: 674px) {
+  .hero { --coupe-h: min(470px, 50vw); }
+  /* the bottom-anchored copy (taller in English) grew up into the split name ("BROWN" sat on
+     "Something"): lift the name band a little and let the copy breathe so the CTA stays one line */
+  .hero__name { inset: 3% 0 40%; }
+  .hero__copy { max-width: min(30ch, 34vw); gap: 10px; }
+  .hero__copy h1 { font-size: clamp(1.5rem, 2.6vw, 2.2rem); }
+}

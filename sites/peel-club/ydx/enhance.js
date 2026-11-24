@@ -24,21 +24,29 @@
   let releaseHold;
   const held = new Promise(r => { releaseHold = () => { d.classList.remove('ydx-hold'); r(); }; });
   const curtain = document.getElementById('ydx-curtain');
-  if (!curtain) releaseHold();
+  // no curtain, or the inline safety net already took it away (slow network: this file arrived late) -> nothing to wait for.
+  // Without this the reveals below would wait on `held` forever and the section headings would stay invisible.
+  if (!curtain || curtain.dataset.out) releaseHold();
   else {
     const mode = d.dataset.ydx;
     const minMs = RM.matches ? 350 : ({ load: 1000, frame: 240, short: 300, nav: 90 }[mode] ?? 300);
+    // time is counted from the curtain's first painted frame (set by the inline script), not from navigation start:
+    // on a slow connection the CSS can block painting for seconds, and the curtain should still get its moment
+    const since = () => performance.now() - (window.__ydxT0 ?? performance.now());
     const loaded = new Promise(r => document.readyState === 'complete' ? r() : addEventListener('load', r, { once: true }));
     const hero = document.querySelector('main img[fetchpriority="high"]') || document.querySelector('main img');
     const heroReady = hero && hero.decode ? hero.decode().catch(() => {}) : Promise.resolve();
     const fonts = document.fonts ? document.fonts.ready : Promise.resolve();
     // full load for a first visit; for quick modes only the fonts + lead image matter. Never wait past the cap.
+    // Arriving from a page transition the cap is short: the visitor already watched the wheel, so the peel opens
+    // promptly and the page's own drop-in covers an image that is still decoding.
     const gate = mode === 'load' ? Promise.race([loaded, Promise.all([fonts, heroReady])]) : Promise.all([fonts, heroReady]);
-    const cap = wait(mode === 'load' ? 2600 : mode === 'frame' ? 260 : 1000);
-    Promise.race([gate, cap]).then(() => wait(Math.max(0, minMs - performance.now()))).then(leaveCurtain);
+    const capMs = { load: 2600, frame: 260, nav: 320, short: 900 }[mode] ?? 900;
+    const cap = wait(Math.max(0, capMs - since()));
+    Promise.race([gate, cap]).then(() => wait(Math.max(0, minMs - since()))).then(leaveCurtain);
 
     async function leaveCurtain() {
-      if (curtain.dataset.out) return;
+      if (curtain.dataset.out) return releaseHold();
       curtain.dataset.out = '1';
       ss.set('ydx-seen', '1');
       const done = () => { curtain.remove(); releaseHold(); d.removeAttribute('data-ydx'); d.removeAttribute('data-ydx-label'); };
@@ -52,13 +60,13 @@
       const center = curtain.querySelector('.ydx-center');
       const dur = mode === 'frame' ? 360 : mode === 'load' ? 700 : 620;
       curtain.style.pointerEvents = 'none';
+      releaseHold();
       const a = anim(sheet, [{ transform: 'rotate(14deg) translateX(0)' }, { transform: 'rotate(14deg) translateX(134vmax)' }], { duration: dur, easing: PEEL, fill: 'forwards' });
       anim(center, [
         { transform: 'translate(-50%,-50%) rotate(-14deg)' },
         { transform: 'translate(-50%,-50%) rotate(-14deg) scale(.86,1.04)', offset: .35 },
         { transform: 'translate(-50%,-50%) rotate(-14deg) scale(1.08,.94)' },
       ], { duration: dur, easing: PEEL, fill: 'forwards' });
-      setTimeout(releaseHold, dur * 0.3);
       await a.finished.catch(() => {});
       done();
     }
@@ -109,10 +117,10 @@
     dest.textContent = label;
     o.append(wheel, disk, dest);
     document.body.append(o);
-    anim(wheel, [{ transform: 'scale(.02) rotate(-200deg)' }, { transform: 'scale(1) rotate(0deg)' }], { duration: 520, easing: 'cubic-bezier(.6,0,.3,1)', fill: 'forwards' });
-    anim(disk, [{ transform: 'scale(0)' }, { transform: 'scale(1.02)' }], { duration: 330, delay: 250, easing: 'cubic-bezier(.55,0,.25,1)', fill: 'both' });
-    anim(dest, [{ opacity: 0, transform: 'scaleX(.6)' }, { opacity: 1, transform: 'none' }], { duration: 260, delay: 400, easing: OUT, fill: 'forwards' });
-    setTimeout(go, 600);
+    anim(wheel, [{ transform: 'scale(.02) rotate(-200deg)' }, { transform: 'scale(1) rotate(0deg)' }], { duration: 480, easing: 'cubic-bezier(.6,0,.3,1)', fill: 'forwards' });
+    anim(disk, [{ transform: 'scale(0)' }, { transform: 'scale(1.02)' }], { duration: 300, delay: 220, easing: 'cubic-bezier(.55,0,.25,1)', fill: 'both' });
+    anim(dest, [{ opacity: 0, transform: 'scaleX(.6)' }, { opacity: 1, transform: 'none' }], { duration: 240, delay: 340, easing: OUT, fill: 'forwards' });
+    setTimeout(go, 540);
   }
 
   document.addEventListener('click', e => {

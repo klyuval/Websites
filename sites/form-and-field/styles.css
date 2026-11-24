@@ -5,9 +5,9 @@
    - scroll-linked motion is CSS scroll-driven animation (compositor), absent where unsupported;
    - every looping animation runs only while its section carries .on (set by one IntersectionObserver). */
 
-@font-face{font-family:Display;src:url('assets/display.ttf') format('truetype');font-weight:200 800;font-stretch:75% 100%;font-display:swap}
-@font-face{font-family:Body;src:url('assets/body.ttf') format('truetype');font-weight:200 900;font-display:swap}
-@font-face{font-family:Editorial;src:url('assets/editorial.ttf') format('truetype');font-weight:200 800;font-style:italic;font-display:swap}
+@font-face{font-family:Display;src:url('assets/display.woff2') format('woff2'),url('assets/display.ttf') format('truetype');font-weight:200 800;font-stretch:75% 100%;font-display:swap}
+@font-face{font-family:Body;src:url('assets/body.woff2') format('woff2'),url('assets/body.ttf') format('truetype');font-weight:200 900;font-display:swap}
+@font-face{font-family:Editorial;src:url('assets/editorial.woff2') format('woff2'),url('assets/editorial.ttf') format('truetype');font-weight:200 800;font-style:italic;font-display:swap}
 @font-face{font-family:Mono;src:url('assets/mono-400.woff2') format('woff2');font-weight:400;font-display:swap}
 @font-face{font-family:Mono;src:url('assets/mono-500.woff2') format('woff2');font-weight:500;font-display:swap}
 @font-face{font-family:Hand;src:url('assets/hand-400.woff2') format('woff2');font-weight:400;font-display:swap}

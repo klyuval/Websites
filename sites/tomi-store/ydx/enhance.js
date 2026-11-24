@@ -3,7 +3,7 @@
  *  - it never touches cart / checkout / auth / admin code paths,
  *  - it only adds classes on <html>, inline `translate`/CSS vars on existing nodes, and its own overlay elements
  *    appended to <body>.
- * Parts: 1. loader controller  2. header scroll behaviour (+ cart-count pin)  3. language-switch shutter
+ * Parts: (1. loader -> ydx/boot.js)  2. header scroll behaviour (+ cart-count pin)  3. language-switch shutter
  *        4. magnetic buttons  5. ring cursor  6. page-title fit (inline font-size on overflowing titles only)
  */
 (function () {
@@ -17,105 +17,7 @@
   html.classList.add('ydx-js');
   if (reduced) html.classList.add('ydx-rm');
 
-  /* ------------------------------------------------------------------ 1. loader
-   * The site already gates its first paint on the 3D models (html.ready, set by the app after the GLBs decode,
-   * or after its own fallback when WebGL fails). Our loader replaces the old red "0%" counter visually and
-   * mirrors the app's real progress (it reads the hidden .loader-n counter the app keeps updating).
-   * It leaves on the app's ready signal, after a short minimum (first visit ~1s, repeat 350ms, iframe 0),
-   * and has a safety exit if the app never reports anything (script failed to load). */
-  (function loader() {
-    var L = document.querySelector('.ydx-loader');
-    if (!L) return;
-    L.classList.add('ydx-ctl');
-    var frame = html.classList.contains('ydx-frame');
-    var repeat = html.classList.contains('ydx-repeat');
-    var MIN = frame ? 0 : repeat ? 350 : 1000;
-    var ring = L.querySelector('.r'), lv = L.querySelector('.ydx-lv'), surf = L.querySelector('.ydx-surf'), topE = L.querySelector('.ydx-top');
-    var num = L.querySelector('.ydx-count b'), cap = L.querySelector('.ydx-cap');
-    var src = document.querySelector('.loader-n');
-    if (cap) cap.textContent = html.getAttribute('data-ydx-l') === 'en' ? 'TOMI · Loading' : 'TOMI · טוען';
-    var target = 0, shown = 0, readyAt = 0, exiting = false, finished = false;
-
-    function read() {
-      var v = parseFloat(src && src.textContent) || 0;
-      if (v > target) target = Math.min(100, v);
-    }
-    if (src) new MutationObserver(read).observe(src, { childList: true, characterData: true, subtree: true });
-
-    var TOP = 34, BOT = 168, last = performance.now(); // device silhouette span in the SVG viewBox
-    function paint(now) {
-      if (finished) return;
-      read();
-      // time-based easing (not per-frame) so a slow first WebGL frame on weak devices never stretches the loader
-      var dt = Math.min(200, (now || performance.now()) - last);
-      last = now || performance.now();
-      shown += (target - shown) * (reduced ? 1 : 1 - Math.exp(-dt / 110));
-      if (Math.abs(target - shown) < 0.25) shown = target;
-      var p = shown / 100, y = BOT - (BOT - TOP) * p;
-      ring.style.strokeDasharray = shown.toFixed(2) + ' 100';
-      lv.setAttribute('y', y.toFixed(2));
-      surf.setAttribute('cy', y.toFixed(2));
-      surf.setAttribute('rx', y < 63 ? 12 : 22);
-      var mid = p > 0.01 && p < 0.995, rx = y < 63 ? 12 : 22;
-      surf.style.strokeOpacity = mid ? '0.9' : '0';
-      // the liquid's top face: a filled ellipse makes the rising level read as a 3D cylinder section
-      topE.setAttribute('cy', y.toFixed(2)); topE.setAttribute('rx', rx); topE.style.opacity = mid ? '1' : '0';
-      num.textContent = String(Math.round(shown));
-      requestAnimationFrame(paint);
-    }
-    requestAnimationFrame(paint);
-
-    function onReady() {
-      if (readyAt) return;
-      readyAt = performance.now();
-      target = 100;
-      // leave as soon as the minimum display time is met; the fill tops up during the exit choreography
-      setTimeout(exit, Math.max(0, MIN - readyAt));
-    }
-    if (html.classList.contains('ready')) onReady();
-    else new MutationObserver(function (_, mo) {
-      if (html.classList.contains('ready')) { mo.disconnect(); onReady(); }
-    }).observe(html, { attributes: true, attributeFilter: ['class'] });
-
-    // safety: the app never reported progress nor readiness 4s after load -> its script failed; do not trap the user
-    addEventListener('load', function () {
-      setTimeout(function () { if (!readyAt && target === 0) exit(); }, 4000);
-    });
-
-    function exit() {
-      if (exiting) return;
-      exiting = true;
-      L.style.pointerEvents = 'none'; // the page is usable the moment the exit starts
-      try { sessionStorage.setItem('ydx-tomi-seen', '1'); } catch (e) {}
-      if (reduced || !L.animate) {
-        var f = L.animate ? L.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, fill: 'forwards' }) : null;
-        if (f) f.onfinish = finish; else finish();
-        return;
-      }
-      var fast = frame || repeat, D = fast ? 520 : 820;
-      var mark = L.querySelector('.ydx-mark');
-      mark.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.14)', opacity: 0 }],
-        { duration: D * 0.55, easing: EASE_IN, fill: 'forwards' });
-      ring.animate([{ transform: 'rotate(-90deg) scale(1)' }, { transform: 'rotate(-90deg) scale(1.35)' }],
-        { duration: D * 0.55, easing: EASE_IN, fill: 'forwards' });
-      L.querySelectorAll('.ydx-count,.ydx-cap').forEach(function (el, i) {
-        el.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateY(-16px)', opacity: 0 }],
-          { duration: D * 0.4, delay: i * 50, easing: EASE_IN, fill: 'forwards' });
-      });
-      var wipe = L.animate([{ clipPath: 'inset(0 0 0 0)' }, { clipPath: 'inset(0 0 100% 0)' }],
-        { duration: D, delay: D * 0.28, easing: EASE_IO, fill: 'forwards' });
-      wipe.onfinish = finish;
-      setTimeout(finish, D * 1.6); // in case the tab is hidden and animations are throttled
-    }
-    function finish() {
-      if (finished) return;
-      finished = true;
-      L.hidden = true;
-      L.setAttribute('aria-hidden', 'true');
-      html.classList.remove('ydx-load');
-      html.classList.add('ydx-loaded');
-    }
-  })();
+  /* 1. loader: moved to ydx/boot.js in round 2 (sync in <head>; it must not wait for the app bundle) */
 
   /* ------------------------------------------------------------------ 2. header
    * The fixed header is transparent over the home sections and its links collide with section copy while

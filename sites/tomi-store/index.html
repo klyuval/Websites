@@ -30,16 +30,13 @@
     .ydx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
     html.ydx-load body{background:var(--ydx-l3,#331958)}
     .ydx-mark .tp{fill:#e6d9c4}
+    .ydx-count>*{transition:opacity .35s}
+    html.ydx-load:not(.ydx-f) .ydx-count>*{opacity:0}
     html.ready .ydx-loader:not(.ydx-ctl){clip-path:inset(0 0 100% 0);visibility:hidden;transition:clip-path .9s cubic-bezier(.22,1,.36,1),visibility 0s .9s}
   </style>
   <noscript><style>.ydx-loader{display:none}</style></noscript>
-  <!-- ydx: loader setup (colour from the model in the URL, repeat/iframe flags) -->
-  <script data-ydx>(function(){var d=document.documentElement,c=d.classList;c.add('ydx-js','ydx-load');try{if(sessionStorage.getItem('ydx-tomi-seen'))c.add('ydx-repeat')}catch(e){}try{if(window.self!==window.top)c.add('ydx-frame')}catch(e){c.add('ydx-frame')}
-  var h=location.hash||'',id=h.indexOf('#/')===0?'':h.slice(1).split('/')[0],M={x:'#17a673','xl':'#6b34b8','xl-plus':'#f28c0f',ultima:'#e0262c'},hex=M[id]||'#6b34b8',
-  mix=function(a,t,b){var o='#';for(var i=1;i<7;i+=2){var x=parseInt(a.substr(i,2),16),y=parseInt(b.substr(i,2),16);o+=('0'+Math.round(x+(y-x)*t).toString(16)).slice(-2)}return o},st=d.style;
-  st.setProperty('--ydx-l1',mix(hex,.14,'#ffffff'));st.setProperty('--ydx-l2',hex);st.setProperty('--ydx-l3',mix(hex,.52,'#000000'));
-  if(id==='xl-plus'){st.setProperty('--ydx-lf','#0e0d0c');st.setProperty('--ydx-acc','#0e0d0c')}else if(id==='ultima'){st.setProperty('--ydx-acc','#fff8ef')}
-  var en=false;try{en=localStorage.getItem('tomi-lang')==='en'}catch(e){}d.setAttribute('data-ydx-l',en?'en':'he')})();</script>
+  <!-- ydx: loader colour + flags + controller. External, not inline: the live CSP (script-src 'self') blocks inline scripts. Sync on purpose: tiny, and it must run before first paint. -->
+  <script src="/ydx/boot.js"></script>
   <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
   <script src="/ydx/enhance.js" defer></script><!-- ydx -->
 </head>
