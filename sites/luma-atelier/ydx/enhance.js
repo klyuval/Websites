@@ -146,7 +146,7 @@
       const s = performance.now();
       const poll = () => {
         if (getComputedStyle(html).getPropertyValue('--ydx-css').trim()) return res(true);
-        if (window.__ydxCssFail || performance.now() - s > 2500) return res(false);
+        if (window.__ydxCssFail || performance.now() - s > 1500) return res(false);
         setTimeout(poll, 30);
       };
       poll();

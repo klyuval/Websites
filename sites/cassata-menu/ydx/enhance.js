@@ -462,7 +462,7 @@
   /* 6. Scoop cursor (fine pointers): a red dot that turns into a ✳      */
   /*    sticker over anything that opens a flavour                       */
   /* ---------------------------------------------------------------- */
-  if (FINE && w.self === w.top) whenCss.then(() => { if (cssOK()) cursor(); });
+  if (FINE && w.self === w.top) (w.__ydxCss || Promise.resolve()).then(() => { if (cssOK()) cursor(); }); // however late the CSS is
   function cursor() {
     const c = d.createElement('div');
     c.className = 'ydx-cursor';
