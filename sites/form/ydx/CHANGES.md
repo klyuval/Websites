@@ -285,3 +285,93 @@ were never put in the site).
   tweening. Without `:has()`, the CSS-only safety fade waits for its 15 s cap (the JS backstops still apply).
 - The 6 s backstop is a fixed number. On a page that mounts but whose enhance.js is extremely late, the loader lifts
   without its exit choreography.
+
+## Round 4
+
+I went through every coach and client view as a whole: desktop 1440 and iPhone 13, Hebrew and English, the sign-in
+screen, and the empty, no-result and revisit states. FORM is a tool people keep open all day, so I asked where the
+motion was costing time or attention rather than adding anything. My judgement: the art direction and the
+loader/curtain system are coherent, and nothing more needs adding there. What was left was (a) the motion replaying on
+every view switch, (b) the same kind of motion using five different curves, (c) indicators that looped forever, and
+(d) the empty and no-result states, which were the least finished part of the app.
+
+**Changed**
+1. **Calm revisits (daily-use speed):**
+   - **First visit:** each view gets its full entrance the first time it is opened in a page load: block stagger,
+     count-ups, plate stacks, rings, macro bars, the trend line and scroll reveals.
+   - **Going back to a view:** the content is simply there under a quicker 380 ms curtain (the first visit's
+     curtain is 480 ms). The `html.ydx-calm` class stops the CSS build-ups, and the JS stagger and count-ups are
+     skipped.
+   - **When it is decided:** in the MutationObserver callback, before the new view's nodes get their first style,
+     so build-ups never start and then cut off. It is only re-decided when the view changes, so the second render of
+     the same view (when data arrives) keeps its state.
+   - **Reset:** the "seen" list clears on sign-out.
+   - **Measured** (click until main is still): clients 944 ms on first visit, 91 ms on revisit. Nutrition 1456 → 464
+     ms. Client training on mobile 1148 → 560 ms. Progress 1269 → 351 ms.
+2. **Motion tokens:**
+   - **Curves:** `--ydx-out` (the app's own `--ease`), `--ydx-pop` (one plate-drop overshoot instead of 1.2, 1.25,
+     1.4 and 1.5) and `--ydx-draw` (smear, poster word, trend line).
+   - **Durations:** micro .18s, pop .36s, small entrance .42s, block .62s, draw 1.1s. enhance.js mirrors them as
+     `EASE_OUT`, `EASE_POP`, `EASE_DRAW`.
+   - **Curtains:** the loader exit, the full-screen curtains and the view curtains used two different curves for the
+     same slide. They now share one `EASE_WIPE` (`.65,0,.15,1`).
+   - **Kept on purpose:** the error shake keeps its own spring.
+3. **Empty states (all views):**
+   - When an `.empty` or `.quiet-note` card replaces a list (no search result, an empty calendar day, no meals), it
+     settles in with the small-entrance token.
+   - Its bare barbell "test-loads" once: each empty slot flashes its plate colour in loading order (red, blue,
+     yellow, green, steel) and drains again. This echoes the boot loader. It plays once per mount and never loops.
+
+**Bugs fixed**
+1. **Invisible primary button in empty states** (clients filter/search with no match, and every other `.empty` card
+   with an action; all viewports). The app's `.btn.primary` is chalk on the chalk `.empty` card, so only its plate
+   strip showed. It now uses the ink variant the app already uses for primaries in panels and sheets, with the
+   matching hover.
+2. **Library search dead end** (coach → library, all viewports and both languages):
+   - **Exercises:** a search with no match left a completely blank grid. It now shows an `.empty`-style card ("המדף
+     ריק" / "Nothing on the rack", with a hint to search again or add a movement).
+   - **Food library:** only the table header was left. It now shows "No ingredients match this search" above the
+     fine print.
+   - **How:** CSS only (`:empty` / `:has(tbody:empty)` with generated content). Nothing is inserted into React's
+     tree. The copy follows the app's tone, and Hebrew uses the gender-neutral infinitive like the app's own strings.
+
+**Removed (noise)**
+- The live, sample-studio and unread-bell dots pinged in an infinite loop on every screen. They now ping 3 times when
+  they appear and then rest.
+
+**Considered and left alone**
+- Footer and end-of-page moments, a cursor follower, idle animations: they would be spectacle in a work tool.
+- The view curtain's outlined label is the one identity moment per switch, so it stays, just faster on revisits.
+- The LANG2 init-script trick does not switch the stubbed app to English, because the stub user's locale wins. For
+  the English pass I used the app's own language switcher.
+
+**Regression (round-3 scripts reused from `form-r4/`, plus shoot.mjs)**
+- **prod.cjs:** every scenario is usable, with the same numbers as before my changes:
+  - normal about 2.0 s;
+  - enhance.js 404 or HTML 1.7–1.8 s;
+  - enhance.css 404 or HTML about 2.0 s;
+  - both 404 1.7 s;
+  - enhance.js 8 s late 6.1 s;
+  - bundle 8 s late 8.8 s;
+  - API hanging 4.3 s, then the app's loading screen;
+  - live headers about 2.0 s;
+  - no-JS: no loader.
+- **Dialogs:** open and play normally after the loader in every scenario.
+- **bugs.cjs B1–B5:**
+  - B1: a late enhance.js lets the fade finish;
+  - B2: a thrown step does not leave the page locked;
+  - B3: no reveal stuck pending on any view (coach and client, desktop and mobile);
+  - B4: one wipe per switch when the script runs twice;
+  - B5: HTML fallback usable at 1.7 s.
+- **extra.cjs:**
+  - hidden or frozen tab recovers;
+  - back/forward during the loader is fine;
+  - repeat visit is short;
+  - rapid switching leaves no stray wipes;
+  - reduced motion: fade only;
+  - iframe: the loader is on screen 670–715 ms by in-page timing, the same as round 3's script in an A/B under the
+    same load. Wall-clock numbers vary with machine load (load average about 21 during the run).
+- **final.cjs:** CLS 0–0.0003 and no overflow (coach 1440, iPhone 13 client and sign-in).
+- **shoot.mjs desktop and mobile:** only the expected blocked-Supabase line.
+- **Tours** (coach and client, desktop and mobile, Hebrew and English): no overflow and no console errors.
+- **Live headers** (`curl -sI`): still no CSP or XFO, so nothing new to allow.
