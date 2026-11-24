@@ -5,8 +5,14 @@
    3. hero fizz trail, add-to-mix fizz burst
    4. reveal choreography (brand "squeeze" on headings, kicker wipes, staggered lineups), hero scroll scatter
    5. magnetic pills
-   Vanilla, no dependencies. Runs after the site's bundle (both are deferred, in document order). */
+   Vanilla, no dependencies. Loaded `async`: it may arrive before or after the site's bundle, so it waits for the
+   parsed DOM itself and depends on nothing the bundle sets up. */
 (() => {
+  if (window.__ydxPeel) return; // included twice: run once
+  window.__ydxPeel = true;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once: true });
+  else run();
+function run() {
   const d = document.documentElement;
   const RM = matchMedia('(prefers-reduced-motion: reduce)');
   const FINE = matchMedia('(hover: hover) and (pointer: fine)');
@@ -43,17 +49,18 @@
     const gate = mode === 'load' ? Promise.race([loaded, Promise.all([fonts, heroReady])]) : Promise.all([fonts, heroReady]);
     const capMs = { load: 2600, frame: 260, nav: 320, short: 900 }[mode] ?? 900;
     const cap = wait(Math.max(0, capMs - since()));
-    Promise.race([gate, cap]).then(() => wait(Math.max(0, minMs - since()))).then(leaveCurtain);
+    // whatever happens in leaveCurtain (a throw included), the curtain goes and the page's entrance is released
+    const done = () => { curtain.remove(); releaseHold(); d.removeAttribute('data-ydx'); d.removeAttribute('data-ydx-label'); };
+    Promise.race([gate, cap]).then(() => wait(Math.max(0, minMs - since()))).then(leaveCurtain).catch(() => {}).then(done);
 
     async function leaveCurtain() {
-      if (curtain.dataset.out) return releaseHold();
+      if (curtain.dataset.out) return; // the inline safety net is already fading it
       curtain.dataset.out = '1';
       ss.set('ydx-seen', '1');
-      const done = () => { curtain.remove(); releaseHold(); d.removeAttribute('data-ydx'); d.removeAttribute('data-ydx-label'); };
       if (RM.matches) {
         releaseHold();
         await anim(curtain, [{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: 'ease-out', fill: 'forwards' }).finished.catch(() => {});
-        return done();
+        return;
       }
       if (mode === 'load' || mode === 'frame') { curtain.classList.add('ydx-done'); await wait(mode === 'frame' ? 70 : 260); }
       const sheet = curtain.querySelector('.ydx-sheet');
@@ -68,7 +75,6 @@
         { transform: 'translate(-50%,-50%) rotate(-14deg) scale(1.08,.94)' },
       ], { duration: dur, easing: PEEL, fill: 'forwards' });
       await a.finished.catch(() => {});
-      done();
     }
   }
 
