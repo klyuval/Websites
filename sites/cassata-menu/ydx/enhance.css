@@ -244,3 +244,40 @@ html.ydx-motion .btn { transition: transform .16s var(--ease), box-shadow .16s v
   html.ydx-motion .menu__wait::before,
   html.ydx-motion .menu__empty > span { animation: turn 9s linear infinite; }
 }
+
+/* ================================================================== */
+/* Round 5                                                             */
+/* ================================================================== */
+
+/* Living gelato field (ydx/field.js): a WebGL canvas in <body>, laid over the hero's box and painted
+   under the app (z-index:-1 in the root stacking context, so <body> must not paint its own paper over
+   it — the root already paints the same paper). The hero only turns transparent once the first frame
+   is drawn (html.ydx-gl); the hero's own .7s background transition hands over without a flash. */
+.ydx-field { position: absolute; left: 0; top: 0; z-index: -1; display: block; pointer-events: none; visibility: hidden; }
+.ydx-field.is-on { visibility: visible; }
+html.ydx-gl body { background: transparent; }
+html.ydx-gl .site:not(.host-site) .hero { background-color: transparent !important; }
+
+/* Entry to the Scoop Lab (/play/), created by enhance.js on the home page only. */
+.ydx-lab {
+  position: fixed; z-index: 60; bottom: max(18px, env(safe-area-inset-bottom)); inset-inline-end: 18px;
+  display: inline-flex; align-items: center; gap: 8px; min-height: 52px; padding: 5px 18px 5px 8px;
+  background: var(--cream); color: var(--ink); border: var(--edge) solid var(--ink); border-radius: 999px;
+  box-shadow: 4px 4px 0 var(--ink); font: 800 .95rem/1 var(--text); text-decoration: none; rotate: -3deg;
+  opacity: 0; visibility: hidden; translate: 0 24px;
+  transition: opacity .35s var(--ease), translate .5s var(--spring), visibility 0s linear .5s, transform .16s var(--ease), box-shadow .16s var(--ease);
+}
+.ydx-lab[dir=rtl] { padding: 5px 8px 5px 18px; }
+.ydx-lab.is-on { opacity: 1; visibility: visible; translate: 0 0; transition-delay: 0s; }
+.ydx-lab:hover, .ydx-lab:focus-visible { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ink); }
+.ydx-lab:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.ydx-lab svg { width: 30px; height: 46px; overflow: visible; }
+.ydx-lab__st { transform-box: view-box; transform-origin: 0 32px; }
+body:has(> .sheet) .ydx-lab, body:has(> .dialog-overlay) .ydx-lab { opacity: 0; visibility: hidden; }
+@media (prefers-reduced-motion: no-preference) {
+  html.ydx-motion .ydx-lab__st { animation: ydx-lab-wob 1.6s ease-in-out infinite alternate; }
+  html.ydx-motion .ydx-lab:hover .ydx-lab__st { animation-duration: .5s; }
+}
+@keyframes ydx-lab-wob { from { rotate: -7deg; } to { rotate: 7deg; } }
+@media (max-width: 820px) { .ydx-lab { bottom: max(14px, env(safe-area-inset-bottom)); inset-inline-end: 14px; } }
+@media print { .ydx-lab, .ydx-field { display: none; } }

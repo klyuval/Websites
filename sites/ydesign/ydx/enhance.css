@@ -122,3 +122,100 @@ html.ydx-kbd .contact__copy { visibility: visible !important; opacity: 1 !import
     background: linear-gradient(var(--paper), rgb(246 241 231 / 0));
   }
 }
+
+/* ---------------------------------------------------------------------------------------------------------------
+ * 4. Round 5: the living ink (ydx/immersive.js), the lab invitation, the motion switch, the index preview
+ * ------------------------------------------------------------------------------------------------------------- */
+
+/* The fluid's holder is the first child of the work and contact sections: under every piece of content (z-index -1
+   inside the section's own isolation) and above its flat ink. The canvas is sticky, so it scrolls natively with the
+   section and needs no scroll syncing. */
+.ydx-fluid { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.ydx-fluid__cv { position: sticky; top: 0; display: block; width: 100%; height: 100vh; opacity: 0; transition: opacity 1.2s var(--ease, ease); }
+.ydx-fluid__cv.is-on { opacity: 1; }
+/* No WebGL, a software GPU or frames too slow: a still glow of the studio's colours, placed away from the copy. */
+.ydx-fluid.is-fallback {
+  background:
+    radial-gradient(40vw 30vw at 8% 34%, rgb(240 78 35 / .16), transparent 70%),
+    radial-gradient(34vw 26vw at 96% 12%, rgb(28 70 224 / .14), transparent 70%),
+    radial-gradient(30vw 24vw at 90% 92%, rgb(255 143 174 / .1), transparent 70%);
+}
+/* While the ink runs, the wall lets it glow through the gaps between the tiles (the shader paints the wall's own darker
+   tone underneath). During the dive the wall keeps its solid ground. */
+html.ydx-fluid-on .wall:not(.is-diving) { background: transparent; }
+
+/* The invitation to the ink lab, closing the work section. */
+.ydx-play {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 28px;
+  margin: clamp(40px, 5vw, 84px) var(--pad) 0; padding: clamp(22px, 2.4vw, 36px) 4px 4px;
+  border-top: 2.5px solid var(--cream); color: var(--cream); text-decoration: none;
+}
+.ydx-play__k { grid-column: 1; letter-spacing: .09em; text-transform: uppercase; font-size: 13.5px; font-weight: 800; }
+/* (cream, with an orange dot: small orange type on ink sits right at the 4.5:1 line) */
+.ydx-play__k::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-inline-end: 9px; border-radius: 50%; background: var(--orange); vertical-align: 1px; }
+.ydx-play__t {
+  grid-column: 1; font-family: var(--display); font-variation-settings: "wdth" 70; text-transform: uppercase;
+  font-size: clamp(34px, 5vw, 92px); font-weight: 900; line-height: .95; transition: color .3s;
+}
+.ydx-play__p { grid-column: 1; max-width: 40em; font-size: clamp(16px, 1.2vw, 19px); font-weight: 600; opacity: .86; }
+.ydx-play__dots { grid-column: 1; display: flex; gap: 7px; padding-top: 6px; }
+.ydx-play__dots i { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 0 2px var(--ink); transition: translate .5s var(--ease); transition-delay: calc(var(--ydx-i) * 22ms); }
+.ydx-play__go {
+  grid-column: 2; grid-row: 1 / span 4; display: grid; place-items: center; width: clamp(64px, 7vw, 120px); aspect-ratio: 1;
+  border-radius: 50%; background: var(--orange); color: var(--ink); box-shadow: 5px 6px 0 var(--cream); transition: translate .45s var(--ease), box-shadow .45s var(--ease);
+}
+.ydx-play__go svg { width: 42%; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; transition: translate .45s var(--ease); }
+[dir=rtl] .ydx-play__go svg { scale: -1 1; }
+.ydx-play:hover .ydx-play__t, .ydx-play:focus-visible .ydx-play__t { color: var(--orange); }
+.ydx-play:hover .ydx-play__go, .ydx-play:focus-visible .ydx-play__go { translate: -2px -2px; box-shadow: 8px 9px 0 var(--cream); }
+.ydx-play:hover .ydx-play__go svg, .ydx-play:focus-visible .ydx-play__go svg { translate: 4px 0; }
+[dir=rtl] .ydx-play:hover .ydx-play__go svg, [dir=rtl] .ydx-play:focus-visible .ydx-play__go svg { translate: -4px 0; }
+.ydx-play:hover .ydx-play__dots i, .ydx-play:focus-visible .ydx-play__dots i { translate: 0 -5px; }
+.ydx-play:focus-visible { outline: 3px solid var(--orange); outline-offset: 6px; border-radius: 6px; }
+@media (width <= 599px) {
+  .ydx-play { grid-template-columns: minmax(0, 1fr); }
+  .ydx-play__go { grid-column: 1; grid-row: auto; width: 60px; justify-self: start; }
+  .ydx-play__dots i { width: 12px; height: 12px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html.ydx-js .ydx-play { transition: opacity .7s ease, transform 1s var(--ease); }
+  html.ydx-js .ydx-play:not(.ydx-in) { opacity: 0; transform: translateY(24px); }
+  html.ydx-js .ydx-play:not(.ydx-in) .ydx-play__dots i { translate: 0 14px; }
+}
+
+/* The yellow wipe to and from the lab (the loading screen's yellow, opening from the click). */
+.ydx-wipe {
+  position: fixed; inset: 0; z-index: 95; background: #ffc22e; pointer-events: none;
+  clip-path: circle(0 at var(--x, 50%) var(--y, 50%)); transition: clip-path .42s cubic-bezier(.65, 0, .35, 1);
+}
+.ydx-wipe.is-on { clip-path: circle(150vmax at var(--x, 50%) var(--y, 50%)); }
+.ydx-wipe.is-fade { clip-path: none; opacity: 0; animation: ydx-fade-in .15s forwards; }
+@keyframes ydx-fade-in { to { opacity: 1; } }
+
+/* Footer: the lab link and the motion switch, in the footer row's own type. */
+.ydx-foot { display: flex; align-items: center; gap: 22px; }
+.ydx-foot a { color: inherit; }
+.ydx-foot a:hover { color: var(--orange); }
+.ydx-motion {
+  display: inline-flex; align-items: center; gap: 9px; padding: 4px 0; border: 0; background: none; color: inherit;
+  font: inherit; cursor: pointer;
+}
+.ydx-motion i { position: relative; width: 30px; height: 17px; border-radius: 99px; border: 2px solid currentColor; flex: none; }
+.ydx-motion i::after { content: ""; position: absolute; top: 2px; inset-inline-start: 2px; width: 9px; height: 9px; border-radius: 50%; background: currentColor; transition: translate .3s var(--ease); }
+.ydx-motion[aria-pressed=true] i { background: var(--orange); border-color: var(--orange); }
+.ydx-motion[aria-pressed=true] i::after { background: var(--ink); translate: 13px 0; }
+[dir=rtl] .ydx-motion[aria-pressed=true] i::after { translate: -13px 0; }
+.ydx-motion:disabled { cursor: default; opacity: .7; }
+.ydx-motion:focus-visible, .ydx-foot a:focus-visible { outline: 2px solid var(--orange); outline-offset: 4px; border-radius: 4px; }
+@media (pointer: coarse) { .ydx-foot a, .ydx-motion { position: relative; } .ydx-foot a::before, .ydx-motion::before { content: ""; position: absolute; inset: -10px -8px; } }
+
+/* Index preview: the hovered site's screenshot trails the pointer (enhance.js 5e). */
+.ydx-peek {
+  position: fixed; top: 0; left: 0; z-index: 40; width: 296px; aspect-ratio: 1.6; pointer-events: none;
+  border-radius: 14px; overflow: hidden; background: var(--ink-2); box-shadow: 8px 10px 0 var(--orange);
+  opacity: 0; scale: .7; transition: opacity .25s, scale .45s var(--ease);
+}
+.ydx-peek img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ydx-peek.is-on { opacity: 1; scale: 1; }
+html[data-motion=reduce] .ydx-peek { display: none; }
+@media (prefers-reduced-motion: reduce) { .ydx-peek { display: none; } }

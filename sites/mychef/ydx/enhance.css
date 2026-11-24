@@ -286,5 +286,59 @@ html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paus
        pomegranate once the guest has interacted with it (:user-invalid, so nothing is red before they try). */
 .booking :is(input, textarea):user-invalid { border-bottom-color: var(--pom); box-shadow: 0 2px 0 var(--pom); }
 
+/* ---------------------------------------------------------------------------------------------------------------
+   Round 5 */
+
+/* 5a. The table is lit (ydx/light.js). One fixed, low-resolution WebGL canvas blended with soft-light over the whole
+       page: dappled window light through an olive tree, a candle that follows the hand, a glass "ting" on tap, and
+       each cloth's own light. It sits under the dock (40) and the booking sheet (60/61), never takes the pointer.
+       The wrapper's gradient is the static fallback (no WebGL, software GPU) and what shows before the canvas fades
+       in: a warm pool high on the table and a soft vignette, both close to neutral grey so contrast is unchanged. */
+.ydx-light {
+  position: fixed; inset: 0; z-index: 38; pointer-events: none; mix-blend-mode: soft-light; contain: strict;
+  background: radial-gradient(70vmax 55vmax at 60% 30%, #9b8b72, #818181 62%, #6e6e6e 100%);
+  opacity: 0; transition: opacity 1.4s ease-out;
+}
+html:not(.ydx-loading) .ydx-light { opacity: 1; }
+.ydx-light canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease-out; }
+.ydx-light[data-state=ready] canvas { opacity: 1; }
+
+/* 5b. "Your turn, chef": a place card leading to the plating table (/play/), added by enhance.js part 7. */
+.ydx-play {
+  position: fixed; z-index: 39; bottom: 22px; inset-inline-end: 22px; display: flex; align-items: center; gap: 10px;
+  padding: 8px 18px 8px 8px; background: #fffaf0; color: var(--ink, #0a2f2d); text-decoration: none; border-radius: 3px;
+  box-shadow: 0 2px 3px #04141340, 0 16px 22px -12px #041413a6; rotate: -3deg; min-height: 44px;
+  opacity: 0; translate: 0 24px; visibility: hidden;
+  transition: opacity .5s var(--ydx-ease), translate .6s var(--ydx-ease), rotate .5s var(--ydx-ease), visibility 0s .6s, box-shadow .4s;
+}
+.ydx-play[dir=rtl] { padding: 8px 8px 8px 18px; rotate: 3deg; }
+.ydx-play.is-on.is-past, .ydx-play.is-on.is-open { opacity: 1; translate: none; visibility: visible; transition-delay: 0s; }
+html.ydx-loading .ydx-play { visibility: hidden !important; }
+.ydx-play svg { width: 44px; height: 44px; flex: none; filter: drop-shadow(0 3px 3px #04141340); transition: transform .8s var(--ydx-ease); }
+.ydx-play__t { display: grid; line-height: 1; }
+.ydx-play b { font: 700 25px/1 var(--hand, Caveat, cursive); color: var(--wine, #6b1230); white-space: nowrap; }
+.ydx-play[lang=he] b { font-size: 23px; }
+.ydx-play small { font: 700 11px/1.2 var(--text, Assistant, sans-serif); letter-spacing: .12em; text-transform: uppercase; color: var(--teal, #0d635f); margin-top: 3px; white-space: nowrap; }
+.ydx-play[lang=he] small { letter-spacing: .02em; font-size: 12.5px; }
+.ydx-play:hover, .ydx-play:focus-visible { rotate: 0deg; translate: 0 -4px; box-shadow: 0 3px 4px #04141333, 0 26px 34px -16px #041413b3; }
+.ydx-play:hover svg, .ydx-play:focus-visible svg { transform: rotate(160deg); }
+.ydx-play:focus-visible { outline: 3px solid var(--teal, #0d635f); outline-offset: 4px; }
+@media (max-width: 800px), (max-width: 1100px) and (orientation: portrait) {
+  /* phones: a small round plate in the bottom corner the dock leaves free (the dock sits at the reading end); it opens
+     into the card at the invitation */
+  .ydx-play { bottom: 14px; inset-inline-end: auto; inset-inline-start: 10px; padding: 5px; border-radius: 50%; rotate: 0deg; }
+  .ydx-play[dir=rtl] { padding: 5px; rotate: 0deg; }
+  .ydx-play svg { width: 42px; height: 42px; }
+  .ydx-play__t {
+    position: absolute; bottom: calc(100% + 8px); inset-inline-start: 0; background: #fffaf0; padding: 9px 13px; border-radius: 3px;
+    box-shadow: 0 2px 3px #04141340, 0 14px 20px -12px #041413a6; rotate: -2deg;
+    opacity: 0; transform: translateY(8px) scale(.9); transform-origin: bottom left; transition: opacity .35s, transform .45s var(--ydx-ease); pointer-events: none;
+  }
+  .ydx-play[dir=rtl] .ydx-play__t { transform-origin: bottom right; rotate: 2deg; }
+  .ydx-play.is-open .ydx-play__t { opacity: 1; transform: none; }
+  .ydx-play:hover, .ydx-play:focus-visible { translate: none; }
+}
+@media (prefers-reduced-motion: reduce) { .ydx-play { transition: opacity .2s, visibility 0s .2s; translate: none; } .ydx-play svg { transition: none; } }
+
 /* Never let the overlays reach print. */
-@media print { .ydx-ld, .ydx-wipe { display: none !important; } }
+@media print { .ydx-ld, .ydx-wipe, .ydx-light, .ydx-play { display: none !important; } }

@@ -6,6 +6,8 @@
  * Parts: (1. loader -> ydx/boot.js)  2. header scroll behaviour (+ cart-count pin)  3. language-switch shutter
  *        4. magnetic buttons  5. ring cursor  6. page-title fit (inline font-size on overflowing titles only)
  *        7. route-curtain word mask  8. dial notes clearance (round 2)  9. footer wordmark rise (round 4)
+ *        10. ripple field loader (-> ydx/field.js)  11. dock: Ring Lab entry + motion toggle  12. add-to-cart fly
+ *        (round 5)
  * Round 3: loaded `async` (it must tolerate any order relative to the app bundle and must not hold
  * DOMContentLoaded/load), so it waits for the DOM itself; it runs once even if included twice; it adds
  * enhance.css if boot.js could not; overlays that need enhance.css stay off when that file is missing.
@@ -321,6 +323,175 @@ function run() {
     function later() { clearTimeout(t); t = setTimeout(scan, 60); }
     hosts.forEach(function (h, i) { new MutationObserver(later).observe(h, { childList: true, subtree: i > 0 }); });
     later();
+  })();
+
+  /* ------------------------------------------------------------------ 10. ripple field (round 5)
+   * The reactive background lives in ydx/field.js (see its header). It is loaded late on purpose: after the app's
+   * `ready` (three.js compiles its shaders in the task right after it) plus an idle slot, so it never competes
+   * with the loader exit or the first 3D frames. It runs only where the app's 3D does not draw. */
+  (function fieldLoader() {
+    if (!window.WebGLRenderingContext) return;
+    function load() {
+      if (document.querySelector('script[data-ydx-field]')) return;
+      var s = document.createElement('script');
+      s.src = '/ydx/field.js'; s.async = true; s.setAttribute('data-ydx-field', '');
+      document.head.appendChild(s);
+    }
+    function later() {
+      setTimeout(function () { (window.requestIdleCallback || function (f) { setTimeout(f, 1); })(load, { timeout: 2500 }); }, 900);
+    }
+    if (html.classList.contains('ready')) later();
+    else new MutationObserver(function (_, mo) {
+      if (html.classList.contains('ready')) { mo.disconnect(); later(); }
+    }).observe(html, { attributes: true, attributeFilter: ['class'] });
+  })();
+
+  /* ------------------------------------------------------------------ 11. the dock: Ring Lab entry + motion toggle
+   * (round 5) A small pill outside the app root, at the bottom inline-end corner, shown once the hero is scrolled
+   * away (on the home) and on pages. It invites to /play/ (TOMI Ring Lab, a standalone toy page owned by ydx) and
+   * carries a visible "background motion" switch for the ripple field (remembered; the field also honours
+   * prefers-reduced-motion). It dodges the footer's last line, and hides while the menu, cart, sheet, age gate or
+   * the 3D dial are up. Leaving for the lab plays the store's ring-motif wipe in the current model colour. */
+  (function dock() {
+    var M = { x: [23, 166, 115], xl: [107, 52, 184], 'xl-plus': [242, 140, 15], ultima: [224, 38, 44] };
+    function modelId() {
+      var v = getComputedStyle(html).getPropertyValue('--c2').trim(), m = v.match(/^#([0-9a-f]{6})$/i), c;
+      if (m) { var n = parseInt(m[1], 16); c = [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+      else { m = v.match(/(\d+)\D+(\d+)\D+(\d+)/); c = m ? [+m[1], +m[2], +m[3]] : [107, 52, 184]; }
+      var best = 'xl', bd = 1e9;
+      Object.keys(M).forEach(function (k) { var q = M[k], dd = Math.pow(q[0] - c[0], 2) + Math.pow(q[1] - c[1], 2) + Math.pow(q[2] - c[2], 2); if (dd < bd) { bd = dd; best = k; } });
+      return best;
+    }
+    try { if (localStorage.getItem('ydx-tomi-motion') === 'off') html.setAttribute('data-ydx-motion', 'off'); } catch (e) {}
+    var el = document.createElement('div');
+    el.className = 'ydx-dock';
+    el.innerHTML = '<a class="ydx-lab" href="/play/"><span class="o" aria-hidden="true"></span><span class="t"></span></a>' +
+      '<button class="ydx-mo" type="button"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">' +
+      '<circle cx="12" cy="12" r="3.2"/><path d="M6.3 7.6a8 8 0 0 0 0 8.8M17.7 7.6a8 8 0 0 1 0 8.8M3.6 5.2a12 12 0 0 0 0 13.6M20.4 5.2a12 12 0 0 1 0 13.6"/>' +
+      '<path class="x" d="M4 20 20 4"/></svg></button>';
+    document.body.append(el);
+    var a = el.querySelector('.ydx-lab'), t = el.querySelector('.t'), mo = el.querySelector('.ydx-mo');
+    function text() {
+      var en = html.lang === 'en', off = html.getAttribute('data-ydx-motion') === 'off';
+      t.textContent = en ? 'Ring Lab' : 'מעבדת הטבעות';
+      a.setAttribute('aria-label', en ? 'TOMI Ring Lab: a playful page' : 'מעבדת הטבעות של TOMI: עמוד משחק');
+      mo.setAttribute('aria-pressed', String(!off));
+      mo.setAttribute('aria-label', en ? 'Background motion' : 'תנועת רקע');
+      mo.title = en ? (off ? 'Background motion: off' : 'Background motion: on') : (off ? 'תנועת רקע: כבויה' : 'תנועת רקע: פעילה');
+    }
+    text();
+    new MutationObserver(text).observe(html, { attributes: true, attributeFilter: ['lang', 'data-ydx-motion'] });
+    mo.addEventListener('click', function () {
+      var off = html.getAttribute('data-ydx-motion') !== 'off';
+      if (off) html.setAttribute('data-ydx-motion', 'off'); else html.removeAttribute('data-ydx-motion');
+      try { localStorage.setItem('ydx-tomi-motion', off ? 'off' : 'on'); } catch (e) {}
+    });
+    a.addEventListener('click', function (e) {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      var id = modelId(), href = '/play/?m=' + id;
+      try { sessionStorage.setItem('ydx-tomi-ret', location.hash || ''); } catch (x) {}
+      if (reduced || !Element.prototype.animate || !styled(el)) { location.href = href; return; }
+      var w = document.createElement('div');
+      w.className = 'ydx-wipe'; w.setAttribute('aria-hidden', 'true');
+      document.body.append(w);
+      var go = function () { if (go.done) return; go.done = 1; location.href = href; };
+      setTimeout(go, 700); // armed first
+      try {
+        w.animate([{ clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0 0 0 0)' }], { duration: 420, easing: 'cubic-bezier(.6,0,.3,1)', fill: 'forwards' }).onfinish = go;
+      } catch (x) { go(); }
+    });
+    addEventListener('pageshow', function (e) {
+      if (e.persisted) document.querySelectorAll('.ydx-wipe').forEach(function (w) { w.remove(); });
+    });
+    // visibility + footer dodge, once per frame at most
+    var body = document.body, track = null, ticking = false;
+    function blocked() {
+      return body.classList.contains('menu-open') || body.classList.contains('gated') || body.classList.contains('in-dial') ||
+        !html.classList.contains('ready') || document.querySelector('.drawer:not([hidden]), .sheet:not([hidden])');
+    }
+    function update() {
+      ticking = false;
+      track = track && track.isConnected ? track : document.querySelector('.track');
+      var page = body.classList.contains('in-page');
+      var show = !blocked() && (page || (track && scrollY > track.offsetHeight * 0.9));
+      el.classList.toggle('on', !!show);
+      var left = document.documentElement.scrollHeight - scrollY - innerHeight;
+      el.style.setProperty('--dodge', Math.max(0, 84 - left).toFixed(0) + 'px');
+    }
+    function kick() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+    addEventListener('scroll', kick, { passive: true });
+    addEventListener('resize', kick);
+    addEventListener('hashchange', function () { setTimeout(kick, 400); });
+    new MutationObserver(kick).observe(body, { attributes: true, attributeFilter: ['class'] });
+    new MutationObserver(kick).observe(html, { attributes: true, attributeFilter: ['class'] });
+    document.addEventListener('click', function () { setTimeout(kick, 60); setTimeout(kick, 700); }, true);
+    kick();
+  })();
+
+  /* ------------------------------------------------------------------ 12. add to cart: a device drops into the cart
+   * (round 5) The cart count bump was the only feedback for "added". Now a small TOMI device (the loader's
+   * silhouette) with the pink ring arcs from the button you pressed into the header's cart. It is honest: it only
+   * flies when the cart count actually goes UP within 900 ms of a press outside the cart drawer (the drawer's own
+   * qty buttons change the count too, and there the count is already in view). Transform/opacity only; nothing in
+   * the app's cart logic is touched; off with reduced motion, without WAAPI, and when the cart button is not on screen. */
+  (function cartFly() {
+    if (reduced || !Element.prototype.animate) return;
+    var n = document.querySelector('.cart-n'), cart = document.querySelector('.top .cart');
+    if (!n || !cart) return;
+    var src = null, prev = parseInt(n.textContent, 10) || 0;
+    document.addEventListener('pointerdown', function (e) {
+      var b = e.target.closest && e.target.closest('button');
+      if (!b || b.closest('.drawer, .top')) { src = null; return; }
+      var r = b.getBoundingClientRect();
+      src = { x: r.left + r.width / 2, y: r.top + r.height / 2, t: performance.now() };
+    }, { passive: true, capture: true });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var b = document.activeElement;
+      if (!b || b.tagName !== 'BUTTON' || b.closest('.drawer, .top')) return;
+      var r = b.getBoundingClientRect();
+      src = { x: r.left + r.width / 2, y: r.top + r.height / 2, t: performance.now() };
+    }, true);
+    new MutationObserver(function () {
+      var v = parseInt(n.textContent, 10) || 0, up = v > prev;
+      prev = v;
+      if (!up || !src || performance.now() - src.t > 900) return;
+      var s = src; src = null;
+      // the header pins itself on a count change; measure the cart once it is back in place
+      setTimeout(function () { fly(s); }, 30);
+    }).observe(n, { childList: true, characterData: true, subtree: true });
+    function fly(s) {
+      var r = cart.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > innerHeight || !styledFly()) return;
+      var tx = r.left + r.width / 2, ty = r.top + r.height / 2;
+      var p = document.createElement('div');
+      p.className = 'ydx-fly'; p.setAttribute('aria-hidden', 'true');
+      p.innerHTML = '<i></i>';
+      document.body.append(p);
+      var dx = tx - s.x, dy = ty - s.y, lift = Math.min(220, Math.abs(dx) * 0.35 + 80);
+      var tf = function (k, sc, rot) { // a parabolic hop: x linear, y with a lift that peaks mid-flight
+        return 'translate3d(' + (s.x + dx * k).toFixed(1) + 'px,' + (s.y + dy * k - lift * 4 * k * (1 - k)).toFixed(1) + 'px,0) scale(' + sc + ') rotate(' + rot + 'deg)';
+      };
+      var frames = [], N = 10;
+      for (var i = 0; i <= N; i++) {
+        var k = i / N, e = 1 - Math.pow(1 - k, 2.2);
+        frames.push({ transform: tf(e, (1 - 0.55 * k).toFixed(3), (dx > 0 ? 1 : -1) * 200 * e), opacity: k > 0.92 ? 0 : 1 });
+      }
+      var an = p.animate(frames, { duration: 720, easing: 'linear', fill: 'forwards' });
+      var done = function () { p.remove(); };
+      an.onfinish = done; setTimeout(done, 1400);
+      // the ring lands: a pink ripple on the cart (the stage ripple, small)
+      setTimeout(function () {
+        var rp = document.createElement('div');
+        rp.className = 'ydx-fly-ring'; rp.setAttribute('aria-hidden', 'true');
+        rp.style.left = tx.toFixed(1) + 'px'; rp.style.top = ty.toFixed(1) + 'px'; // static position; only `scale`/opacity animate
+        document.body.append(rp);
+        rp.animate([{ opacity: 1, scale: '0.4' }, { opacity: 0, scale: '2.4' }], { duration: 620, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' }).onfinish = function () { rp.remove(); };
+        setTimeout(function () { rp.remove(); }, 1200);
+      }, 640);
+    }
+    function styledFly() { var x = document.createElement('div'); x.className = 'ydx-fly'; document.body.append(x); var ok = styled(x); x.remove(); return ok; }
   })();
 }
 })();

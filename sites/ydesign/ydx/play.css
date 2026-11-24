@@ -1,0 +1,115 @@
+/* ydx play.css: the ink lab (/play/, /he/play/). Built on the site's own stylesheet (fonts, tokens, .btn, .kick, .link,
+ * the grain), so the lab wears the hub's poster style: ink ground, cream type, orange accents, hard offset shadows. */
+
+html.pl, html.pl body { background: var(--ink); color: var(--cream); }
+html.pl body { min-height: 100svh; overflow-x: clip; }
+.pl a { color: inherit; text-decoration: none; }
+
+/* The canvas fills the screen behind everything; it takes the drag (touch-action none) but the panels sit above it. */
+.pl-cv { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+/* Without WebGL (or before it starts) the chosen site shows as a still, through a soft ink mask: still designed. */
+.pl-still {
+  position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; opacity: .9;
+  -webkit-mask-image: radial-gradient(60% 55% at 62% 58%, #000 20%, #0000 72%); mask-image: radial-gradient(60% 55% at 62% 58%, #000 20%, #0000 72%);
+  transition: opacity .6s;
+}
+[dir=rtl] .pl-still { -webkit-mask-image: radial-gradient(60% 55% at 38% 58%, #000 20%, #0000 72%); mask-image: radial-gradient(60% 55% at 38% 58%, #000 20%, #0000 72%); }
+html.pl-gl .pl-still { opacity: 0; }
+
+.pl-nav {
+  position: fixed; inset: 0 0 auto; z-index: 20; display: flex; align-items: center; gap: 22px; height: var(--navh);
+  padding: 0 var(--pad); pointer-events: none;
+}
+.pl-nav > * { pointer-events: auto; }
+.pl-mark { font-family: var(--display); font-variation-settings: "wdth" 88; letter-spacing: -.045em; font-size: 28px; font-weight: 900; margin-inline-end: auto; }
+.pl-lang { font-size: 15px; font-weight: 800; padding: 10px 2px; }
+.pl-lang:hover, .pl-mark:hover { color: var(--orange); }
+.pl-back { --b-shadow: var(--cream); }
+
+/* Copy panel: ink glass, so the cream type keeps its contrast over any frame of the painting. */
+.pl-copy {
+  position: absolute; z-index: 10; top: calc(var(--navh) + 6px); inset-inline-start: var(--pad); width: min(560px, calc(100% - 2 * var(--pad)));
+  padding: clamp(18px, 2vw, 28px); border-radius: var(--r); background: rgb(23 19 15 / .82);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 0 0 1.5px rgb(255 246 230 / .14);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .pl-copy { background: rgb(23 19 15 / .94); } }
+.pl-copy .kick { color: var(--cream); }
+.pl-copy .kick::after { display: none; }
+.pl-copy h1 {
+  margin: 14px 0 10px; font-family: var(--display); font-variation-settings: "wdth" 70; text-transform: uppercase;
+  font-size: clamp(40px, 5.2vw, 92px); font-weight: 900; line-height: .92; letter-spacing: -.01em;
+}
+.pl-copy h1 em { font-style: normal; color: var(--orange); }
+.pl-copy > p:not(.kick) { margin: 0; max-width: 34em; font-size: clamp(15.5px, 1.15vw, 18px); font-weight: 600; opacity: .9; }
+.pl-hint { display: inline-block; margin-top: 12px; font-family: var(--hand); font-size: 22px; line-height: 1; color: var(--orange); }
+
+/* The dock: what is pouring now, the tools and the twelve pots. */
+.pl-dock {
+  position: fixed; z-index: 10; inset: auto var(--pad) clamp(14px, 2vw, 28px); display: grid; gap: 14px 22px;
+  grid-template-columns: minmax(0, 1fr) auto; align-items: end; pointer-events: none;
+}
+.pl-dock > * { pointer-events: auto; }
+.pl-now {
+  grid-column: 2; grid-row: 1; justify-self: end; min-width: 240px; padding: 16px 18px; border-radius: var(--r);
+  background: var(--cream); color: var(--ink); box-shadow: 7px 8px 0 var(--now, var(--orange)); transition: box-shadow .5s var(--ease);
+}
+.pl-now__k { font-size: 12.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; opacity: .7; }
+.pl-now h2 { margin: 4px 0 2px; font-family: var(--display); font-variation-settings: "wdth" 70; text-transform: uppercase; font-size: clamp(28px, 2.6vw, 44px); font-weight: 900; line-height: 1; }
+.pl-now__s { font-size: 15px; font-weight: 600; }
+.pl-now .link { display: inline-block; margin-top: 8px; font-size: 15px; }
+.pl-tools { grid-column: 2; grid-row: 2; justify-self: end; display: flex; gap: 12px; align-items: center; }
+.pl-tools .btn { --b-shadow: var(--cream); }
+.pl-ghost {
+  height: 46px; padding: 0 20px; border-radius: 99px; border: 2.5px solid var(--cream); background: rgb(23 19 15 / .7); color: var(--cream);
+  font: inherit; font-size: 15.5px; font-weight: 800; cursor: pointer; transition: background-color .25s, color .25s;
+}
+.pl-ghost:hover { background: var(--cream); color: var(--ink); }
+.pl-pots { grid-column: 1; grid-row: 1 / span 2; display: flex; flex-wrap: wrap; gap: 10px; align-self: end; }
+.pl-pot {
+  display: inline-flex; align-items: center; gap: 9px; height: 46px; padding: 0 16px 0 10px; border-radius: 99px;
+  border: 2px solid rgb(255 246 230 / .28); background: rgb(23 19 15 / .82); color: var(--cream); font: inherit;
+  font-size: 15px; font-weight: 800; cursor: pointer; white-space: nowrap;
+  transition: background-color .25s, color .25s, border-color .25s, box-shadow .35s var(--ease), translate .35s var(--ease);
+}
+[dir=rtl] .pl-pot { padding: 0 10px 0 16px; }
+.pl-pot__sw { display: flex; }
+.pl-pot__sw i { width: 16px; height: 16px; border-radius: 50%; box-shadow: 0 0 0 2px var(--ink); }
+.pl-pot__sw i + i { margin-inline-start: -5px; }
+.pl-pot:hover { border-color: var(--cream); translate: 0 -2px; }
+.pl-pot[aria-checked=true] { background: var(--cream); color: var(--ink); border-color: var(--cream); box-shadow: 4px 5px 0 var(--orange); }
+.pl-pot:focus-visible, .pl-ghost:focus-visible, .pl-lang:focus-visible, .pl-mark:focus-visible, .pl-now .link:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+
+/* The designer's cursor (the hub's loader cursor) paints by itself while nobody else does. */
+.pl-cursor { position: fixed; top: 0; left: 0; z-index: 9; pointer-events: none; opacity: 0; transition: opacity .5s; will-change: transform; }
+.pl-cursor.is-on { opacity: 1; }
+.pl-cursor svg { width: 22px; height: 28px; filter: drop-shadow(3px 4px 0 #17130f); display: block; }
+.pl-cursor b {
+  position: absolute; top: 24px; left: 14px; padding: 3px 9px 4px; border-radius: 99px; background: var(--now, var(--orange)); color: var(--ink);
+  font-size: 13px; font-weight: 800; white-space: nowrap; box-shadow: 2px 3px 0 #17130f; transition: background-color .5s;
+}
+.pl-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (width <= 899px) {
+  .pl-copy { top: calc(var(--navh) - 8px); padding: 14px 16px; }
+  .pl-copy h1 { font-size: clamp(30px, 9vw, 52px); margin: 10px 0 6px; }
+  .pl-copy > p:not(.kick) { font-size: 14.5px; }
+  .pl-hint { font-size: 19px; margin-top: 8px; }
+  .pl-dock { grid-template-columns: minmax(0, 1fr) auto; inset-inline: 0; padding-inline: var(--pad); }
+  .pl-now { grid-column: 1; grid-row: 1; justify-self: stretch; min-width: 0; padding: 12px 14px; box-shadow: 5px 6px 0 var(--now, var(--orange)); }
+  .pl-now h2 { font-size: 26px; }
+  .pl-tools { grid-column: 2; grid-row: 1; flex-direction: column; align-self: stretch; justify-content: flex-end; }
+  .pl-pots {
+    grid-column: 1 / -1; grid-row: 2; flex-wrap: nowrap; overflow-x: auto; margin-inline: calc(-1 * var(--pad)); padding: 4px var(--pad) 8px;
+    scrollbar-width: none; scroll-snap-type: x proximity;
+  }
+  .pl-pots::-webkit-scrollbar { display: none; }
+  .pl-pot { scroll-snap-align: start; flex: none; }
+  .pl-back { display: none; }
+}
+@media (width <= 899px) and (max-height: 700px) { .pl-copy > p:not(.kick) { display: none; } }
+
+/* Loading screen: the hub's yellow and its designer's cursor; the yellow closes into the cursor's click. Pure CSS, so it
+   always leaves on its own (also without JS); html.pl-fast (a repeat visit or a frame) plays a short version. */
+@media (prefers-reduced-motion: no-preference) {
+  .pl-cursor { transition: opacity .5s; }
+}

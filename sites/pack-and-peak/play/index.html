@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Route lab · Pack &amp; Peak</title>
+<meta name="description" content="Plot your own line: draw a route across a living topographic map, raise peaks, dig lakes, and walk it."/>
+<meta name="theme-color" content="#f3ecdb"/>
+<link rel="icon" href="/favicon.svg"/>
+<link rel="preload" href="/_next/static/_vinext_fonts/alfa-slab-one-7e53ab516394/alfa-slab-one-0d51ac9e.woff2" as="font" type="font/woff2" crossorigin/>
+<link rel="preload" href="/_next/static/_vinext_fonts/hanken-grotesk-ff8c01ec1842/hanken-grotesk-fe1634f9.woff2" as="font" type="font/woff2" crossorigin/>
+<!-- ydx: arrival cover (critical CSS; it is the same paper band the journey's chapter-jump strata end on, so the
+     page change reads as one sweep). Shown only with JS; lab.js lifts it, the inline safety clears it at 3.5 s. -->
+<style data-ydx>#lab-cover{display:none}html.ydx-js:not(.lab-in) #lab-cover{display:block;position:fixed;inset:0;z-index:100;pointer-events:none;overflow:hidden;contain:strict}#lab-cover .lc-a,#lab-cover .lc-b{position:absolute;left:0;right:0;top:0;height:100%}#lab-cover .lc-a{background:#f0441e}#lab-cover .lc-b{background:#f3ecdb url(/img/topo-sienna.webp) 50%/cover;display:grid;place-content:center;justify-items:center;gap:18px;color:#0b1a28}#lab-cover svg.lc-edge{position:absolute;left:0;top:calc(100% - 1px);width:100%;height:9vh;min-height:46px}#lab-cover .lc-a svg.lc-edge{fill:#f0441e}#lab-cover .lc-b svg.lc-edge{fill:#f3ecdb}#lab-cover .lc-pin{width:74px;height:74px;border-radius:50%;border:5px solid #fff;background:#f0441e;color:#fff6e3;display:grid;place-items:center}#lab-cover .lc-eye{font:800 .76rem/1 "Hanken Grotesk",Arial,sans-serif;letter-spacing:.17em;margin-top:4px}#lab-cover .lc-name{font:400 clamp(2rem,5vw,4.4rem)/1 "Alfa Slab One",Rockwell,Georgia,serif;letter-spacing:-.01em;margin-top:-8px;text-align:center;padding:0 20px}</style>
+<script data-ydx>(function(){var d=document.documentElement;d.className+=' ydx-js';try{if(matchMedia('(prefers-reduced-motion: reduce)').matches)d.className+=' lab-rm'}catch(e){}setTimeout(function(){d.classList.add('lab-on','lab-in')},3500)})();</script>
+<link rel="stylesheet" href="/ydx/lab.css"/>
+<script src="/ydx/topo.js" defer></script>
+<script src="/ydx/lab.js" defer></script>
+</head>
+<body>
+<div id="lab-cover" aria-hidden="true">
+  <div class="lc-a"><svg class="lc-edge" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 0v3c6 2 11 4 18 3s12-4 20-3 13 4 21 4 12-4 20-4 14 3 21 2V0z"/></svg></div>
+  <div class="lc-b"><svg class="lc-edge" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 0v3c6 2 11 4 18 3s12-4 20-3 13 4 21 4 12-4 20-4 14 3 21 2V0z"/></svg>
+    <span class="lc-pin"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19c3-1 4-5 7-6s5 2 9-3"/><circle cx="4" cy="19" r="1.6" fill="currentColor"/><path d="M20 10V4l-4 2 4 2"/></svg></span>
+    <span class="lc-eye">ROUTE LAB</span><span class="lc-name">Plot your own line</span>
+  </div>
+</div>
+
+<div class="lab-map" aria-hidden="true">
+  <canvas id="lab-gl"></canvas>
+  <canvas id="lab-2d"></canvas>
+  <div class="lab-grid"></div>
+</div>
+<svg class="lab-route" id="lab-route" aria-hidden="true">
+  <path class="lr-case"/><path class="lr-dash"/>
+  <g class="lr-top"><path d="M0 0v-30" class="lr-pole"/><path d="M0 -30l18 6-18 6z" class="lr-pennant"/><text x="12" y="10" class="lr-label"></text></g>
+  <circle class="lr-start" r="9"/>
+  <circle class="lr-hiker" r="8"/>
+</svg>
+<div class="lab-pad" id="lab-pad" role="application" aria-label="Topographic map. Drag to draw a route; with the raise or dig tool, press and hold to shape the land."></div>
+<div class="lab-reticle" id="lab-reticle" aria-hidden="true"><span class="lr-ring"></span><span class="lr-read"></span></div>
+
+<header class="lab-top">
+  <a class="lab-brand" href="/" data-lab-leave aria-label="Pack and Peak, back to the journey"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>pack<span>&amp;</span>peak<sup>®</sup></a>
+  <a class="lab-back" href="/#terrain" data-lab-leave><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Back to the journey</a>
+</header>
+
+<main class="lab-ui">
+  <section class="lab-intro" aria-labelledby="lab-title">
+    <p class="lab-eyebrow"><i class="lab-blaze" aria-hidden="true"></i>05 / Route lab</p>
+    <h1 id="lab-title">Plot your <em>own line.</em></h1>
+    <p class="lab-copy">Draw a route across the map and see what it asks of you. Raise a peak, dig a tarn, then walk it.</p>
+    <noscript><p class="lab-copy"><strong>The route lab needs JavaScript.</strong> <a href="/#terrain">Back to the journey</a>.</p></noscript>
+    <div class="lab-tools" role="radiogroup" aria-label="Tool">
+      <button type="button" role="radio" aria-checked="true" data-tool="draw"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19c3-1 4-5 7-6s5 2 9-3"/></svg>Draw</button>
+      <button type="button" role="radio" aria-checked="false" data-tool="raise"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 19 6-11 4 6 3-4 5 9z"/></svg>Raise</button>
+      <button type="button" role="radio" aria-checked="false" data-tool="dig"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9c3 0 3 2 6 2s3-2 6-2 3 2 6 2M3 15c3 0 3 2 6 2s3-2 6-2 3 2 6 2"/></svg>Dig</button>
+    </div>
+    <div class="lab-actions">
+      <button type="button" class="lab-btn" data-act="surprise">Plot one for me</button>
+      <button type="button" class="lab-btn" data-act="land">New land</button>
+      <button type="button" class="lab-btn lab-btn-q" data-act="clear">Clear</button>
+    </div>
+  </section>
+
+  <section class="lab-readout" aria-labelledby="lab-name">
+    <p class="lab-eyebrow"><i class="lab-blaze" aria-hidden="true"></i><span id="lab-kind">Your line</span></p>
+    <h2 id="lab-name">Draw to begin</h2>
+    <svg class="lab-profile" id="lab-profile" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true"><polygon points="0,32 100,32"/><polyline points=""/><line class="lp-mark" x1="0" x2="0" y1="0" y2="32"/></svg>
+    <div class="lab-stats" aria-live="polite">
+      <div><strong id="ls-dist">0<small>km</small></strong><span>Distance</span></div>
+      <div><strong id="ls-gain">0<small>m</small></strong><span>Elevation gain</span></div>
+      <div><strong id="ls-time">0<small>h</small></strong><span>Trail time</span></div>
+    </div>
+    <p class="lab-verdict"><span id="lab-high">Highest point · –</span><b id="lab-stamp" class="lab-stamp">Unplotted</b></p>
+    <div class="lab-go">
+      <button type="button" class="lab-walk" data-act="walk" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 4a1 1 0 1 0 0 .01M10 21l2-6 3 3v3M8 12l2-4 4 1 3 3M7 21l3-9"/></svg>Walk it</button>
+      <a class="lab-pack" href="/#pack" data-lab-leave>Pack for it<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
+    </div>
+    <p class="lab-note" id="lab-note">Illustrative terrain. 1 km ≈ the scale bar.</p>
+  </section>
+</main>
+
+<div class="lab-furniture" aria-hidden="true">
+  <span class="lab-north">N</span>
+  <span class="lab-scale"><i></i>1 km</span>
+  <span class="lab-coord" id="lab-coord">46°31′ N · 11°47′ E</span>
+</div>
+<p class="lab-hint" id="lab-hint" aria-hidden="true"><svg width="46" height="16" viewBox="0 0 46 16" fill="none" aria-hidden="true"><path d="M2 13C10 13 12 3 22 4s12 9 22 4" stroke="#fff" stroke-width="6" stroke-linecap="round"/><path d="M2 13C10 13 12 3 22 4s12 9 22 4" stroke="#f0441e" stroke-width="3" stroke-dasharray="6 4"/></svg>Drag anywhere on the map</p>
+</body>
+</html>

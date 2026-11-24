@@ -86,7 +86,7 @@
     }
 
     /* ---------------- 2. page transitions ---------------- */
-    const NAMES = { '/': 'PEEL CLUB', '/flavors/': 'Flavors', '/story/': 'Our story', '/serve/': 'The good pour', '/mix/': 'Build a mix' };
+    const NAMES = { '/': 'PEEL CLUB', '/flavors/': 'Flavors', '/story/': 'Our story', '/serve/': 'The good pour', '/mix/': 'Build a mix', '/lab/': 'Fizz lab' };
     let leaving = null, goTimer = 0, stuckTimer = 0;
     const isFile = u => /\.(?!html?$)[a-z0-9]{2,5}$/i.test(u.pathname); // images, pdf, ...
     // an HTML <a> to another page of this site (SVG <a>.href is an object, not a URL string)
@@ -243,10 +243,14 @@
         if (e.pointerType !== 'mouse' || !FINE.matches) return;
         if (Math.hypot(e.clientX - lx, e.clientY - ly) < 26) return;
         lx = e.clientX; ly = e.clientY;
-        bubble(e.clientX, e.clientY, getComputedStyle(z).color);
+        // over the soda field the bubbles rise inside the soda itself (behind the type), not as DOM rings
+        const sf = window.__ydxSodaField;
+        if (sf && d.classList.contains('ydx-gl') && z.matches('.on-field')) sf.trail(e.clientX, e.clientY, 6 + Math.random() * 12);
+        else bubble(e.clientX, e.clientY, getComputedStyle(z).color);
       }, { passive: true });
       z.addEventListener('pointerdown', e => {
         if (e.pointerType === 'mouse' || e.target.closest('a,button')) return;
+        if (window.__ydxSodaField && d.classList.contains('ydx-gl') && z.matches('.on-field')) return; // the soda answers the tap
         const c = getComputedStyle(z).color;
         for (let i = 0; i < 7; i++) bubble(e.clientX + (Math.random() - 0.5) * 30, e.clientY, c, { delay: i * 35 });
       }, { passive: true });
@@ -277,6 +281,99 @@
       addEventListener('scroll', () => { if (!tt) { tt = true; requestAnimationFrame(sync); } }, { passive: true });
       document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-product],[data-recipe]')) setTimeout(sync, 1100); });
     }
+
+    /* ---------------- 6. the soda field (round 5) ----------------
+       The flat flavour field becomes the inside of the can: one fixed WebGL canvas (ydx/soda.js) behind the page,
+       seen through every field-coloured section (they turn transparent once the first frame is drawn). Pith and flip
+       sections stay flat: they are the calm reading surfaces sliding over the soda. */
+    const fieldZones = [...document.querySelectorAll('main > .on-field, .footer')];
+    const ZONE_INT = [['.hero', 1], ['.story-open', 0.9], ['.serve-open', 0.9], ['.mix-heading', 0.9], ['.lab', 1], ['.stage', 0.62], ['.mix-builder', 0.45], ['.footer', 0.8]];
+    let soda = null;
+    const sodaOn = () => soda && d.classList.contains('ydx-gl');
+    if (fieldZones.length && window.WebGLRenderingContext && !document.querySelector('.ydx-soda')) {
+      let inFrame = true; try { inFrame = window.self !== window.top; } catch (e) {}
+      const coarse = matchMedia('(pointer: coarse)').matches;
+      // test hook: '1' allows a software GPU (headless CI), '2' also turns off the slow-GPU guard (for frame captures)
+      let sw = ''; try { sw = localStorage.getItem('ydx-gl-sw') || ''; } catch (e) {}
+      const wrap = document.createElement('div');
+      wrap.className = 'ydx-soda';
+      wrap.setAttribute('aria-hidden', 'true');
+      const cv = document.createElement('canvas');
+      wrap.append(cv);
+      document.body.append(wrap);
+      const start = () => {
+        if (!window.ydxSoda || soda) return;
+        const cs = getComputedStyle(d);
+        soda = window.ydxSoda.mount(cv, {
+          field: cs.getPropertyValue('--field'), on: cs.getPropertyValue('--on'),
+          lite: coarse || inFrame, quality: inFrame ? 0.55 : coarse ? 0.7 : 0.85, allowSoftware: !!sw, noGuard: sw === '2',
+          onState: st => {
+            d.classList.toggle('ydx-gl', st === 'ready');
+            if (st === 'fallback') { d.classList.add('ydx-nogl'); wrap.remove(); }
+          },
+        });
+        window.__ydxSodaField = soda;
+        // the site's own flavour change sets data-flavor while its rip wipe covers the screen: retint right then
+        new MutationObserver(() => { const c = getComputedStyle(d); soda.setColors(c.getPropertyValue('--field'), c.getPropertyValue('--on')); })
+          .observe(d, { attributes: true, attributeFilter: ['data-flavor'] });
+        // nothing to draw while only pith / flip sections are on screen
+        const seen = new Set();
+        const zio = new IntersectionObserver(es => { es.forEach(e => e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)); soda.hold(!seen.size); });
+        fieldZones.forEach(z => zio.observe(z));
+        // each field section has its own light: the hero is the full sunlit pour, reading sections are calmer
+        let zt = false;
+        const zone = () => {
+          zt = false;
+          const mid = innerHeight / 2;
+          const z = fieldZones.find(el => { const r = el.getBoundingClientRect(); return r.top <= mid && r.bottom > mid; });
+          const hit = z && ZONE_INT.find(([s]) => z.matches(s));
+          soda.setIntensity(hit ? hit[1] : 0.7);
+        };
+        addEventListener('scroll', () => { if (!zt) { zt = true; requestAnimationFrame(zone); } }, { passive: true });
+        zone();
+        // a tap / click on the soda itself pops a ring of fizz from that point
+        fieldZones.forEach(z => z.addEventListener('pointerdown', e => {
+          if (!sodaOn() || e.button > 0 || e.target.closest('a,button,input,label,select,textarea,summary,dialog,[role="button"],[tabindex]:not([tabindex="-1"])')) return;
+          soda.burst(e.clientX, e.clientY, e.pointerType === 'mouse' ? 240 : 200);
+          for (let i = 0; i < 5; i++) soda.trail(e.clientX + (Math.random() - 0.5) * 70, e.clientY + (Math.random() - 0.5) * 30, 7 + Math.random() * 12);
+          navigator.vibrate?.(6);
+        }, { passive: true }));
+      };
+      if (window.ydxSoda) start();
+      else {
+        const s = document.createElement('script');
+        s.src = '/ydx/soda.js';
+        s.async = true;
+        s.onload = start;
+        s.onerror = () => { wrap.remove(); d.classList.add('ydx-nogl'); };
+        document.head.append(s);
+      }
+    } else if (fieldZones.length) d.classList.add('ydx-nogl');
+
+    /* ---------------- 7. the way into the Fizz lab (round 5) ---------------- */
+    const onLab = location.pathname.startsWith('/lab/');
+    if (!onLab && !inFrameTop()) {
+      const chip = document.createElement('a');
+      chip.className = 'ydx-labchip';
+      chip.href = '/lab/';
+      chip.setAttribute('aria-label', 'Fizz lab: shake a can');
+      chip.innerHTML = '<svg viewBox="0 0 100 100" aria-hidden="true"><defs><path id="ydx-chip-c" d="M50 50m-37 0a37 37 0 1 1 74 0a37 37 0 1 1-74 0"/></defs>'
+        + '<g class="ch-spin"><text><textPath href="#ydx-chip-c">FIZZ LAB · SHAKE A CAN · FIZZ LAB · SHAKE A CAN · </textPath></text></g>'
+        + '<g class="ch-can"><rect x="39" y="33" width="22" height="34" rx="5"/><path d="M42 33l2-4h12l2 4"/><circle class="ch-b" cx="46" cy="24" r="2.4"/><circle class="ch-b" cx="54" cy="19" r="1.8"/><circle class="ch-b" cx="50" cy="14" r="1.4"/></g></svg>';
+      document.body.append(chip);
+      // it waits until the first screen has scrolled away (the hero's own foot row lives in that corner) and steps
+      // aside again for the footer's links
+      const foot = document.querySelector('.footer-bottom');
+      let footIn = false, ct = false;
+      const chipSync = () => { ct = false; chip.classList.toggle('is-in', scrollY > innerHeight * 0.45 && !footIn); };
+      if (foot) new IntersectionObserver(es => { footIn = es[es.length - 1].isIntersecting; chipSync(); }).observe(foot);
+      addEventListener('scroll', () => { if (!ct) { ct = true; requestAnimationFrame(chipSync); } }, { passive: true });
+      held.then(chipSync);
+      // the footer gets a plain link too
+      const fnav = document.querySelector('.footer-bottom nav');
+      if (fnav && !fnav.querySelector('a[href="/lab/"]')) { const a = document.createElement('a'); a.href = '/lab/'; a.textContent = 'Fizz lab'; fnav.append(a); }
+    }
+    function inFrameTop() { try { return window.self !== window.top; } catch (e) { return true; } }
 
     if (RM.matches) return; // everything below is motion only
 

@@ -575,6 +575,7 @@
       if (io) io.observe(el); else el.setAttribute('data-ydx-in', '');
     });
     try { riseScan(); } catch (e) { /* decorative */ }
+    try { bgRescan(); } catch (e) { /* decorative */ }
     // mobile menu: mark the current page (the desktop nav already has aria-current)
     const here = location.pathname.replace(/\/$/, '') || '/';
     d.querySelectorAll('.mobile-menu nav a[href]').forEach((a) => {
@@ -616,15 +617,102 @@
     });
   }
 
+  /* ------------------------------------------------------------------------------------------------------------
+   * r5: the living darkroom. ydx/darkroom-bg.js (loaded late, after the loader and in idle time) draws a developer
+   * bath under a safelight behind the olive sections; this part feeds it the route/selection tint and rescans the
+   * blocks it may make transparent after React re-renders. Skipped: reduced motion, hub iframe, no enhance.css.
+   * ---------------------------------------------------------------------------------------------------------- */
+  let bg = null;
+  const TINT = { base: '#c9a56a', '/services/events': '#d39a5c', '/services/restoration': '#bd9b72', '/about': '#cfa865' };
+  // frame finishes (oak, walnut, gallery black, chalk white, brushed silver, raw timber) and print surfaces
+  const FINISH = ['#d3aa6b', '#a8714a', '#8f8d84', '#e2dac6', '#b4bcc2', '#d9bb8b'];
+  const SURFACE = { paper: '#dccfae', canvas: '#cdb27f', glass: '#9fb9be', wood: '#c48b55' };
+  const routeTint = () => TINT[location.pathname.replace(/\/$/, '')] || TINT.base;
+  function living() {
+    if (RM.matches || MODE === 'frame' || !CSSOK || !window.WebGLRenderingContext) return;
+    const go = () => {
+      const sc = d.createElement('script');
+      sc.src = '/ydx/darkroom-bg.js'; sc.async = true;
+      sc.onload = () => {
+        try {
+          bg = window.__ydxBg = window.ydxDarkroomBG.mount({ mode: 'site', tint: routeTint(), allowSoftware: !!window.__ydxAllowSoftware, quality: window.__ydxBgQ });
+        } catch (e) { bg = null; }
+      };
+      d.head.appendChild(sc);
+    };
+    if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 1500 }); else setTimeout(go, 300);
+    // selections that retint the safelight (prints page frame builder and surfaces)
+    d.addEventListener('click', (e) => {
+      if (!bg || !(e.target instanceof Element)) return;
+      const corner = e.target.closest('.corner-sample'), surf = e.target.closest('.surface-object');
+      if (corner) { const i = [...corner.parentElement.querySelectorAll('.corner-sample')].indexOf(corner); if (FINISH[i]) bg.setTint(FINISH[i]); }
+      else if (surf) { const k = Object.keys(SURFACE).find((c) => surf.classList.contains(c)); if (k) bg.setTint(SURFACE[k]); }
+    }, true);
+  }
+  let lastPath = location.pathname;
+  function bgRescan() {
+    if (!bg) return;
+    if (location.pathname !== lastPath) { lastPath = location.pathname; bg.setTint(routeTint()); }
+    bg.rescan();
+  }
+
+  /* r5: entry to the darkroom (/darkroom/, a standalone page owned by this layer). A small chip outside the app root
+     with the safelight sign; it appears once the visitor has scrolled into the page (never over the first screen's
+     hero), closes the site's own two-panel shutter on click and hands the record to the darkroom page, which opens it
+     (same continuation the site's pages use). */
+  const CHIP = { en: ['Darkroom', 'Develop a print'], he: ['חדר חושך', 'פתחו הדפסה'], ru: ['Тёмная комната', 'Проявите снимок'] };
+  function darkroomChip() {
+    if (MODE === 'frame') return;
+    const a = d.createElement('a');
+    a.className = 'ydx-chip'; a.href = '/darkroom/'; a.setAttribute('data-no-transition', '');
+    a.innerHTML = '<i aria-hidden="true"></i><b></b><span></span>';
+    const label = () => {
+      const l = CHIP[html.lang] || CHIP.en;
+      a.querySelector('b').textContent = l[0]; a.querySelector('span').textContent = l[1];
+      a.setAttribute('lang', html.lang || 'en');
+    };
+    label();
+    new MutationObserver(label).observe(html, { attributes: true, attributeFilter: ['lang'] });
+    d.body.appendChild(a);
+    let shown = null;
+    const check = () => {
+      const menu = d.querySelector('.mobile-menu[data-state="open"],[role=dialog][data-state="open"]');
+      const on = scrollY > innerHeight * 0.6 && !menu && !d.querySelector('div.route-shutter[data-active]');
+      if (on !== shown) { shown = on; a.classList.toggle('is-on', on); a.tabIndex = on ? 0 : -1; a.toggleAttribute('aria-hidden', !on); }
+    };
+    let pend = 0;
+    addEventListener('scroll', () => { if (!pend) pend = requestAnimationFrame(() => { pend = 0; check(); }); }, { passive: true });
+    setInterval(check, 800); // menus/dialogs open without scrolling
+    check();
+    a.addEventListener('click', (e) => {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.detail === 0 || RM.matches || !d.body.animate) return;
+      e.preventDefault();
+      const l = CHIP[html.lang] || CHIP.en;
+      store.set('ydx-route', JSON.stringify({ to: '/darkroom/', t: Date.now(), brand: 'AlexStudio', label: l[0] }));
+      const sh = d.createElement('ydx-out');
+      sh.className = 'route-shutter'; sh.setAttribute('data-active', ''); sh.setAttribute('aria-hidden', 'true');
+      sh.innerHTML = '<div class="route-shutter-panel"><b></b></div><div class="route-shutter-panel"><span></span></div>';
+      sh.querySelector('b').textContent = 'AlexStudio'; sh.querySelector('span').textContent = l[0];
+      d.body.appendChild(sh);
+      const to = () => { location.href = a.href; };
+      Promise.all([...sh.children].map((p, i) => p.animate(
+        [{ transform: `translate3d(0,${i ? -101 : 101}%,0)` }, { transform: 'translate3d(0,0,0)' }],
+        { duration: 560, easing: 'cubic-bezier(.7,0,.3,1)', fill: 'forwards' }).finished)).then(to, to);
+      setTimeout(to, 1300);
+    });
+    addEventListener('pageshow', (e) => { if (e.persisted) d.querySelectorAll('ydx-out').forEach((n) => n.remove()); });
+  }
+
   async function boot() {
     window.__ydxBooted = true;
     mark('boot');
     CSSOK = await cssReady();
-    runLoader().catch(release);
+    // r5: the living background starts once the loader is out of the way (never competes with it)
+    runLoader().catch(release).then(() => { try { living(); } catch (e) { /* decorative */ } });
     // r3: features are independent: one failing must not take the others (or the loader) down with it
     const safe = (fn) => { try { fn(); } catch (e) { /* skip this feature */ } };
     safe(watchRoutes);
-    if (CSSOK) { safe(watchLanguage); safe(cursor); }
+    if (CSSOK) { safe(watchLanguage); safe(cursor); safe(darkroomChip); }
     safe(scan);
     let pend = 0;
     safe(() => new MutationObserver(() => { if (!pend) pend = setTimeout(() => { pend = 0; safe(scan); }, 120); })

@@ -1,0 +1,89 @@
+/* PEEL CLUB · ydx fizz lab (/lab/). A page of its own, built from the site's own parts: the field section, the
+   display type (condensed .tight over extended .wide), labels, pills, the flavour swatches and the rip wipe that comes
+   with them, the route-next sign-off and the footer. Only the lab's own pieces are styled here. */
+
+.lab{position:relative;overflow:clip;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);align-items:center;gap:0 3vw;
+  min-height:max(100svh,640px);padding:calc(var(--hd) + clamp(20px,3vw,44px)) var(--pad) clamp(40px,5vw,72px);isolation:isolate}
+.lab__fizz{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.lab__copy,.lab__stage{position:relative;z-index:1}
+.lab__copy{display:grid;justify-items:start;gap:clamp(14px,1.6vw,22px);align-self:center}
+.lab h1{font-size:clamp(64px,9.4vw,170px);margin:0}
+.lab__how{max-width:22em;margin:0}
+.lab__nojs{margin:0;font-weight:700}
+.lab__nojs a{color:inherit}
+
+/* the fizz meter: the brand's condensed numerals, a pith track that fills with the flavour's ink */
+.lab__meter{display:grid;grid-template-columns:auto 1fr;align-items:end;gap:2px 16px;width:min(100%,460px)}
+.lab__fizzword{grid-row:1;font:900 clamp(13px,1vw,15px)/1 Anybody,sans-serif;font-stretch:140%;letter-spacing:.06em;text-transform:uppercase;padding-bottom:.6em}
+.lab__num{grid-row:1;justify-self:end;font:900 clamp(56px,6.4vw,112px)/.8 Anybody,sans-serif;font-stretch:62%;font-variant-numeric:tabular-nums;letter-spacing:-.01em;
+  transition:font-stretch .5s var(--out)}
+.lab__bar{grid-column:1/-1;height:14px;border-radius:99px;background:color-mix(in srgb,var(--on) 22%,transparent);box-shadow:inset 0 0 0 3px var(--on);overflow:hidden}
+.lab__bar i{display:block;height:100%;width:100%;background:var(--on);transform-origin:0 50%;transform:scaleX(0)}
+.lab.is-ready .lab__num{font-stretch:150%}
+.lab__stats{display:flex;gap:2em;margin:0}
+.lab__stats b{font-variant-numeric:tabular-nums}
+.lab__actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px 26px}
+#lab-crack[disabled]{opacity:.42;cursor:not-allowed}
+#lab-crack:not([disabled]){animation:lab-nudge 1.1s var(--in-out) infinite}
+@keyframes lab-nudge{0%,100%{transform:none}40%{transform:scale(1.07,.93)}60%{transform:scale(.97,1.03)}}
+.lab__swatches{justify-self:start;margin-top:4px}
+.lab__back{margin-top:2px}
+#lab-tilt[hidden]{display:none}
+.lab__backicon{rotate:180deg}
+
+/* the stage: the can is a big button you can grab */
+.lab__stage{display:grid;place-items:center;min-height:min(74svh,760px);align-self:stretch}
+.lab__can{position:relative;display:block;width:clamp(180px,17vw,300px);aspect-ratio:562/1100;padding:0;border:0;background:none;cursor:grab;touch-action:none;
+  border-radius:28px;-webkit-user-select:none;user-select:none;will-change:transform}
+.lab__can:active{cursor:grabbing}
+.lab__can:focus-visible{outline:4px solid var(--on);outline-offset:14px}
+.lab__canin{display:block;width:100%;height:100%;filter:drop-shadow(0 26px 34px rgb(0 0 0/.32)) drop-shadow(0 0 1.5px var(--on))}
+.lab__canin picture,.lab__canin img{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
+/* ready to crack: a halo of the flavour's ink breathes behind the can (opacity/scale only, no filter repaint) */
+.lab__can::before{content:"";position:absolute;inset:-16% -60%;z-index:-1;border-radius:50%;pointer-events:none;opacity:0;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--on) 55%,transparent),transparent);transition:opacity .4s}
+.lab.is-ready .lab__can::before{opacity:.75;animation:lab-halo 1.1s var(--in-out) infinite alternate}
+@keyframes lab-halo{from{scale:.86}to{scale:1.06}}
+.lab__hint{position:absolute;bottom:0;left:50%;translate:-50% 0;margin:0;white-space:nowrap;opacity:.85}
+.lab__hint-k{display:none}
+.lab:has(.lab__can:focus-visible) .lab__hint-p{display:none}
+.lab:has(.lab__can:focus-visible) .lab__hint-k{display:inline}
+
+/* the crack headline: squeezes open over the stage, the brand's own gesture */
+/* it lands behind the can, the way the hero's "A lot alive." sits behind its can */
+.lab__pop{position:absolute;left:50%;top:50%;z-index:-1;width:max-content;margin:0;translate:-50% -50%;text-align:center;pointer-events:none;opacity:0;
+  font-size:clamp(70px,11vw,210px)}
+.lab__pop .wide{display:block}
+.lab__status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+@media (width<=900px){
+  .lab{grid-template-columns:minmax(0,1fr);align-items:start;padding-bottom:48px}
+  .lab__stage{order:-1;min-height:0;height:clamp(330px,96vw,470px);margin-top:4px}
+  .lab__copy{order:0}
+  .lab h1{font-size:clamp(54px,19vw,120px)}
+  .lab__can{width:clamp(130px,34vw,220px)}
+  .lab__pop{font-size:clamp(54px,19vw,130px)}
+  .lab__swatches{justify-self:stretch}
+}
+@media (width<=900px) and (orientation:portrait){
+  /* on phones the title comes first, then the can, then the controls */
+  .lab__copy{display:contents}
+  .lab__copy>*{grid-column:1}
+  .lab .label:first-child{order:-3}
+  .lab h1{order:-2}
+  .lab__how{order:-1}
+  .lab__stage{order:0}
+  .lab__meter,.lab__stats,.lab__actions,.lab__swatches,.lab__back,.lab__copy>noscript{order:1}
+  .lab__copy>*+*{margin-top:14px}
+  .lab h1{margin-top:24px}
+}
+@media (prefers-reduced-motion:reduce){
+  #lab-crack:not([disabled]),.lab.is-ready .lab__can::before{animation:none}
+}
+
+/* entrance: the can drops in like the site's own hero objects (held behind the loader with the rest) */
+@media (prefers-reduced-motion:no-preference){
+  .lab__canin{animation:lab-drop 1s var(--out) .18s backwards}
+  @keyframes lab-drop{0%{opacity:0;transform:translateY(-30%) rotate(-14deg) scale(.9)}40%{opacity:1}}
+  html.ydx-hold .lab__canin{animation-play-state:paused}
+}

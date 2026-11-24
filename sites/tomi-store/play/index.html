@@ -1,0 +1,193 @@
+<!doctype html>
+<!-- ydx round 5: TOMI Ring Lab, a standalone toy page owned by the ydx layer (see /ydx/CHANGES.md, Round 5).
+     Plain HTML/CSS/JS, no framework, no inline scripts (the live CSP is script-src 'self'). Language follows the
+     store's localStorage['tomi-lang']; the store's age-gate answer is required (boot.js). -->
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex" />
+  <title>TOMI · Ring Lab</title>
+  <meta name="description" content="TOMI Ring Lab: press, hold and let go to send a ring through the air in your model's colour." />
+  <meta name="theme-color" content="#6b34b8" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e0d0c'/%3E%3Ccircle cx='32' cy='32' r='19' fill='none' stroke='%23e83e7a' stroke-width='7'/%3E%3Crect x='27' y='15' width='10' height='34' rx='5' fill='%23fff8ef'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;800&family=Karantina:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    /* the store's loader, verbatim (critical; it paints first) */
+    .ydx-loader{display:none}
+    html.ydx-b .ydx-loader{position:fixed;inset:0;z-index:70;display:grid;place-items:center;align-content:center;gap:clamp(10px,2vh,22px);padding:24px;color:var(--ydx-lf,#fff8ef);background:radial-gradient(circle at 50% 44%,#fff8ef14 0 15%,#fff8ef0d 15.1% 30%,#fff8ef08 30.1% 48%,#fff8ef04 48.1% 68%,transparent 68.1%),radial-gradient(120% 70% at 50% 42%,var(--ydx-l1,#8152c4) 0%,var(--ydx-l2,#6b34b8) 46%,var(--ydx-l3,#331958) 100%);font-family:"Karantina","Arial Narrow",sans-serif;-webkit-user-select:none;user-select:none}
+    .ydx-loader[hidden]{display:none!important}
+    .ydx-mark{width:clamp(190px,34vmin,300px);height:auto;overflow:visible}
+    .ydx-mark .t{fill:none;stroke:currentColor;stroke-opacity:.16;stroke-width:5}
+    .ydx-mark .r{fill:none;stroke:var(--ydx-acc,#e83e7a);stroke-width:7;stroke-linecap:round;stroke-dasharray:0 100;transform:rotate(-90deg);transform-origin:100px 100px}
+    .ydx-mark .w{fill:none;stroke:currentColor;stroke-width:1.3;stroke-opacity:.62;stroke-linecap:round}
+    .ydx-mark .m{stroke-opacity:.32}
+    .ydx-mark .s{fill:#fff8ef}.ydx-mark .k{fill:#0e0d0c}.ydx-mark .tp{fill:#e6d9c4}
+    .ydx-count{margin:0;display:flex;align-items:baseline;direction:ltr;font-weight:700;font-size:clamp(52px,8vw,92px);line-height:.8;font-variant-numeric:tabular-nums}
+    .ydx-count i{font-style:normal;font-size:.42em;opacity:.6;margin-inline-start:2px}
+    .ydx-count>*{transition:opacity .35s}
+    html.ydx-load:not(.ydx-f) .ydx-count>*{opacity:0}
+    .ydx-cap{margin:0;font:700 11px/1 "Assistant",system-ui,sans-serif;letter-spacing:.32em;text-transform:uppercase;opacity:.62;white-space:nowrap}
+    html[data-ydx-l="he"] .ydx-cap{letter-spacing:.12em}
+    .ydx-sr,.lab-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    @media (prefers-reduced-motion:no-preference){
+      .ydx-mer .w{animation:ydx-turn 2.6s cubic-bezier(.37,0,.63,1) infinite alternate}
+      .ydx-mer .w:nth-child(2){animation-delay:-.65s}.ydx-mer .w:nth-child(3){animation-delay:-1.3s}.ydx-mer .w:nth-child(4){animation-delay:-1.95s}
+      .ydx-mark .t{animation:ydx-breathe 2.4s ease-in-out infinite;transform-origin:100px 100px}
+      html:not(.ydx-repeat):not(.ydx-frame) .ydx-mark{animation:ydx-in .9s cubic-bezier(.22,1,.36,1) both}
+      html:not(.ydx-repeat):not(.ydx-frame) .ydx-count,html:not(.ydx-repeat):not(.ydx-frame) .ydx-cap{animation:ydx-up .9s .12s cubic-bezier(.22,1,.36,1) both}
+    }
+    @keyframes ydx-turn{from{transform:translateX(-21px)}to{transform:translateX(21px)}}
+    @keyframes ydx-breathe{50%{stroke-opacity:.28;transform:scale(1.015)}}
+    @keyframes ydx-in{from{opacity:0;transform:scale(.92)}}
+    @keyframes ydx-up{from{opacity:0;transform:translateY(14px)}}
+
+    /* ---------------------------------------------------------------- page */
+    :root{--ink:#0e0d0c;--cream:#fff8ef;--sand:#ede4d6;--pink:#e83e7a;--c1:#9c74d0;--c2:#6b34b8;--c3:#49237d;--fg:var(--cream);
+      --display:"Karantina","Arial Narrow",sans-serif;--text:"Assistant",system-ui,sans-serif;--ease-out:cubic-bezier(.22,1,.36,1);--pad:clamp(16px,4vw,64px)}
+    html.ink{--fg:var(--ink)}
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{margin:0;height:100%}
+    body{overflow:hidden;color:var(--fg);font-family:var(--text);-webkit-font-smoothing:antialiased;overscroll-behavior:none;
+      /* the stage flood + ring motif: the designed frame without JS / WebGL, and under the canvas while it starts */
+      background:radial-gradient(circle at 50% 44%,rgb(255 248 239/.08) 0 15%,rgb(255 248 239/.055) 15.1% 30%,rgb(255 248 239/.035) 30.1% 48%,rgb(255 248 239/.018) 48.1% 68%,transparent 68.1%),
+        radial-gradient(120% 70% at 50% 42%,var(--c1) 0%,var(--c2) 46%,var(--c3) 100%) fixed;background-color:var(--c3)}
+    html.ink body{background-image:radial-gradient(circle at 50% 44%,rgb(14 13 12/.07) 0 15%,rgb(14 13 12/.05) 15.1% 30%,rgb(14 13 12/.03) 30.1% 48%,rgb(14 13 12/.015) 48.1% 68%,transparent 68.1%),radial-gradient(120% 70% at 50% 42%,var(--c1) 0%,var(--c2) 46%,var(--c3) 100%)}
+    a{color:inherit;text-decoration:none}
+    button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+    :focus-visible{outline:2px solid currentColor;outline-offset:3px;border-radius:6px}
+    .lab-gl{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair;-webkit-tap-highlight-color:transparent}
+    html:not(.lab-js) .lab-gl,.lab-gl[hidden]{display:none}
+
+    .lab-top{position:fixed;inset:0 0 auto;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px var(--pad);pointer-events:none}
+    .lab-top>*{pointer-events:auto}
+    .lab-brand{font-family:var(--display);font-weight:700;font-size:34px;line-height:.8;letter-spacing:.01em;direction:ltr}
+    .lab-tools{display:flex;align-items:center;gap:22px;font-weight:600;font-size:15px}
+    .lab-tools a,.lab-tools button{position:relative;padding:12px 4px;margin:-12px -4px}
+    .lab-tools a::after,.lab-tools button::after{content:"";position:absolute;inset-inline:4px;bottom:8px;height:1.5px;background:currentColor;transform:scaleX(0);transform-origin:var(--o,right);transition:transform .45s var(--ease-out)}
+    html[dir=ltr] .lab-tools a::after,html[dir=ltr] .lab-tools button::after{--o:left}
+    .lab-tools a:hover::after,.lab-tools button:hover::after,.lab-tools :focus-visible::after{transform:none}
+    .lab-back .ar{display:inline-block}
+    html[dir=rtl] .lab-back .ar{transform:scaleX(-1)}
+
+    .lab-copy{position:fixed;z-index:4;inset-inline-start:var(--pad);bottom:clamp(20px,5vh,56px);max-width:min(560px,calc(100% - 2 * var(--pad)));pointer-events:none}
+    .lab-copy>*{pointer-events:auto}
+    .lab-k{margin:0 0 12px;font-size:12px;font-weight:700;letter-spacing:.18em;opacity:.8;display:flex;align-items:center;gap:12px}
+    .lab-k::before{content:"";width:44px;height:2px;background:currentColor}
+    .lab-title{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(84px,12vw,190px);line-height:.78}
+    .lab-line{margin:14px 0 0;font-size:clamp(15px,1.3vw,18px);font-weight:600;line-height:1.45;max-width:40ch}
+    .lab-nojs{margin:14px 0 0;font-weight:700}
+    html.lab-js .lab-nojs{display:none}
+    .lab-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:22px}
+    html:not(.lab-js) .lab-row,html:not(.lab-js) .lab-count{display:none}
+    .lab-chips{display:flex;gap:6px;padding:5px;border-radius:999px;background:rgb(14 13 12/.22);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+    html.ink .lab-chips{background:rgb(255 248 239/.3)}
+    .lab-chip{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.06em;direction:ltr;transition:background-color .35s,color .35s}
+    .lab-chip i{width:12px;height:12px;border-radius:50%;background:var(--sw);box-shadow:0 0 0 1.5px rgb(255 248 239/.7)}
+    .lab-chip[data-m=x]{--sw:#17a673}.lab-chip[data-m=xl]{--sw:#6b34b8}.lab-chip[data-m=xl-plus]{--sw:#f28c0f}.lab-chip[data-m=ultima]{--sw:#e0262c}
+    .lab-chip[aria-pressed=true]{background:var(--fg);color:var(--c2)}
+    html.ink .lab-chip[aria-pressed=true]{color:var(--c2)}
+    .lab-btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 20px;border-radius:999px;font-weight:800;font-size:14px;background:var(--ink);color:var(--cream);transition:transform .45s var(--ease-out),background-color .3s}
+    .lab-btn.ghost{background:transparent;box-shadow:inset 0 0 0 1.5px currentColor;color:var(--fg)}
+    .lab-btn.shop{background:var(--fg);color:var(--ink)}
+    html.ink .lab-btn.shop{background:var(--ink);color:var(--cream)}
+    .lab-btn:hover{transform:translateY(-2px)}
+    .lab-btn:active{transform:scale(.96)}
+    .lab-btn .ring{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 3px var(--pink)}
+
+    .lab-count{position:fixed;z-index:4;inset-inline-end:var(--pad);bottom:clamp(20px,5vh,56px);margin:0;display:grid;justify-items:end;gap:6px;pointer-events:none;text-align:end}
+    .lab-count b{font-family:var(--display);font-weight:700;font-size:clamp(72px,9vw,150px);line-height:.74;font-variant-numeric:tabular-nums;direction:ltr}
+    .lab-count span{font-size:12px;font-weight:700;letter-spacing:.18em;opacity:.8}
+    .lab-hint{position:fixed;z-index:3;left:50%;top:50%;translate:-50% -50%;margin:0;padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;background:rgb(14 13 12/.28);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;white-space:nowrap;transition:opacity .6s var(--ease-out),translate .6s var(--ease-out)}
+    html.ink .lab-hint{background:rgb(255 248 239/.4)}
+    .lab-hint.gone{opacity:0;translate:-50% -30%}
+    html:not(.lab-js) .lab-hint{display:none}
+    .lab-charge{position:fixed;left:0;top:0;z-index:6;width:96px;height:96px;margin:-48px 0 0 -48px;pointer-events:none;opacity:0;transition:opacity .2s}
+    .lab-charge.on{opacity:1}
+    .lab-charge circle{fill:none;stroke-width:5;stroke-linecap:round}
+    .lab-charge .t{stroke:currentColor;stroke-opacity:.25}
+    .lab-charge .r{stroke:var(--pink);stroke-dasharray:0 100;transform:rotate(-90deg);transform-origin:48px 48px}
+    html.ink .lab-charge .r{stroke:var(--ink)}
+    .lab-wipe{position:fixed;inset:0;z-index:80;pointer-events:none;background:radial-gradient(circle at 50% 52%,rgb(255 248 239/.1) 0 15%,rgb(255 248 239/.07) 15.1% 30%,rgb(255 248 239/.045) 30.1% 48%,rgb(255 248 239/.022) 48.1% 68%,transparent 68.1%),var(--c2)}
+    html:not(.ink) .lab-title,html:not(.ink) .lab-line,html:not(.ink) .lab-count b{text-shadow:0 2px 28px rgb(14 13 12/.16)}
+    @media (max-width:760px){
+      .lab-tools{gap:16px;font-size:14px}
+      .lab-brand{font-size:30px}
+      .lab-copy{bottom:calc(18px + env(safe-area-inset-bottom))}
+      .lab-title{font-size:clamp(68px,22vw,110px)}
+      .lab-line{font-size:14px;max-width:32ch}
+      .lab-count{top:76px;bottom:auto}
+      .lab-count b{font-size:64px}
+      .lab-chip{padding:0 9px;font-size:11px}
+      .lab-row{gap:8px;margin-top:16px}
+      .lab-hint{top:40%}
+    }
+    @media (max-width:380px){ .lab-chip i{display:none} }
+    @media (prefers-reduced-motion:reduce){ .lab-btn,.lab-hint{transition:none} }
+  </style>
+  <script src="/play/boot.js"></script>
+  <script src="/play/lab.js" defer></script>
+</head>
+<body>
+  <div class="ydx-loader" role="status" aria-live="polite">
+    <span class="ydx-sr">TOMI · Ring Lab</span>
+    <svg class="ydx-mark" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+      <defs>
+        <clipPath id="ydx-dev"><path d="M94 34h12a6 6 0 0 1 6 6v24h-24v-24a6 6 0 0 1 6-6z"/><path d="M92 62h16a14 14 0 0 1 14 14v78a14 14 0 0 1-14 14h-16a14 14 0 0 1-14-14v-78a14 14 0 0 1 14-14z"/></clipPath>
+        <clipPath id="ydx-lvl"><rect class="ydx-lv" x="0" y="168" width="200" height="200"/></clipPath>
+      </defs>
+      <circle class="t" cx="100" cy="100" r="88"/>
+      <circle class="r" cx="100" cy="100" r="88" pathLength="100"/>
+      <g clip-path="url(#ydx-dev)">
+        <g class="ydx-mer"><line class="w m" x1="100" y1="60" x2="100" y2="170"/><line class="w m" x1="100" y1="60" x2="100" y2="170"/><line class="w m" x1="100" y1="60" x2="100" y2="170"/><line class="w m" x1="100" y1="60" x2="100" y2="170"/></g>
+        <g clip-path="url(#ydx-lvl)"><rect class="s" x="70" y="30" width="60" height="140"/><rect class="k" x="86" y="30" width="28" height="33"/><rect class="k" x="95" y="80" width="10" height="56" rx="5"/></g>
+        <ellipse class="tp ydx-top" cx="100" cy="168" rx="22" ry="4" opacity="0"/>
+      </g>
+      <g class="ydx-wire">
+        <path class="w" pathLength="1" d="M94 34h12a6 6 0 0 1 6 6v24h-24v-24a6 6 0 0 1 6-6z"/>
+        <path class="w" pathLength="1" d="M92 62h16a14 14 0 0 1 14 14v78a14 14 0 0 1-14 14h-16a14 14 0 0 1-14-14v-78a14 14 0 0 1 14-14z"/>
+        <path class="w" pathLength="1" d="M78 96a22 4 0 0 0 44 0M78 124a22 4 0 0 0 44 0M78 150a22 4 0 0 0 44 0M88 50a12 2.5 0 0 0 24 0"/>
+        <rect class="w" pathLength="1" x="95" y="80" width="10" height="56" rx="5"/>
+        <ellipse class="w ydx-surf" cx="100" cy="168" rx="22" ry="4" stroke-opacity="0"/>
+      </g>
+    </svg>
+    <p class="ydx-count" aria-hidden="true"><b>0</b><i>%</i></p>
+    <p class="ydx-cap" aria-hidden="true">TOMI</p>
+  </div>
+
+  <canvas class="lab-gl" aria-hidden="true"></canvas>
+
+  <header class="lab-top">
+    <a class="lab-brand" href="/" aria-label="TOMI">TOMI</a>
+    <nav class="lab-tools" aria-label="Ring Lab">
+      <a class="lab-back" href="/" data-i="back"><span class="ar" aria-hidden="true">←</span> חזרה לחנות</a>
+      <button class="lab-lang" type="button" hidden>EN</button>
+    </nav>
+  </header>
+
+  <main class="lab-copy">
+    <p class="lab-k" data-i="k">TOMI · מעבדת הטבעות</p>
+    <h1 class="lab-title" data-i="title">נשפו טבעת.</h1>
+    <p class="lab-line" data-i="line">לחצו והחזיקו כדי לטעון, שחררו כדי לשלוח טבעת. גררו כדי לערבב את האוויר.</p>
+    <p class="lab-nojs">המעבדה צריכה JavaScript. · Ring Lab needs JavaScript.</p>
+    <div class="lab-row">
+      <div class="lab-chips" role="group" aria-label="צבע" data-i-label="colour">
+        <button class="lab-chip" type="button" data-m="x" aria-pressed="false"><i aria-hidden="true"></i>X</button>
+        <button class="lab-chip" type="button" data-m="xl" aria-pressed="false"><i aria-hidden="true"></i>XL</button>
+        <button class="lab-chip" type="button" data-m="xl-plus" aria-pressed="false"><i aria-hidden="true"></i>XL PLUS</button>
+        <button class="lab-chip" type="button" data-m="ultima" aria-pressed="false"><i aria-hidden="true"></i>ULTIMA</button>
+      </div>
+      <button class="lab-btn lab-blow" type="button"><span class="ring" aria-hidden="true"></span><span data-i="blow">שליחת טבעת</span></button>
+      <button class="lab-btn ghost lab-clear" type="button" data-i="clear">ניקוי</button>
+      <a class="lab-btn shop lab-shop" href="/#/shop/xl" data-i="shop">לחנות TOMI XL</a>
+    </div>
+  </main>
+
+  <p class="lab-count" aria-hidden="true"><b>0</b><span data-i="rings">טבעות</span></p>
+  <p class="lab-hint" aria-hidden="true" data-i="hint">לחצו, החזיקו, שחררו</p>
+  <p class="lab-sr" aria-live="polite"></p>
+  <svg class="lab-charge" viewBox="0 0 96 96" aria-hidden="true" focusable="false"><circle class="t" cx="48" cy="48" r="40"/><circle class="r" cx="48" cy="48" r="40" pathLength="100"/></svg>
+</body>
+</html>

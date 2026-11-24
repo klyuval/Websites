@@ -1,0 +1,103 @@
+<!doctype html>
+<!-- ydx round 5: "Your turn, chef" — a standalone plating toy for MyChef Israel (see /ydx/CHANGES.md, Round 5).
+     Plain HTML/CSS/JS owned by ydx, no framework. Language follows the site's localStorage['mychef-language']. -->
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>תורכם, שף — MyChef Israel</title>
+<meta name="description" content="Plate your own course on the MyChef table: swoosh a sauce, scatter the spice, turn the plate and send it to the pass.">
+<meta name="theme-color" content="#0d635f">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script>(function(){var d=document.documentElement,c=d.classList,l='he',x=false;c.add('pl-js');try{l=localStorage.getItem('mychef-language')||'he'}catch(e){}if(!/^(he|en|fr)$/.test(l))l='he';d.lang=l;d.dir=l==='he'?'rtl':'ltr';try{x=sessionStorage.getItem('ydx-xfer')==='play';sessionStorage.removeItem('ydx-xfer')}catch(e){}c.add('pl-cover');if(x)c.add('pl-xfer');if(matchMedia('(prefers-reduced-motion: reduce)').matches)c.add('pl-rm');if(window.self!==window.top)c.add('pl-frame');var W={he:'תורכם, שף',en:'Your turn, chef',fr:'À vous, chef'};d.setAttribute('data-cover-word',W[l])})()</script>
+<style>
+/* critical: the cloth cover (the arrival half of the site's cloth transition) paints before anything else */
+.pl-cv{display:none}
+html.pl-cover .pl-cv{display:block;position:fixed;inset:0;z-index:2147483000;overflow:hidden;pointer-events:auto;animation:pl-bail .3s 3.2s forwards}
+.pl-cv i{position:absolute;top:0;bottom:0;left:-25vw;width:150vw;border-radius:22vw/50%;background:url(/img/weave.png) 0 0/256px 256px}
+.pl-cv i:nth-child(1){background-color:#f3b12a}.pl-cv i:nth-child(2){background-color:#c92c60}.pl-cv i:nth-child(3){background-color:#f5ecd9}
+.pl-cv i:nth-child(4){background-color:#0d635f;display:grid;place-items:center}
+.pl-cv b{font:900 clamp(40px,7.5vw,104px)/1 "Frank Ruhl Libre","Times New Roman",serif;color:#fbf3e0;letter-spacing:-.012em;display:flex;align-items:center;gap:.3em;white-space:nowrap}
+.pl-cv b::before{content:"✳";color:#f5b72b;font-size:.6em;font-weight:400}
+html:not(.pl-xfer) .pl-cv b{opacity:0;animation:pl-fade .5s .12s forwards}
+@keyframes pl-fade{to{opacity:1}}
+@keyframes pl-bail{to{opacity:0;visibility:hidden}}
+</style>
+<link rel="preload" href="/fonts/frankruhllibre-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/caveat-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/img/plate-empty.webp" as="image">
+<link rel="stylesheet" href="/play/play.css">
+<script src="/ydx/light.js" async></script>
+<script src="/play/play.js" defer onerror="document.documentElement.classList.add('pl-in');document.documentElement.classList.remove('pl-cover')"></script>
+</head>
+<body>
+<div class="pl-cv" aria-hidden="true"><i></i><i></i><i></i><i><b></b></i></div>
+<script>(function(){var b=document.querySelector('.pl-cv b');if(b)b.textContent=document.documentElement.getAttribute('data-cover-word')||''})()</script>
+<a class="pl-skip" href="#pl-tools" data-t="skip">דלגו לכלים</a>
+<header class="pl-top">
+  <a class="pl-mark" href="/" data-leave aria-label="MyChef Israel" data-t-label="home">mychef<i aria-hidden="true">✳</i><span>ISRAEL</span></a>
+  <div class="pl-top__end">
+    <a class="pl-back" href="/" data-leave><svg class="pl-arrow" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m6-6-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="back">חזרה לשולחן</span></a>
+    <div class="pl-lang" role="group" aria-label="Language / שפה / Langue">
+      <button type="button" lang="he" aria-pressed="false">עברית</button><button type="button" lang="fr" aria-pressed="false">FR</button><button type="button" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+</header>
+
+<main class="pl-main" id="pl-main">
+  <section class="pl-intro" aria-labelledby="pl-title">
+    <span class="pl-tag" data-t="eyebrow">המטבח של MyChef · משחק קטן</span>
+    <h1 id="pl-title"><span data-t="t1">תורכם,</span> <em data-t="t2">שף.</em></h1>
+    <p class="pl-lead" data-t="lead">מושכים רוטב, מפזרים תבלין, מסובבים את הצלחת. כשזה נראה כמו ערב, שולחים להגשה.</p>
+    <p class="pl-how" data-t="how">גררו על הצלחת כדי לצייר · אחזו מחוץ לשוליים כדי לסובב</p>
+    <noscript><p class="pl-lead">This little game needs JavaScript. <a href="/">Back to the table</a>.</p></noscript>
+  </section>
+
+  <section class="pl-stage" aria-label="Plate" data-t-label="stage">
+    <span class="pl-deco pl-deco--fork" aria-hidden="true"><img src="/img/fork.webp" alt="" width="194" height="900" decoding="async"></span>
+    <span class="pl-deco pl-deco--knife" aria-hidden="true"><img src="/img/knife.webp" alt="" width="184" height="900" decoding="async"></span>
+    <span class="pl-deco pl-deco--wine ydx-glass" aria-hidden="true"><img src="/img/wine.webp" alt="" width="569" height="599" decoding="async"></span>
+    <span class="pl-deco pl-deco--light ydx-glass" aria-hidden="true"><img src="/img/light-2.webp" alt="" width="296" height="300" decoding="async"></span>
+    <span class="pl-deco pl-deco--water ydx-glass" aria-hidden="true"><img src="/img/water.webp" alt="" width="500" height="506" decoding="async"></span>
+    <div class="pl-plate ydx-noting" tabindex="0" role="application" aria-roledescription="plate" data-t-label="plate" aria-label="צלחת" aria-describedby="pl-keys">
+      <div class="pl-rotor">
+        <img class="pl-plate__img" src="/img/plate-empty.webp" alt="" width="876" height="900" decoding="async" draggable="false">
+        <canvas class="pl-c pl-c--base" aria-hidden="true"></canvas>
+        <canvas class="pl-c pl-c--top" aria-hidden="true"></canvas>
+      </div>
+      <span class="pl-hint" aria-hidden="true"><svg viewBox="0 0 120 60" width="96" height="48"><path d="M8 50C34 46 70 30 104 10" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="4 6"/><path d="M92 8l13 2-5 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="hint">משכו כאן רוטב</span></span>
+    </div>
+    <p id="pl-keys" class="pl-sr" data-t="keys">Enter מוסיף את הרכיב שנבחר, החצים מסובבים את הצלחת.</p>
+    <span class="pl-brush" aria-hidden="true"></span>
+    <div class="pl-actions">
+      <button type="button" class="pl-act" data-act="undo"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-t="undo">בטלו</span></button>
+      <button type="button" class="pl-act" data-act="clear"><img src="/img/napkin.webp" alt="" width="493" height="900" decoding="async"><span data-t="clear">נקו את הצלחת</span></button>
+      <button type="button" class="pl-act" data-act="surprise"><span class="pl-star" aria-hidden="true">✳</span><span data-t="surprise">הפתיעו אותי</span></button>
+      <button type="button" class="pl-serve" data-act="serve"><span data-t="serve">להגשה</span><svg class="pl-arrow" width="19" height="19" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </section>
+
+  <section class="pl-tools" id="pl-tools" aria-labelledby="pl-tools-h" tabindex="-1">
+    <h2 id="pl-tools-h" class="pl-sr" data-t="tools">הכלים</h2>
+    <div class="pl-group" role="group" aria-labelledby="pl-g1"><h3 id="pl-g1" data-t="g_sauce">רטבים</h3><div class="pl-grid" data-group="sauce"></div></div>
+    <div class="pl-group" role="group" aria-labelledby="pl-g2"><h3 id="pl-g2" data-t="g_spice">תבלינים</h3><div class="pl-grid" data-group="spice"></div></div>
+    <div class="pl-group" role="group" aria-labelledby="pl-g3"><h3 id="pl-g3" data-t="g_garnish">קישוט</h3><div class="pl-grid" data-group="garnish"></div></div>
+  </section>
+</main>
+
+<div class="pl-ticket" role="dialog" aria-labelledby="pl-dish" hidden>
+  <div class="pl-ticket__paper">
+    <button type="button" class="pl-ticket__x" data-act="close" data-t-label="close" aria-label="סגירה"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+    <span class="pl-ticket__eyebrow" data-t="ticket"></span>
+    <h2 class="pl-ticket__dish" id="pl-dish" tabindex="-1"></h2>
+    <p class="pl-ticket__note"></p>
+    <div class="pl-ticket__acts">
+      <a class="pl-serve pl-ticket__book" href="/#contact" data-leave><span data-t="book">הזמינו את הדבר האמיתי</span><svg class="pl-arrow" width="19" height="19" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <button type="button" class="pl-act" data-act="save"><span data-t="save">שמרו את הצלחת</span></button>
+      <button type="button" class="pl-act" data-act="again"><span data-t="again">צלחת חדשה</span></button>
+    </div>
+  </div>
+</div>
+<p class="pl-sr" aria-live="polite" id="pl-live"></p>
+</body>
+</html>

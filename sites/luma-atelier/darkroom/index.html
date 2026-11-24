@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Darkroom — AlexStudio</title>
+<meta name="description" content="Develop a print the way Alex learned to: choose a negative, expose it under the enlarger, dodge with your hand, rock the developer tray and hang it to dry.">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0e100b">
+<link rel="icon" href="/favicon.svg">
+<link rel="preload" href="/fonts/optical/anton.ttf" as="font" type="font/ttf" crossorigin="">
+<!-- ydx: darkroom bootstrap. Language/direction before first paint (the site keeps it in localStorage), JS flag,
+     and the route shutter continued from the page the visitor came from (same record the site's pages use). -->
+<style data-ydx>html{background:#0e100b}html.dr-js dr-veil{position:fixed;inset:0;z-index:50;display:flex;direction:ltr;pointer-events:none}dr-veil i{flex:0 0 calc(50% + 1px);margin-inline-end:-1px;display:flex;align-items:center;justify-content:center;background:#d8d2bc;color:#25271e;font:400 clamp(36px,6vw,100px)/1 Optical,sans-serif;text-transform:uppercase;font-style:normal;position:relative;overflow:hidden}dr-veil i+i{background:#25271e;color:#d8d2bc;font-size:clamp(24px,4vw,64px)}dr-veil i:after{content:"";position:absolute;inset:20px;border:1px solid;opacity:.15}</style>
+<script data-ydx>(function(){var d=document.documentElement,c=' dr-js',l='en';try{var s=localStorage.getItem('alexstudio-language');if(s==='he'||s==='ru')l=s}catch(e){}d.lang=l;d.dir=l==='he'?'rtl':'ltr';try{if(matchMedia('(prefers-reduced-motion: reduce)').matches)c+=' dr-rm'}catch(e){}try{if(window.self!==window.top)c+=' dr-frame'}catch(e){c+=' dr-frame'}try{var ss=sessionStorage,r=JSON.parse(ss.getItem('ydx-route')||'null');ss.removeItem('ydx-route');if(r&&Date.now()-r.t<8000&&/\/darkroom\/?$/.test(r.to)&&c.indexOf('dr-rm')<0){window.__drRoute=r;c+=' dr-cont'}else if(ss.getItem('ydx-seen'))c+=' dr-quick'}catch(e){}d.className+=c;setTimeout(function(){if(!window.__drBooted){d.classList.add('dr-gaveup');var v=document.querySelector('dr-veil');v&&v.remove()}},3500)})()</script>
+<link rel="stylesheet" href="/fonts/atelier/fonts.css">
+<link rel="stylesheet" href="/ydx/darkroom.css">
+<script src="/ydx/darkroom.js" defer></script>
+</head>
+<body>
+<script data-ydx>(function(){var r=window.__drRoute;if(!r)return;var v=document.createElement('dr-veil');v.setAttribute('aria-hidden','true');v.innerHTML='<i></i><i></i>';v.firstChild.textContent=r.brand||'AlexStudio';v.lastChild.textContent=r.label||'';document.body.appendChild(v)})()</script>
+<a class="dr-skip" href="#dr-main" data-i18n="skip">Skip to content</a>
+<header class="dr-top">
+  <a class="dr-brand" href="/" data-dr-label="AlexStudio" aria-label="AlexStudio home" data-i18n-aria="home">ALEXSTUDIO</a>
+  <span class="dr-sign" aria-hidden="true"><i></i><span data-i18n="sign">Darkroom · in use</span></span>
+  <nav class="dr-lang" aria-label="Language">
+    <button type="button" data-lang="en" aria-pressed="true">EN</button>
+    <button type="button" data-lang="he" aria-pressed="false" lang="he">עב</button>
+    <button type="button" data-lang="ru" aria-pressed="false" lang="ru">РУ</button>
+  </nav>
+  <a class="dr-back" href="/prints/" data-dr-label="Prints & frames" data-i18n-label="printsLabel"><span data-i18n="back">Back to the studio</span> <b aria-hidden="true">↗</b></a>
+</header>
+
+<main id="dr-main" class="dr-main" tabindex="-1">
+  <section class="dr-intro">
+    <p class="dr-eyebrow"><span>AlexStudio</span> / <span data-i18n="eyebrow">Darkroom session</span></p>
+    <h1 class="dr-title"><span data-i18n="t1">The</span> <span data-i18n="t2">darkroom.</span></h1>
+    <p class="dr-lede" data-i18n="lede">Before screens, every print Alex made started here: a negative, an enlarger, three trays and a red lamp. Make one yourself.</p>
+
+    <ol class="dr-steps" aria-label="Steps">
+      <li data-step="1"><b>01</b> <span data-i18n="s1">Negative</span></li>
+      <li data-step="2"><b>02</b> <span data-i18n="s2">Expose</span></li>
+      <li data-step="3"><b>03</b> <span data-i18n="s3">Develop</span></li>
+      <li data-step="4"><b>04</b> <span data-i18n="s4">Fix &amp; dry</span></li>
+    </ol>
+
+    <div class="dr-panel" data-panel="1">
+      <h2 class="dr-h" data-i18n="p1h">Choose a negative</h2>
+      <p class="dr-note" data-i18n="p1n">Hold the strip up to the lamp. Light and dark are reversed: what is bright here prints black.</p>
+      <div class="dr-strip" role="radiogroup" aria-label="Negatives" data-i18n-aria="p1h"></div>
+    </div>
+
+    <div class="dr-panel" data-panel="2" hidden>
+      <h2 class="dr-h" data-i18n="p2h">Expose under the enlarger</h2>
+      <p class="dr-note" data-i18n="p2n">Pick an aperture, switch the lamp on, count, switch it off. While it burns, move your hand (pointer or finger) over the paper to dodge: hold back light and that area stays lighter.</p>
+      <div class="dr-row">
+        <span class="dr-label" data-i18n="aperture">Aperture</span>
+        <div class="dr-fstops" role="radiogroup" aria-label="Aperture" data-i18n-aria="aperture"></div>
+      </div>
+      <div class="dr-row dr-row-lamp">
+        <button type="button" class="dr-lamp" aria-pressed="false"><i aria-hidden="true"></i><span data-i18n="lampOn">Lamp on</span></button>
+        <output class="dr-clock" aria-live="off"><b>00.0</b> s</output>
+        <span class="dr-hint" data-i18n="p2hint">Alex's test strip says f/8 for about 6 seconds.</span>
+      </div>
+      <div class="dr-row">
+        <button type="button" class="dr-go" data-go="3" disabled><span data-i18n="toDev">Into the developer</span> <b aria-hidden="true">→</b></button>
+        <button type="button" class="dr-text" data-go="1" data-i18n="other">Other negative</button>
+      </div>
+    </div>
+
+    <div class="dr-panel" data-panel="3" hidden>
+      <h2 class="dr-h" data-i18n="p3h">Rock the tray</h2>
+      <p class="dr-note" data-i18n="p3n">The image comes up out of white paper, shadows first. Drag across the tray to agitate: fresh developer works faster. Pull it when the blacks are rich and the whites still clean.</p>
+      <div class="dr-row dr-row-lamp">
+        <output class="dr-clock dr-devclock" aria-live="off"><b>0:00</b></output>
+        <button type="button" class="dr-text dr-rock" data-i18n="rock">Rock the tray</button>
+      </div>
+      <div class="dr-row">
+        <button type="button" class="dr-go" data-go="4"><span data-i18n="fix">Pull &amp; fix</span> <b aria-hidden="true">→</b></button>
+      </div>
+    </div>
+
+    <div class="dr-panel" data-panel="4" hidden>
+      <h2 class="dr-h" data-i18n="p4h">Lights on.</h2>
+      <p class="dr-verdict" aria-live="polite"></p>
+      <p class="dr-recipe"></p>
+      <div class="dr-row">
+        <button type="button" class="dr-go" data-go="1"><span data-i18n="again">Print another</span> <b aria-hidden="true">↺</b></button>
+        <a class="dr-text dr-dl" download="alexstudio-darkroom-print.png" href="#" data-i18n="download">Download the print</a>
+      </div>
+      <a class="dr-cta" href="/prints/" data-dr-label="Prints & frames" data-i18n-label="printsLabel"><span data-i18n="cta">Want it on real paper, in a handmade frame? Alex prints and frames.</span> <b aria-hidden="true">↗</b></a>
+    </div>
+
+    <noscript><p class="dr-note">This darkroom needs JavaScript. Alex's real one does not: <a href="/contact/">contact Alex</a> about prints and framing.</p></noscript>
+  </section>
+
+  <section class="dr-bench" aria-label="Enlarger easel and developer tray" data-i18n-aria="bench">
+    <div class="dr-stage" role="img" aria-label="Photographic paper on the enlarger easel">
+      <img class="dr-static" src="/media/editorial-couple.webp" alt="" width="1400" height="933" decoding="async">
+      <span class="dr-crop" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="dr-stagecap" aria-hidden="true"></span>
+    </div>
+  </section>
+</main>
+
+<section class="dr-line" aria-label="Drying line" data-i18n-aria="line">
+  <p class="dr-line-label"><span data-i18n="line">Drying line</span> <b class="dr-count">0</b></p>
+  <div class="dr-pegs" role="list"></div>
+</section>
+</body>
+</html>

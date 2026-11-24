@@ -292,5 +292,143 @@
         for (const n of p.childNodes) if (n.nodeType === 3 && n.data.includes('ydesign: Why')) n.data = n.data.replace('ydesign: Why', 'ydesign‏: Why');
       }
     }
+
+    /* ---- 5. Round 5: the living ink, the ink lab, a motion switch ------------------------------------------------- */
+    let framed = false;
+    try { framed = window.self !== window.top; } catch (e) { framed = true; }
+    const T = rtl
+      ? { labK: 'מעבדת הדיו', labT: 'ציירו עם כל השתים־עשרה.', labP: 'בחרו אתר וגררו על החושך: הצבעים שלו נשפכים, ואיפה שהדיו נח, האתר מציץ.', motion: 'הפחתת תנועה', lab: 'מעבדת הדיו', play: '/he/play/' }
+      : { labK: 'The ink lab', labT: 'Paint with all twelve.', labP: 'Pick a site and drag across the dark: its colours pour out, and where the ink settles, the site shows through.', motion: 'Reduce motion', lab: 'Ink lab', play: '/play/' };
+    const motionOff = () => reduce || html.dataset.motion === 'reduce';
+    try { if (localStorage.getItem('ydx-motion') === 'reduce') html.dataset.motion = 'reduce'; } catch (e) { /* storage blocked */ }
+
+    // 5a. The living ink behind the work wall and the contact (ydx/fluid.js + ydx/immersive.js). Loaded only after the
+    // site's own loader has handed over, in idle time, and never inside a frame (the hub preview stays light).
+    const load = (src, then) => {
+      const s = d.createElement('script');
+      s.src = src; s.async = true;
+      if (then) s.onload = then;
+      d.head.append(s);
+    };
+    if (!framed && 'IntersectionObserver' in window) {
+      let booted = false;
+      const boot = () => {
+        if (booted || html.classList.contains('is-loading')) return;
+        booted = true;
+        const go = () => load('/ydx/fluid.js', () => load('/ydx/immersive.js'));
+        if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 1500 }); else setTimeout(go, 300);
+      };
+      if (html.classList.contains('is-loading')) {
+        const mo = new MutationObserver(() => { if (!html.classList.contains('is-loading')) { mo.disconnect(); boot(); } });
+        mo.observe(html, { attributes: true, attributeFilter: ['class'] });
+        addEventListener('load', () => setTimeout(boot, 4500), { once: true }); // (the loader's own ceiling)
+      } else boot();
+    }
+
+    // 5b. A yellow wipe from the click point to the lab and back: the same yellow as the site's loading screen, which is
+    // also the colour the lab's loader starts from, so the hand-off reads as one move.
+    const wipeTo = (url, x, y) => {
+      const w = d.createElement('div');
+      w.className = 'ydx-wipe';
+      w.setAttribute('aria-hidden', 'true');
+      w.style.setProperty('--x', x + 'px');
+      w.style.setProperty('--y', y + 'px');
+      d.body.append(w);
+      const go = () => { location.href = url; };
+      if (reduce) { w.classList.add('is-fade'); setTimeout(go, 160); return; }
+      requestAnimationFrame(() => requestAnimationFrame(() => w.classList.add('is-on')));
+      setTimeout(go, 430);
+      addEventListener('pageshow', (e) => { if (e.persisted) w.remove(); }, { once: true });
+    };
+    const viaWipe = (a) => a.addEventListener('click', (e) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      const r = a.getBoundingClientRect();
+      wipeTo(a.href, e.clientX || r.left + r.width / 2, e.clientY || r.top + r.height / 2);
+    });
+
+    // 5c. The invitation to the lab closes the work section, under the index: twelve palette dots and one line.
+    const idx = $('[data-index]');
+    if (idx) {
+      const a = d.createElement('a');
+      a.className = 'ydx-play';
+      a.href = T.play;
+      const k = d.createElement('span'); k.className = 'ydx-play__k'; k.textContent = T.labK;
+      const t = d.createElement('span'); t.className = 'ydx-play__t'; t.textContent = T.labT;
+      const p = d.createElement('span'); p.className = 'ydx-play__p'; p.textContent = T.labP;
+      const dots = d.createElement('span'); dots.className = 'ydx-play__dots'; dots.setAttribute('aria-hidden', 'true');
+      ['#3f7a4c', '#b9cc5a', '#0e8a85', '#c8873a', '#d8262c', '#8053bf', '#f5811f', '#278de3', '#0b3ccf', '#c8f250', '#e27b90', '#ffe500']
+        .forEach((c, i) => { const i2 = d.createElement('i'); i2.style.background = c; i2.style.setProperty('--ydx-i', String(i)); dots.append(i2); });
+      const go = d.createElement('span'); go.className = 'ydx-play__go'; go.setAttribute('aria-hidden', 'true');
+      go.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg>';
+      a.append(k, t, p, dots, go);
+      idx.after(a);
+      reveal([a], '0px 0px -8% 0px');
+      viaWipe(a);
+    }
+
+    // 5d. Footer: a link to the lab and a visible "Reduce motion" switch (remembered). It stills the ydx layer: the ink
+    // becomes one still frame, the index preview and the lab's painting cursor stop.
+    const row = $('.foot__row');
+    if (row) {
+      const box = d.createElement('div');
+      box.className = 'ydx-foot';
+      const lab = d.createElement('a'); lab.href = T.play; lab.textContent = T.lab; viaWipe(lab);
+      const sw = d.createElement('button');
+      sw.type = 'button'; sw.className = 'ydx-motion';
+      sw.innerHTML = '<i aria-hidden="true"></i>';
+      sw.append(T.motion);
+      const sync = () => { sw.setAttribute('aria-pressed', String(motionOff())); sw.disabled = reduce; };
+      sw.addEventListener('click', () => {
+        if (html.dataset.motion === 'reduce') delete html.dataset.motion; else html.dataset.motion = 'reduce';
+        try { localStorage.setItem('ydx-motion', html.dataset.motion || 'full'); } catch (e) { /* storage blocked */ }
+        sync();
+      });
+      sync();
+      box.append(lab, sw);
+      row.append(box);
+    }
+
+    // 5e. Index preview: hovering a row floats that site's screenshot by the pointer, with weight (it trails, tilts with
+    // the pointer's speed and settles). Mouse only; the keyboard and touch already get the row's inverted state.
+    if (idx && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      const peek = d.createElement('div');
+      peek.className = 'ydx-peek';
+      peek.setAttribute('aria-hidden', 'true');
+      const img = d.createElement('img');
+      img.alt = ''; img.decoding = 'async'; img.width = 560; img.height = 350;
+      peek.append(img);
+      d.body.append(peek);
+      const IDS = ['grain-flex', 'cassata', 'mychef', 'alexstudio', 'form', 'tomi', 'peel-botanical', 'pack-and-peak', 'peel-club', 'strata', 'negia', 'form-and-field'];
+      let on = false, raf = 0, x = 0, y = 0, tx = 0, ty = 0, vx = 0, rot = 0;
+      const step = () => {
+        raf = 0;
+        const px = x;
+        x += (tx - x) * 0.18; y += (ty - y) * 0.18;
+        vx = x - px;
+        rot += (Math.max(-12, Math.min(12, vx * 0.6)) - rot) * 0.2;
+        peek.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) rotate(${rot.toFixed(2)}deg)`;
+        if (on || Math.abs(tx - x) > 0.5 || Math.abs(rot) > 0.05) raf = requestAnimationFrame(step);
+      };
+      const place = (e) => { tx = e.clientX + (rtl ? -330 : 34); ty = e.clientY - 90; };
+      idx.addEventListener('pointerover', (e) => {
+        const b = e.target.closest('button[data-i]');
+        if (!b || motionOff() || e.pointerType !== 'mouse') return;
+        const id = IDS[+b.dataset.i];
+        if (!id) return;
+        const src = `/work/thumb/${id}.webp`;
+        if (img.getAttribute('src') !== src) img.src = src;
+        place(e);
+        if (!on) { x = tx; y = ty + 30; }
+        on = true;
+        peek.classList.add('is-on');
+        if (!raf) raf = requestAnimationFrame(step);
+      });
+      idx.addEventListener('pointermove', (e) => { if (on) place(e); }, { passive: true });
+      const hide = () => { on = false; peek.classList.remove('is-on'); };
+      idx.addEventListener('pointerleave', hide);
+      idx.addEventListener('pointerdown', hide);
+      addEventListener('scroll', () => { if (on && !idx.matches(':hover')) hide(); }, { passive: true });
+    }
   });
 })();

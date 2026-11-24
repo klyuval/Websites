@@ -326,6 +326,7 @@
       if (ht !== heroTable) heroY = '';   // a re-mounted hero starts without our inline translate
       heroTable = ht;
       magnets();
+      if (chip) playChip();
       onScroll();
     }
 
@@ -355,6 +356,7 @@
           sink(courses[i], Math.round(p * 1000) / 1000);
         }
       }
+      if (chip) chip.classList.toggle('is-past', scrollY > H * .5);
       if (wide && hero) {
         const y = Math.min(scrollY, H * 1.2);
         const v = y > 0 ? `0 ${(y * .12).toFixed(1)}px` : '';
@@ -416,8 +418,101 @@
       });
     }
 
+    /* -------------------------------------------------------------------------------------------------------------
+       7. Round 5: "Your turn, chef". A place card on the cloth (outside the app root, so React never sees it) leads
+          to /play/, the plating table. The cloths sweep across in reading direction with the page's words on the
+          teal one, exactly like the language wipe, and /play/ opens on that same teal cloth: one continuous move.
+          It shows once the loader has gone; on phones it is a small round plate in the corner the dock leaves free,
+          which opens into the card when the invitation section is on screen. */
+    const PLAY = { he: 'תורכם, שף', en: 'Your turn, chef', fr: 'À vous, chef' };
+    const PLAYSUB = { he: 'צלחו מנה בעצמכם', en: 'plate a course yourself', fr: 'dressez une assiette' };
+    let chip = null, chipLang = '', inviteIO = null, inviteEl = null;
+    function playChip() {
+      if (!hasCSS() || !document.body) return;
+      if (!chip) {
+        chip = document.createElement('a');
+        chip.className = 'ydx-play';
+        chip.href = '/play/';
+        chip.innerHTML = '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle cx="24" cy="24" r="21" fill="#fbf6ea" stroke="#e3d8bf" stroke-width="1.2"/>' +
+          '<circle cx="24" cy="24" r="14" fill="#f3ecdc" stroke="#e4d9c2" stroke-width="1"/><path d="M15 29c6-1 12-4 17-10" fill="none" stroke="#f0a81c" stroke-width="5" stroke-linecap="round"/>' +
+          '<circle cx="29" cy="28" r="2.2" fill="#c92c60"/><circle cx="32" cy="25" r="1.5" fill="#c92c60"/><g stroke="#f5b72b" stroke-width="2.2" stroke-linecap="round"><path d="M21 13v7M17.5 16.5h7M19 14.5l4 4M19 18.5l4-4"/></g></svg>' +
+          '<span class="ydx-play__t"><b></b><small></small></span>';
+        chip.addEventListener('click', e => {
+          if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          e.preventDefault();
+          leaveTo('/play/', PLAY[doc.lang] || PLAY.he);
+        });
+        document.body.appendChild(chip);
+        setTimeout(() => chip.classList.add('is-on'), RM ? 0 : 900);
+        if (RM) chip.classList.add('is-past');   // no scroll handler in reduced motion: just show it
+      }
+      const l = /^(he|en|fr)$/.test(doc.lang) ? doc.lang : 'he';
+      if (l !== chipLang) {
+        chipLang = l;
+        chip.setAttribute('lang', l);
+        chip.setAttribute('dir', l === 'he' ? 'rtl' : 'ltr');
+        chip.querySelector('b').textContent = PLAY[l];
+        chip.querySelector('small').textContent = PLAYSUB[l];
+        chip.setAttribute('aria-label', PLAY[l] + ' — ' + PLAYSUB[l]);
+      }
+      // the invitation section (re-mounted on a language change) opens the card on phones
+      const inv = document.querySelector('#contact');
+      if (inv !== inviteEl && 'IntersectionObserver' in window) {
+        inviteIO = inviteIO || new IntersectionObserver(es => es.forEach(e => chip.classList.toggle('is-open', e.isIntersecting)), { threshold: .35 });
+        if (inviteEl) inviteIO.unobserve(inviteEl);
+        inviteEl = inv;
+        if (inv) inviteIO.observe(inv);
+      }
+    }
+    /* Leaving for /play/: the language wipe's cloths come in and stay; the browser then navigates. A safety timer
+       navigates anyway, and a page restored from the back/forward cache drops the cloths. */
+    function leaveTo(href, word) {
+      try { sessionStorage.setItem('ydx-xfer', 'play'); } catch (e) { /* the next page just shows its own cover */ }
+      const go = () => { location.href = href; };
+      if (RM || !document.body.animate) { go(); return; }
+      const dir = doc.lang === 'he' ? -1 : 1, off = innerWidth * 1.25 + 20;
+      const wrap = document.createElement('div');
+      wrap.className = 'ydx-wipe ydx-wipe--leave';
+      wrap.setAttribute('aria-hidden', 'true');
+      const bands = ['saffron', 'pom', 'linen', 'teal'].map(n => {
+        const b = document.createElement('div');
+        b.className = 'ydx-wipe__band ydx-wipe__band--' + n;
+        wrap.appendChild(b);
+        return b;
+      });
+      const w = document.createElement('span');
+      w.className = 'ydx-wipe__word';
+      w.setAttribute('dir', doc.lang === 'he' ? 'rtl' : 'ltr');
+      w.innerHTML = '<i>✳</i>';
+      w.appendChild(document.createTextNode(word));
+      bands[3].appendChild(w);
+      document.body.appendChild(wrap);
+      const ins = bands.map((b, i) => b.animate([{ transform: `translateX(${-dir * off}px)` }, { transform: 'none' }],
+        { duration: 290, delay: i * 28, easing: CLOTH, fill: 'both' }));
+      w.animate([{ opacity: 0, transform: `translateX(${-dir * 40}px)` }, { opacity: 1, transform: 'none' }],
+        { duration: 260, delay: 174, easing: SETTLE, fill: 'both' });
+      const safety = setTimeout(go, 900);
+      ins[3].finished.then(() => { clearTimeout(safety); go(); }, go);
+    }
+    addEventListener('pageshow', e => {
+      if (!e.persisted) return;
+      document.querySelectorAll('.ydx-wipe--leave').forEach(w => w.remove());
+    });
+
+    /* 8. Round 5: glasses and tea lights answer a tap. light.js rings the light from the tap point; the glass itself
+          gives a small wobble (the individual `rotate` property, so the site's own transform is untouched). */
+    if (!RM) addEventListener('pointerdown', e => {
+      const p = e.target && e.target.closest ? e.target.closest('.piece') : null;
+      const img = p && p.querySelector('img[src*="/wine"],img[src*="/water"],img[src*="/coupe"],img[src*="/light-"],img[src*="/kiddush"],img[src*="/cup-"]');
+      if (!img || !img.animate) return;
+      img.animate([{ rotate: '0deg' }, { rotate: '4deg' }, { rotate: '-3deg' }, { rotate: '1.5deg' }, { rotate: '0deg' }],
+        { duration: 620, easing: 'ease-out' });
+    }, { passive: true });
+
     /* Boot + re-scan when React re-renders (language switch re-mounts the whole page). */
     scan(); measure(); onScroll();
+    // the play card is added to <body> only once React has hydrated (or clearly never will)
+    { const tStart = now(); const wait = () => { if (hydrated() || now() - tStart > 10000) playChip(); else setTimeout(wait, 250); }; wait(); }
     let pending = 0;
     new MutationObserver(() => {
       if (pending) return;

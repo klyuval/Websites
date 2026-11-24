@@ -242,3 +242,57 @@ html.ydx-calm main.workspace :is(.week-stack .slab, .lead-smear, .plate-ring, .m
   .name-button::after { content: ""; position: absolute; inset: -9px -4px; }
   .text-btn { min-height: 44px; min-width: 44px; justify-content: center; }
 }
+
+/* ======================================================================
+   Round 5: living chalk floor, plate confetti, workout cheer, toy chip
+   ====================================================================== */
+
+/* The floor canvas (ydx/chalk.js): fixed, behind every block (z -1 paints
+   above the root-propagated body floor and below in-flow content). It fades
+   in over the body's own speckle floor, which stays as the fallback. */
+.ydx-floor { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0; transition: opacity .9s ease; }
+.ydx-floor[data-state="ready"] { opacity: 1; }
+/* sign-in: the same canvas moves in front of the poster (a transparent
+   overlay: spotlight, haze and dust in the air) but stays under the form
+   card (z 4), the chip (z 6) and anything interactive */
+.ydx-floor.is-over { z-index: 3; }
+/* while the toy is open the same canvas becomes the room behind it */
+html.ydx-playing .ydx-floor { z-index: 90; }
+html.ydx-playing { overflow: hidden; }
+
+/* plate confetti: one transient canvas, never interactive; above the app
+   (sticky score, toasts are top layer anyway), below the toy */
+.ydx-confetti { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 76; pointer-events: none; }
+html.ydx-playing .ydx-confetti { z-index: 95; }
+
+/* "Workout done." headline: outlined display type that fills with chalk */
+.ydx-cheer { position: fixed; inset: 0; z-index: 77; display: grid; place-items: center; pointer-events: none; overflow: hidden; }
+.ydx-cheer-bg { position: absolute; inset: 0; opacity: 0; background: radial-gradient(70% 55% at 50% 50%, #111111e6 0, #111111b3 55%, #11111166 100%); }
+.ydx-cheer-in { position: relative; display: grid; justify-items: center; gap: 14px; padding: 18px 26px; }
+.ydx-cheer b { font: 900 clamp(64px, 12vw, 176px)/.82 var(--f-display); text-transform: uppercase; color: #f3f1ea; -webkit-text-stroke: 2px #f3f1ea; white-space: nowrap; text-shadow: 0 10px 40px #000a; }
+.ydx-cheer span { font: 600 13px/1.2 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: #111; background: #16a34a; padding: 7px 12px; border-radius: 6px; }
+.ydx-cheer span:empty { display: none; }
+
+/* "Load the bar" chip on the sign-in poster (a sibling of #root, placed
+   above the poster copy by enhance.js) */
+.ydx-play-chip { position: absolute; z-index: 6; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 16px 6px 8px; padding-inline: 8px 16px; border: 0; border-radius: 999px; background: #111; color: #f3f1ea; box-shadow: inset 0 0 0 1.5px #f3f1ea59, 0 10px 30px #0008; font: 600 12.5px/1 var(--f-mono, ui-monospace, monospace); letter-spacing: .08em; text-transform: uppercase; cursor: pointer; transition: box-shadow .18s, background-color .18s, transform .18s var(--ydx-out); }
+.ydx-play-chip svg { flex: none; transition: transform .18s var(--ydx-out); }
+[dir=rtl] .ydx-play-chip svg { transform: scaleX(-1); }
+.ydx-chip-plate { flex: none; width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle, #111 0 13%, #e9eaec 14% 27%, #9a9ea4 28% 31%, #0000 31.5%), conic-gradient(#e3242b 0 25%, #1d5fd8 0 50%, #f7c600 0 75%, #16a34a 0); }
+.ydx-play-chip:focus-visible { outline: 3px solid var(--yellow, #f7c600); outline-offset: 3px; }
+@media (hover: hover) {
+  .ydx-play-chip:hover { background: #1a1a19; box-shadow: inset 0 0 0 1.5px #f3f1ea, 0 14px 34px #000a; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ydx-play-chip { animation: ydx-up var(--ydx-t-block) var(--ydx-out) .9s both; }
+  .ydx-chip-plate { animation: ydx-spin 6s linear infinite; }
+  @media (hover: hover) {
+    .ydx-play-chip:hover .ydx-chip-plate { animation-duration: .9s; }
+    .ydx-play-chip:hover svg { transform: translate(3px, -3px); }
+    [dir=rtl] .ydx-play-chip:hover svg { transform: scaleX(-1) translate(3px, -3px); }
+  }
+  .ydx-play-chip:active { transform: scale(.96); }
+}
+@keyframes ydx-spin { to { rotate: 1turn; } }
+.ydx-play-chip.is-off { display: none; } /* the toy's files failed to load */
+@media print { .ydx-floor, .ydx-confetti, .ydx-cheer, .ydx-play-chip { display: none !important; } }

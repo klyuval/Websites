@@ -1,0 +1,145 @@
+<!doctype html>
+<!-- ydx r5: the Fizz Lab, a standalone page owned by the ydx layer (the worker serves real files before the SPA fallback).
+     It reuses the app's own stylesheet for tokens, type and components, the komorebi field, and the same label-peel
+     loader and transitions as the main site. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5811f" />
+    <meta name="description" content="The PEEL CLUB Fizz Lab: drop citrus and botanicals into a glass, shake it, and meet the club soda closest to your blend." />
+    <link rel="icon" href="/favicon.svg" />
+    <title>Fizz Lab — PEEL CLUB</title>
+    <link rel="preload" href="/assets/fraunces-latin-full-italic-D2JnYqd-.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/assets/courier-prime-latin-400-normal-BbyBr73r.woff2" as="font" type="font/woff2" crossorigin>
+    <script>
+      // the cover only exists for scripted visits; repeat visits in the session get the short version
+      (function () {
+        var h = document.documentElement; h.classList.add('lab-js');
+        try { if (sessionStorage.getItem('ydx-lab-seen') === '1' || sessionStorage.getItem('ydx-peel-seen') === '1') h.classList.add('lab-quick'); } catch (e) {}
+        try { if (localStorage.getItem('ydx-still') === '1') h.setAttribute('data-ydx-still', '1'); } catch (e) {}
+      })();
+    </script>
+    <style>
+      /* critical: the tangerine cover paints before anything else (same label-peel family as the site's loader) */
+      :root{--ydx-ease-out:cubic-bezier(.22,1,.36,1);--ydx-ease-peel:cubic-bezier(.65,0,.25,1);--ydx-ease-pop:cubic-bezier(.3,1.45,.5,1);--ydx-s:36.4vh;--ydx-fw:clamp(56px,8vw,128px)}
+      html{background:#f5811f}
+      #lab-cover{display:none}
+      html.lab-js #lab-cover{display:grid;place-content:center;justify-items:center;position:fixed;inset:0;z-index:2147483600;background:#f5811f;color:#0f3b2d;text-align:center;
+        font-family:"Fraunces Variable",Georgia,serif}
+      #lab-cover svg{width:auto;height:clamp(120px,26vh,220px);overflow:visible}
+      #lab-cover svg .g{fill:rgba(244,235,214,.2);stroke:#0f3b2d;stroke-width:2.2;stroke-linejoin:round}
+      #lab-cover svg .l{fill:none;stroke:#0f3b2d;stroke-width:1.8;stroke-linecap:round}
+      #lab-cover svg .b{fill:none;stroke:#f4ebd6;stroke-width:1.6;opacity:0}
+      #lab-cover .lc-tag{font:12.5px/1.4 "Courier Prime","Courier New",monospace;color:#17251d;background:#f4ebd6;padding:6px 11px 4px;box-shadow:1px 2px 2px #081a123d;transform:rotate(-2deg);margin:18px 0 22px}
+      #lab-cover strong{font-style:italic;font-weight:900;font-size:clamp(46px,8vw,120px);line-height:.84;letter-spacing:-.035em;font-variation-settings:"opsz" 144,"WONK" 0}
+      #lab-cover strong em{font-style:inherit;position:relative;display:inline-block}
+      #lab-cover strong em::before{content:"";position:absolute;z-index:-1;inset:.19em -.13em -.075em -.11em;background:#f4ebd6;transform:rotate(-1.3deg);box-shadow:0 1px 2px #081a1233,0 16px 28px -20px #081a128c}
+      #lab-cover .lc-flap{position:fixed;top:50%;left:calc(0px - var(--ydx-fw));width:var(--ydx-fw);height:160vh;margin-top:-80vh;transform-origin:100% 50%;transform:rotate(20deg);
+        background:linear-gradient(to left,#fffaf0 0,#f4ebd6 5px,#efe2c4 55%,#e2d2ae 100%);box-shadow:-18px 0 34px -10px rgba(8,26,18,.42);translate:calc(100vw + var(--ydx-fw) + var(--ydx-s) / 2) 0}
+      @media (prefers-reduced-motion:no-preference){
+        #lab-cover svg .b{animation:lc-fizz 1.4s cubic-bezier(.3,.1,.6,1) infinite;animation-delay:calc(var(--b) * 170ms)}
+        #lab-cover strong{animation:lc-rise .7s var(--ydx-ease-out) both}
+        #lab-cover .lc-tag{animation:lc-tag .5s var(--ydx-ease-pop) .1s both}
+        html.lab-js #lab-cover.is-leaving{animation:lc-peel .68s var(--ydx-ease-peel) both}
+        html.lab-js #lab-cover.is-leaving .lc-flap{animation:lc-flap .68s var(--ydx-ease-peel) both}
+        html.lab-quick #lab-cover *{animation-duration:.01s!important;animation-delay:0s!important}
+        html.lab-quick #lab-cover svg .b{animation-duration:1.4s!important;animation-delay:calc(var(--b) * 120ms)!important}
+        html.lab-quick.lab-js #lab-cover.is-leaving,html.lab-quick.lab-js #lab-cover.is-leaving .lc-flap{animation-duration:.56s!important}
+      }
+      @media (prefers-reduced-motion:reduce){html.lab-js #lab-cover.is-leaving{opacity:0;transition:opacity .25s}}
+      @keyframes lc-peel{from{clip-path:polygon(0 0,calc(100% + var(--ydx-fw) + var(--ydx-s)) 0,calc(100% + var(--ydx-fw)) 100%,0 100%)}to{clip-path:polygon(0 0,calc(0px - var(--ydx-fw)) 0,calc(0px - var(--ydx-fw) - var(--ydx-s)) 100%,0 100%)}}
+      @keyframes lc-flap{from{translate:calc(100vw + var(--ydx-fw) + var(--ydx-s) / 2) 0}to{translate:calc(0px - var(--ydx-fw) - var(--ydx-s) / 2) 0}}
+      @keyframes lc-fizz{0%{opacity:0;transform:translate(0,0) scale(.4)}15%{opacity:.95}70%{opacity:.8}100%{opacity:0;transform:translate(var(--x,4px),-70px) scale(1.2)}}
+      @keyframes lc-rise{from{opacity:0;transform:translateY(.3em)}}
+      @keyframes lc-tag{from{opacity:0;transform:translateY(-12px) rotate(-9deg)}}
+    </style>
+    <link rel="stylesheet" href="/assets/index-Bru9Umfv.css">
+    <link rel="stylesheet" href="/ydx/fizz-lab.css">
+    <script src="/ydx/komorebi.js" defer></script>
+    <script src="/ydx/fizz-lab.js" defer></script>
+  </head>
+  <body class="lab-page">
+    <div id="lab-cover" aria-hidden="true">
+      <svg viewBox="0 0 120 170" focusable="false">
+        <g><circle class="b" cx="52" cy="70" r="3" style="--b:0;--x:-6px"/><circle class="b" cx="64" cy="74" r="4" style="--b:1;--x:7px"/><circle class="b" cx="72" cy="70" r="2.4" style="--b:2;--x:-3px"/><circle class="b" cx="58" cy="76" r="2" style="--b:3;--x:9px"/><circle class="b" cx="68" cy="78" r="3.2" style="--b:4;--x:-8px"/></g>
+        <path class="g" d="M22 36h76l-9 118a8 8 0 0 1-8 7H39a8 8 0 0 1-8-7Z"/>
+        <path class="l" d="M25 66c20 5 50 5 70 0M30 140c18 4 42 4 60 0"/>
+        <path class="l" d="M84 36c4-14 16-22 30-20" style="stroke:#2d6230;stroke-width:2.4"/>
+      </svg>
+      <span class="lc-tag">Pl. &infin; &middot; the fizz lab</span>
+      <strong>Fizz <em>Lab</em></strong>
+      <i class="lc-flap"></i>
+    </div>
+
+    <a class="skip-link" href="#lab">Skip to the lab</a>
+    <header class="header lab-header">
+      <a href="/" class="header-shop lab-back" data-lab-leave><span aria-hidden="true">&larr;</span> Back<span class="lab-back__long"> to the club</span></a>
+      <a href="/" class="wordmark" aria-label="PEEL CLUB home" data-lab-leave><span>PEEL</span><span>CLUB</span></a>
+      <div class="header-right lab-right">
+        <button type="button" class="lab-still" aria-pressed="false"><span class="lab-still__i" aria-hidden="true"></span><span class="lab-still__t">Pause light</span></button>
+        <a href="/sodas" data-lab-leave>Our sodas</a>
+      </div>
+    </header>
+
+    <main id="lab" class="desk desk-tang lab-desk" tabindex="-1">
+      <section class="lab-intro" aria-labelledby="lab-title">
+        <span class="tag lab-kicker">Pl. &infin; &middot; the fizz lab</span>
+        <h1 id="lab-title" class="display">Mix your own<br><em>bright side.</em></h1>
+        <p>Drop in a citrus, a botanical, a little something else. Shake the glass. Watch it fizz, then meet the club soda that tastes closest to your blend.</p>
+      </section>
+
+      <div class="lab-bench">
+        <section class="lab-shelf" aria-labelledby="lab-shelf-title">
+          <h2 id="lab-shelf-title" class="lab-h">The shelf <span>drag into the glass, or tap</span></h2>
+          <div class="lab-shelf__groups" data-shelf></div>
+        </section>
+
+        <section class="lab-glass" aria-label="The glass">
+          <div class="lab-glass__stage" data-stage>
+            <canvas aria-hidden="true" data-glass></canvas>
+            <p class="lab-glass__hint" data-hint>Drag the glass to shake it</p>
+          </div>
+          <div class="lab-controls">
+            <label class="lab-fizz">
+              <span class="lab-fizz__l">Fizz</span>
+              <input type="range" min="0" max="3" step="1" value="2" data-fizz aria-valuetext="Sparkling">
+              <output data-fizz-out>Sparkling</output>
+            </label>
+            <div class="lab-buttons">
+              <button type="button" class="pill lab-shake" data-shake>Shake it <span aria-hidden="true">&#8776;</span></button>
+              <button type="button" class="tag lab-small" data-ice>+ Ice</button>
+              <button type="button" class="tag lab-small" data-empty>Empty the glass</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="lab-card sheet" aria-labelledby="lab-card-title">
+          <span class="tag lab-card__tag">Your blend &middot; Pl. &infin;</span>
+          <h2 id="lab-card-title" class="display" data-name>Sparkling water</h2>
+          <p class="lab-card__sub" data-sub>Nothing in it yet. Pick something from the shelf.</p>
+          <ul class="lab-card__list" data-list></ul>
+          <div class="lab-match" data-match hidden>
+            <p class="lab-match__k">Closest in the club</p>
+            <a class="lab-match__can" href="/sodas/blood-orange" data-match-link data-lab-leave>
+              <img src="/img/can-blood-orange-front-s.webp" alt="" width="90" height="200" data-match-img>
+              <span class="display" data-match-name>Blood Orange</span>
+            </a>
+            <button type="button" class="pill lab-add" data-add>Add a six-pack to your bag <span class="arrow" aria-hidden="true">&rarr;</span></button>
+            <p class="lab-added" data-added role="status"></p>
+          </div>
+        </aside>
+      </div>
+      <p class="sr-only" aria-live="polite" data-live></p>
+      <noscript><p class="lab-noscript">The Fizz Lab needs JavaScript to mix. <a href="/sodas">Meet the eight club sodas instead &rarr;</a></p></noscript>
+    </main>
+
+    <footer class="footer desk desk-green lab-footer">
+      <div class="footer-top">
+        <h2 class="display">There&rsquo;s always<br>room for <em>one more.</em></h2>
+        <nav aria-label="Footer"><a href="/sodas" data-lab-leave>Our sodas</a><a href="/our-story" data-lab-leave>Our story</a><a href="/good-company" data-lab-leave>Good company</a><a href="/faq" data-lab-leave>A few good answers</a></nav>
+      </div>
+      <div class="footer-bottom"><span>&copy; 2026 PEEL CLUB</span><span>The Fizz Lab is a toy. The sodas are a concept.</span><a href="/privacy" data-lab-leave>Privacy &amp; concept notes</a></div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>The proof press — Form &amp; Field</title>
+  <meta name="description" content="Set a word, roll ink over the plate and pull your own proof. A hands-on print study from Form &amp; Field.">
+  <meta name="theme-color" content="#121210">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23ffe500'/%3E%3Cpath d='M18 48V16h30v8H27v7h17v8H27v9Z' fill='%23121210'/%3E%3C/svg%3E">
+  <link rel="preload" href="/assets/display.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/editorial.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/styles.css">
+  <!-- ydx r5: the proof press. Same loader and plates as the guide (critical CSS inline, enhance.css for the plates). -->
+  <script data-ydx>(function(h){var m='first',c='';try{if(matchMedia('(prefers-reduced-motion: reduce)').matches)m='reduced';else if(window.self!==window.top)m='frame';else{var k=JSON.parse(sessionStorage.getItem('ydx-ff-cut')||'null');sessionStorage.removeItem('ydx-ff-cut');if(k&&Date.now()-k.t<8000&&/^#[0-9a-f]{6}$/i.test(k.c)){m='cut';c=k.c}else if(sessionStorage.getItem('ydx-ff-seen'))m='quick'}}catch(e){}h.className+=' ydx-js ydx-loading ydx-l-'+m;h.setAttribute('data-ydx-mode',m);if(c)h.style.setProperty('--ydx-cut',c);window.__ydxT0=performance.now();try{document.fonts.load('200 100px Display').then(function(f){if(f&&f.length)h.classList.add('ydx-df')},function(){})}catch(e){}window.__ydxFS=setTimeout(function(){h.classList.add('ydx-fail');setTimeout(function(){h.classList.remove('ydx-loading','ydx-fail')},420)},m==='frame'||m==='cut'?1500:4200)})(document.documentElement)</script>
+  <style data-ydx>
+    .ydx-loader{display:none}
+    .ydx-loading .ydx-loader{display:block}
+    .ydx-fail .ydx-loader{opacity:0;transition:opacity .4s;pointer-events:none}
+    /* repeat visits, the hub iframe and reduced motion open on a sheet that is already inked */
+    .ydx-l-quick .ydx-word,.ydx-l-frame .ydx-word,.ydx-l-reduced .ydx-word{--w:800}
+    .ydx-l-quick .ydx-base,.ydx-l-frame .ydx-base,.ydx-l-reduced .ydx-base{transform:none}
+    .ydx-loader{position:fixed;inset:0;z-index:9999;overflow:hidden;color:#121210;--g:clamp(18px,3.4vw,58px);--F:min(calc((100vw - 2 * var(--g)) / 5.1),26svh);-webkit-user-select:none;user-select:none}
+    .ydx-cols,.ydx-plates{position:absolute;inset:0;display:flex}
+    .ydx-cols>i,.ydx-plates>i{flex:1 1 0;display:block;height:100%}
+    .ydx-cols>i{background:#f3eee1;box-shadow:1px 0 0 #f3eee1}
+    .ydx-plates i:nth-child(1){background:#4a22ee}.ydx-plates i:nth-child(2){background:#ff3d9a}.ydx-plates i:nth-child(3){background:#62e9b4}.ydx-plates i:nth-child(4){background:#121210}.ydx-plates i:nth-child(5){background:#fffdf6}
+    .ydx-sheet{position:absolute;inset:0}
+    .ydx-grid,.ydx-grid::before,.ydx-grid::after{position:absolute;inset:0}
+    .ydx-grid::before,.ydx-grid::after{content:""}
+    .ydx-grid::before{background:linear-gradient(rgba(18,18,16,.075) 1px,transparent 1px) 0 0/100% 4.9vw}
+    .ydx-grid::after{background:linear-gradient(90deg,rgba(18,18,16,.075) 1px,transparent 1px) 0 0/4.9vw 100%}
+    .ydx-loader .crops{color:#121210}
+    .ydx-top,.ydx-meta{position:absolute;left:var(--g);right:var(--g);display:flex;justify-content:space-between;align-items:center;gap:16px}
+    .ydx-top{top:26px}
+    .ydx-meta{bottom:24px}
+    .ydx-spec{position:absolute;left:0;right:0;top:50%;height:var(--F);margin-top:calc(var(--F) * -.62);text-align:center}
+    .ydx-word{display:inline-block;font-family:Display,'Arial Black',sans-serif;font-size:var(--F);line-height:1;letter-spacing:-.058em;white-space:nowrap;font-weight:var(--w,200);position:relative;z-index:1}
+    .ydx-word b{display:inline-block;font-weight:inherit}
+    /* each sort sits in a fixed slot as wide as its weight-800 glyph; inking up then moves nothing (no layout shift), the glyph is kept centred with translate */
+    @property --w{syntax:'<number>';inherits:true;initial-value:200}
+    .ydx-df .ydx-word b{width:calc(var(--a8) * 1em);translate:calc((var(--a8) - var(--a2)) * (800 - var(--w,200)) / 1200 * 1em) 0}
+    .ydx-word em{font-family:Editorial,Georgia,serif;font-style:italic;font-weight:500;letter-spacing:0;color:#ff3d9a;margin:0 .03em 0 .01em}
+    .ydx-word .ydx-star{font-family:Body,sans-serif;font-weight:400;font-size:.42em;color:#4a22ee;vertical-align:.95em;margin-left:.12em;letter-spacing:0}
+    .ydx-guide{position:absolute;left:var(--g);right:var(--g);height:0;transform-origin:0 50%}
+    .ydx-xh{top:calc(var(--F) * .3);border-top:1.5px dashed rgba(18,18,16,.42)}
+    .ydx-base{top:calc(var(--F) * .815);border-top:2px solid #ff3d9a;transform:scaleX(0)}
+    .ydx-note{position:absolute;font-family:Hand,cursive;font-size:clamp(20px,2vw,30px);line-height:1;color:#4a22ee;white-space:nowrap}
+    .ydx-n1{right:calc(var(--g) + 1vw);top:calc(var(--F) * .3 - 1.15em);transform:rotate(-3deg)}
+    .ydx-n2{left:calc(var(--g) + 1vw);top:calc(var(--F) * .815 + .35em);transform:rotate(-2deg);color:#ff3d9a}
+    .ydx-chips{display:inline-flex}
+    @media (max-width:860px){.ydx-n1{top:calc(var(--F) * -.62);right:var(--g)}}
+    .ydx-chips b{width:18px;height:18px;display:block;box-shadow:inset 0 0 0 1.5px rgba(18,18,16,.35)}
+    .ydx-chips b::after{content:"";display:block;width:100%;height:100%;background:var(--c);transform:scaleY(0);transform-origin:50% 100%;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+    .ydx-chips b.on::after{transform:none}
+    .ydx-read{display:inline-flex;gap:18px}
+    .ydx-read output{font:inherit}
+    @media (max-width:860px){
+      .ydx-loader{--F:calc((100vw - 2 * var(--g)) / 5.1)}
+      .ydx-grid::before{background-size:100% 9.8vw}.ydx-grid::after{background-size:9.8vw 100%}
+      .ydx-top,.ydx-meta{left:calc(var(--g) + 22px);right:calc(var(--g) + 22px)}
+      .ydx-top{flex-direction:column;align-items:flex-start;gap:4px;top:28px;font-size:10px}
+      .ydx-meta{flex-wrap:wrap;font-size:10px;gap:10px 14px}
+      .ydx-chips b{width:14px;height:14px}
+    }
+    @media (prefers-reduced-motion:no-preference){
+      .ydx-l-first .ydx-grid::before{animation:ydx-rh 1s .05s cubic-bezier(.65,0,.35,1) both}
+      .ydx-l-first .ydx-grid::after{animation:ydx-rv 1s .2s cubic-bezier(.65,0,.35,1) both}
+      .ydx-l-first .ydx-loader .crops i{animation:ydx-crop .6s cubic-bezier(.2,.8,.2,1) both}
+      .ydx-l-first .ydx-loader .crops i:nth-child(2){animation-delay:.06s}.ydx-l-first .ydx-loader .crops i:nth-child(3){animation-delay:.12s}.ydx-l-first .ydx-loader .crops i:nth-child(4){animation-delay:.18s}
+      .ydx-l-first .ydx-xh{animation:ydx-draw .8s .1s cubic-bezier(.65,0,.35,1) both}
+      .ydx-l-first .ydx-word b,.ydx-l-first .ydx-word em,.ydx-l-first .ydx-word .ydx-star{display:inline-block;animation:ydx-sort .55s calc(.12s + var(--i) * .045s) cubic-bezier(.2,.8,.2,1) both}
+      .ydx-l-first .ydx-note,.ydx-l-first .ydx-top,.ydx-l-first .ydx-meta{animation:ydx-fade .6s .4s both}
+      .ydx-loader .ydx-star{animation:ydx-spin 2.4s linear infinite}
+      /* slow networks: until enhance.js takes over, the proof keeps inking up on its own */
+      .ydx-l-first .ydx-word{animation:ydx-creep-w 9s .8s cubic-bezier(.2,.6,.35,1) both}
+      .ydx-l-first .ydx-base{animation:ydx-creep-b 9s .8s cubic-bezier(.2,.6,.35,1) both}
+    }
+    /* round 5: arriving from the proof press (or leaving for it) the page opens under the same five plates the
+       transition closed, in the destination's colour, and they lift */
+    .ydx-l-cut .ydx-cols,.ydx-l-cut .ydx-sheet{display:none}
+    .ydx-l-cut .ydx-plates>i:nth-child(n){background:var(--ydx-cut,#121210);position:relative;box-shadow:1px 0 0 var(--ydx-cut,#121210)}
+    .ydx-l-cut .ydx-plates>i::before,.ydx-l-cut .ydx-plates>i::after{content:"";position:absolute;left:0;right:0;height:8px;background:var(--e)}
+    .ydx-l-cut .ydx-plates>i::before{top:0}.ydx-l-cut .ydx-plates>i::after{bottom:0}
+    .ydx-l-cut .ydx-plates>i:nth-child(1){--e:#4a22ee}.ydx-l-cut .ydx-plates>i:nth-child(2){--e:#ff3d9a}.ydx-l-cut .ydx-plates>i:nth-child(3){--e:#62e9b4}.ydx-l-cut .ydx-plates>i:nth-child(4){--e:#121210}.ydx-l-cut .ydx-plates>i:nth-child(5){--e:#fffdf6}
+    @keyframes ydx-rh{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+    @keyframes ydx-rv{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0)}}
+    @keyframes ydx-crop{from{opacity:0;scale:1.8}to{scale:1}}
+    @keyframes ydx-draw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+    @keyframes ydx-sort{from{opacity:0;transform:translate3d(0,-.5em,0) rotate(-8deg)}to{opacity:1;transform:none}}
+    @keyframes ydx-fade{from{opacity:0}to{opacity:1}}
+    @keyframes ydx-spin{to{rotate:360deg}}
+    @keyframes ydx-creep-w{from{--w:200}to{--w:470}}
+    @keyframes ydx-creep-b{from{transform:scaleX(0)}to{transform:scaleX(.45)}}
+  </style>
+  <link rel="stylesheet" href="/ydx/enhance.css">
+  <link rel="stylesheet" href="/ydx/press.css">
+  <script src="/ydx/press.js" defer></script>
+</head>
+<body class="press-page">
+<!-- ydx: loading screen (the same proof sheet as the guide) -->
+<div class="ydx-loader" id="ydx-loader" aria-hidden="true">
+  <div class="ydx-plates"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="ydx-cols"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="ydx-sheet">
+    <div class="ydx-grid"></div>
+    <div class="crops"><i></i><i></i><i></i><i></i></div>
+    <div class="ydx-top mono"><span>Form &amp; Field — the proof press</span><span>Press room / Vol. 01</span></div>
+    <div class="ydx-spec">
+      <i class="ydx-guide ydx-xh"></i><i class="ydx-guide ydx-base" id="ydx-base"></i>
+      <span class="ydx-note ydx-n1">x-height</span><span class="ydx-note ydx-n2">baseline</span>
+      <span class="ydx-word" id="ydx-word"><b style="--i:0;--a2:.245;--a8:.3181">f</b><b style="--i:1;--a2:.4941;--a8:.5091">o</b><b style="--i:2;--a2:.2591;--a8:.342">r</b><b style="--i:3;--a2:.7411;--a8:.802">m</b><em style="--i:4">&amp;</em><b style="--i:5;--a2:.245;--a8:.3181">f</b><b style="--i:6;--a2:.102;--a8:.1761">i</b><b style="--i:7;--a2:.4561;--a8:.4791">e</b><b style="--i:8;--a2:.102;--a8:.1761">l</b><b style="--i:9;--a2:.4731;--a8:.5181">d</b><span class="ydx-star" style="--i:10">✳</span></span>
+    </div>
+    <div class="ydx-meta mono"><span id="ydx-status">Inking the plate…</span><span class="ydx-chips"><b style="--c:#4a22ee"></b><b style="--c:#ff3d9a"></b><b style="--c:#62e9b4"></b><b style="--c:#121210"></b><b style="--c:#fffdf6"></b></span><span class="ydx-read"><span>wght <output id="ydx-wght">200</output></span><output id="ydx-pct">000%</output></span></div>
+  </div>
+</div>
+<a class="skip" href="#press-title">Skip to the press</a>
+<header class="site-header">
+  <a class="wordmark" href="/" data-ydx-go="#121210" aria-label="Form and Field home">form<span>&amp;</span>field<span class="brand-star" aria-hidden="true">✳</span></a>
+  <nav class="main-nav pr-nav" aria-label="Main navigation"><a href="/#playground" data-ydx-go="#4a22ee" class="pr-back"><span aria-hidden="true">←</span> Back to the field guide</a></nav>
+</header>
+
+<main class="press" id="press">
+  <div class="crops" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+  <section class="pr-desk" aria-labelledby="press-title">
+    <div class="kicker mono"><span>005 / THE PROOF PRESS</span><i class="rule"></i><span class="pr-count" id="pr-count">PROOF Nº 001</span></div>
+    <h1 id="press-title" class="display" tabindex="-1">Pull a <em>proof.</em></h1>
+    <p class="pr-lede">Set a word. Roll ink over the plate. Pull the paper. No two proofs come out the same, and that is the lesson.</p>
+
+    <div class="pr-steps">
+      <fieldset class="pr-step" id="pr-set">
+        <legend class="mono"><b>01</b> Set the plate</legend>
+        <label class="word-field mono pr-word">Your word <input type="text" class="word-input" id="pr-word" value="Observe." maxlength="14" autocomplete="off" spellcheck="false"></label>
+        <div class="seg mono pr-seg" role="group" aria-label="Layout of the poster">
+          <button type="button" data-layout="loud" aria-pressed="true">Loud</button><button type="button" data-layout="quiet" aria-pressed="false">Quiet</button><button type="button" data-layout="rhythm" aria-pressed="false">Rhythm</button>
+        </div>
+      </fieldset>
+      <fieldset class="pr-step" id="pr-ink">
+        <legend class="mono"><b>02</b> Ink the plate</legend>
+        <div class="pr-inks" role="group" aria-label="Ink on the brayer">
+          <button type="button" class="pr-ink" data-ink="#ff3d9a" aria-pressed="true" aria-label="Pink ink"></button>
+          <button type="button" class="pr-ink" data-ink="#4a22ee" aria-pressed="false" aria-label="Violet ink"></button>
+          <button type="button" class="pr-ink" data-ink="#62e9b4" aria-pressed="false" aria-label="Mint ink"></button>
+          <button type="button" class="pr-ink" data-ink="#121210" aria-pressed="false" aria-label="Black ink"></button>
+          <button type="button" class="pr-ink" data-ink="#ffe500" aria-pressed="false" aria-label="Yellow ink"></button>
+          <button type="button" class="pr-ink pr-split" data-ink="split" aria-pressed="false" aria-label="Split fountain: pink, yellow and mint on one roller"></button>
+        </div>
+        <p class="pr-hint"><span class="hand">drag across the plate to roll ink</span></p>
+        <div class="pr-row"><button type="button" class="text-button" id="pr-auto">Roll it for me <span aria-hidden="true">↻</span></button><span class="mono pr-meter" aria-hidden="true"><i><b id="pr-meter-bar"></b></i><output id="pr-meter">000%</output></span></div>
+      </fieldset>
+      <fieldset class="pr-step" id="pr-pull-step">
+        <legend class="mono"><b>03</b> Pull the proof</legend>
+        <div class="seg mono pr-seg" role="group" aria-label="Paper stock">
+          <button type="button" data-paper="#fffdf6" aria-pressed="true">White</button><button type="button" data-paper="#f3eee1" aria-pressed="false">Newsprint</button><button type="button" data-paper="#ffe500" aria-pressed="false">Yellow</button>
+        </div>
+        <div class="pr-row pr-actions">
+          <button type="button" class="pill-button" id="pr-pull">Pull the proof <span aria-hidden="true">↗</span></button>
+          <button type="button" class="text-button" id="pr-save" disabled>Save the proof <span aria-hidden="true">↓</span></button>
+          <button type="button" class="text-button" id="pr-clean">Clean the plate <span aria-hidden="true">↺</span></button>
+        </div>
+      </fieldset>
+    </div>
+    <p class="visually-hidden" id="pr-status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="pr-bed" aria-label="The press bed">
+    <div class="pr-stage" id="pr-stage">
+      <canvas id="pr-canvas" role="img" aria-label="The plate, not inked yet."></canvas>
+      <div class="pr-fallback" id="pr-fallback" hidden><canvas id="pr-plate2d" aria-hidden="true"></canvas><canvas id="pr-print2d" aria-hidden="true"></canvas></div>
+      <span class="mono pr-tag pr-tag-plate" id="pr-tag-plate" aria-hidden="true">PLATE · WRONG-READING</span>
+      <span class="mono pr-tag pr-tag-print" id="pr-tag-print" aria-hidden="true">PROOF · RIGHT-READING</span>
+      <span class="pr-slot" id="pr-slot" aria-hidden="true"><span class="hand">your proof lands here</span></span>
+      <i class="pr-brayer" id="pr-brayer" aria-hidden="true"><b></b></i>
+    </div>
+    <div class="pr-view mono" role="group" aria-label="Show"><button type="button" data-view="plate" aria-pressed="true">Plate</button><button type="button" data-view="print" aria-pressed="false">Proof</button></div>
+    <div class="pr-line" aria-label="Today’s proofs"><span class="mono">TODAY’S PROOFS</span><ol id="pr-wall"></ol></div>
+  </section>
+  <div class="pr-foot mono" aria-hidden="true"><span>FORM &amp; FIELD / PRESS ROOM</span><span class="bars"><b></b><b></b><b></b><b></b><b></b></span><i class="reg"></i><span>EVERY PROOF IS A DRAFT.</span></div>
+  <noscript><p class="pr-nojs">The press needs JavaScript to run. The posters it prints come from the <a href="/#visual-studies">three studies in the field guide</a>.</p></noscript>
+</main>
+</body>
+</html>

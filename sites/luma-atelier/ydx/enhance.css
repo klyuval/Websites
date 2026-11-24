@@ -252,3 +252,46 @@ html body:has(.alex-biography) .site-nav.inner { background: transparent; }
 
 /* click shield while the (already inert) arrival is held on screen */
 ydx-shield { position: fixed; inset: 0; z-index: 10002; display: block; background: transparent; cursor: pointer; }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   r5: the living darkroom (ydx/darkroom-bg.js). One fixed WebGL canvas behind the page. Only once its first frame is
+   drawn (html.ydx-bg-live) do the dark full-width blocks it found (data-ydx-clear, colour recorded in the attribute)
+   lose their flat background; the shader paints that exact colour plus the moving light. No WebGL / reduced motion /
+   file missing: the class is never set and the page is the original design.
+   ------------------------------------------------------------------------------------------------------------- */
+ydx-bg { position: fixed; inset: 0; z-index: -1; display: block; pointer-events: none; }
+ydx-bg canvas { display: block; width: 100%; height: 100%; }
+html.ydx-bg-live { background: var(--ydx-ground, #171b12); }
+html.ydx-bg-live [data-ydx-clear] { background-color: transparent !important; }
+html.ydx-bg-live [data-ydx-ovh] { background-color: var(--ydx-bga) !important; } /* see darkroom-bg.js: Chrome culls the canvas under opaque overflow:clip boxes */
+@media (prefers-reduced-motion: reduce) { ydx-bg { display: none; } }
+@media print { ydx-bg { display: none; } html.ydx-bg-live [data-ydx-clear] { background-color: revert !important; } }
+
+/* r5: entry chip to /darkroom/ (outside the app root). The darkroom door sign: a red safelight and the room name. */
+.ydx-chip {
+  position: fixed; z-index: 60; bottom: 18px; inset-inline-start: 18px;
+  display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 18px 8px 14px;
+  border-radius: 999px; background: rgba(14, 16, 11, .82); color: #eeeadd; text-decoration: none;
+  border: 1px solid rgba(184, 166, 125, .32); box-shadow: 0 12px 34px rgba(0, 0, 0, .35);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  font: 500 12px/1.1 "Atelier Sans", sans-serif; letter-spacing: .02em;
+  opacity: 0; transform: translateY(16px); pointer-events: none; visibility: hidden;
+  transition: opacity .45s var(--ydx-out), transform .6s var(--ydx-out), visibility 0s .6s, border-color .3s, background .3s;
+}
+.ydx-chip.is-on { opacity: 1; transform: none; pointer-events: auto; visibility: visible; transition-delay: 0s; }
+.ydx-chip i {
+  width: 8px; height: 8px; border-radius: 50%; background: #c8553a; flex: none;
+  box-shadow: 0 0 0 3px rgba(200, 85, 58, .18), 0 0 12px 2px rgba(200, 85, 58, .55);
+}
+.ydx-chip b { font: 400 15px/1 Optical, sans-serif; letter-spacing: .03em; text-transform: uppercase; }
+.ydx-chip:lang(he) b { font-family: "Studio Hebrew Display", sans-serif; font-weight: 800; letter-spacing: 0; }
+.ydx-chip:lang(ru) b { font-family: "Studio Cyrillic Display", sans-serif; font-weight: 800; letter-spacing: 0; }
+.ydx-chip span { color: #b8a67d; }
+.ydx-chip:hover, .ydx-chip:focus-visible { border-color: #b8a67d; background: rgba(14, 16, 11, .94); }
+.ydx-chip:focus-visible { outline: 2px solid #b8a67d; outline-offset: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+  .ydx-chip i { animation: ydx-safelight 3.2s ease-in-out infinite; }
+  @keyframes ydx-safelight { 50% { box-shadow: 0 0 0 4px rgba(200, 85, 58, .12), 0 0 18px 4px rgba(200, 85, 58, .7); } }
+}
+@media (max-width: 560px) { .ydx-chip { bottom: 12px; inset-inline-start: 12px; padding-inline: 12px 14px; } .ydx-chip span { display: none; } }
+@media print { .ydx-chip { display: none; } }

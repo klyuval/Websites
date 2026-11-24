@@ -331,15 +331,226 @@
     }
   }
 
+  /* ---------------------------------------------------------------- 11. komorebi field (r5) */
+  // The flat desks become a living field: dappled light through swaying leaves, fizz and caustics, drawn by
+  // /ydx/komorebi.js in ONE small WebGL canvas behind #root (outside it). It is loaded lazily after the loader has gone
+  // and the browser is idle, so it never competes with the app's boot or the three.js shader compile.
+  // Fallbacks: hub iframe, save-data, software GL, no WebGL or a failing shader -> html.ydx-field-css (designed static
+  // light, enhance.css). If komorebi.js never arrives, nothing changes (the desks keep their flat colours).
+  const qs = new URLSearchParams(location.search);
+  let field = null, busyUntil = 0, dragging = false, hoverFlavor = null, sceneEl = null;
+  const now = () => performance.now();
+  const SLUG = {};
+  [['blood-orange', 'Blood Orange'], ['lemon-basil', 'Lemon & Basil'], ['pink-grapefruit', 'Pink Grapefruit'], ['mandarin', 'Mandarin'],
+    ['yuzu-ginger', 'Yuzu & Ginger'], ['cherry-lime', 'Cherry & Lime'], ['peach-verbena', 'Peach & Verbena'], ['pineapple-mint', 'Pineapple & Mint']]
+    .forEach(([s, n]) => { SLUG[n] = s; SLUG[s] = s; });
+  const slugOf = (href) => { const m = /\/sodas\/([a-z-]+)/.exec(href || ''); return m && SLUG[m[1]] ? m[1] : null; };
+  const scene = () => (sceneEl && sceneEl.isConnected) ? sceneEl : (sceneEl = document.querySelector('.gpu-product-scene'));
+  // the 3D sections on screen right now (IntersectionObserver, so the per-frame check never reads layout)
+  const scenesInView = new Set(), scenesSeen = new WeakSet();
+  const sceneIO = 'IntersectionObserver' in window ? new IntersectionObserver((es) => es.forEach((e) => (e.isIntersecting ? scenesInView.add(e.target) : scenesInView.delete(e.target)))) : null;
+  function watchScenes() {
+    if (!sceneIO) return;
+    document.querySelectorAll('#root .carousel-hero, #root .product-detail').forEach((el) => { if (!scenesSeen.has(el)) { scenesSeen.add(el); sceneIO.observe(el); } });
+    scenesInView.forEach((el) => { if (!el.isConnected) scenesInView.delete(el); });
+  }
+  const sceneLive = () => {
+    const s = scene();
+    if (!(s && html.classList.contains('gpu-products-ready') && s.dataset.mode && s.dataset.mode !== 'off')) return false;
+    return sceneIO ? scenesInView.size > 0 : true;
+  };
+  function deskFlavor(desk) {
+    if (desk.classList.contains('carousel-hero')) {
+      const s = scene(), a = s && s.dataset.activeFlavor;
+      if (a && SLUG[a]) return a;
+      const cur = desk.querySelector('.carousel-current');
+      return cur ? SLUG[cur.textContent.trim()] || null : null;
+    }
+    if (desk.classList.contains('twist-story')) {
+      const a = desk.querySelector('.twist-story__panel[data-active="true"] a[href^="/sodas/"]');
+      return a ? slugOf(a.getAttribute('href')) : null;
+    }
+    if (desk.classList.contains('flavors')) return hoverFlavor;
+    if (/^\/sodas\/[a-z-]+/.test(location.pathname) && !desk.matches('.footer')) return slugOf(location.pathname);
+    return null;
+  }
+  function bands() {
+    return [...document.querySelectorAll('#root .desk')].map((el) => ({
+      el, kind: el.classList.contains('desk-green') ? 1 : el.classList.contains('desk-pink') ? 2 : 0,
+      get: () => deskFlavor(el)
+    }));
+  }
+  const fieldBusy = () => html.classList.contains('ydx-vt') || dragging || now() < busyUntil;
+  function watchBusy() {
+    const CAN = '.carousel-hero, .product-detail';
+    const hold = (ms) => { busyUntil = Math.max(busyUntil, now() + ms); };
+    document.addEventListener('pointerdown', (e) => {
+      if (!sceneLive() || !e.target.closest) return;
+      if (e.target.closest(CAN) && !e.target.closest('a, button, input, select, textarea, label, summary, .club-invitation')) dragging = true;
+    }, { capture: true, passive: true });
+    const up = () => { if (dragging) { dragging = false; hold(900); } };
+    addEventListener('pointerup', up, { capture: true, passive: true });
+    addEventListener('pointercancel', up, { capture: true, passive: true });
+    document.addEventListener('wheel', (e) => { if (e.target.closest && e.target.closest('.carousel-hero') && sceneLive()) hold(1000); }, { capture: true, passive: true });
+    document.addEventListener('click', (e) => {
+      if (e.target.closest && e.target.closest('.carousel-selector, .carousel-foot nav, .can-turn-controls')) hold(1300);
+    }, true);
+    document.addEventListener('keydown', (e) => {
+      const a = document.activeElement;
+      if (/^Arrow/.test(e.key) && a && a.closest && a.closest('.carousel-hero')) hold(1100);
+    }, true);
+    // the flavour plates retint their desk's light while hovered or focused
+    const plate = (e) => {
+      const a = e.target.closest && e.target.closest('.flavors a[href^="/sodas/"]');
+      const f = a ? slugOf(a.getAttribute('href')) : null;
+      if (f !== hoverFlavor) { hoverFlavor = f; }
+    };
+    document.addEventListener('pointerover', plate, { passive: true });
+    document.addEventListener('focusin', plate);
+  }
+  function fieldCSS() { html.classList.add('ydx-field-css'); html.classList.remove('ydx-field', 'ydx-field-on'); }
+  function startField() {
+    if (qs.get('ydx-field') === 'off') return;
+    let framed = true; try { framed = window.self !== window.top; } catch (e) {}
+    const conn = navigator.connection;
+    if (framed || (conn && conn.saveData) || qs.get('ydx-field') === 'css') return fieldCSS();
+    const go = () => {
+      const s = document.createElement('script');
+      s.src = '/ydx/komorebi.js'; s.async = true;
+      s.onerror = () => {}; // missing file: desks simply stay flat
+      s.onload = () => {
+        if (!window.YdxField || field) return;
+        html.classList.add('ydx-field');
+        field = window.YdxField.mount({
+          bands, busy: fieldBusy,
+          fps: () => (sceneLive() ? 30 : 60),
+          allowSoftware: qs.get('ydx-gl') === 'soft',
+          burstOk: (e) => e.button === 0 && !(e.target.closest && e.target.closest('dialog, input, textarea, select, .carousel-hero')),
+          onReady: () => requestAnimationFrame(() => html.classList.add('ydx-field-on')),
+          onLost: () => html.classList.remove('ydx-field-on'),
+          onFail: () => { field = null; fieldCSS(); }
+        });
+        if (field && field.state === 'fallback') { field = null; fieldCSS(); }
+        if (field) {
+          window.__ydxField = field;
+          watchScenes();
+          const root = document.getElementById('root');
+          if (root && window.ResizeObserver) new ResizeObserver(() => field && field.invalidate()).observe(root);
+          watchBusy();
+        }
+      };
+      document.head.appendChild(s);
+    };
+    // after the loader has gone, the app's own three.js scene has settled (first frame drawn, or fallen back: its shader
+    // compile must never compete with ours), and the main thread has a breather
+    const settled = (t0) => {
+      if (qs.get('graphics') === 'off' || html.classList.contains('gpu-products-ready')) return true;
+      if (/^(fallback|skipped)$/.test(html.dataset.peelEntry || '')) return true;
+      const sc = scene();
+      if (sc) return sc.dataset.renderer === 'fallback';
+      return now() - t0 > 3000; // no scene mounted on this route
+    };
+    const waitScene = () => {
+      const t0 = now();
+      const poll = () => {
+        if (settled(t0) || now() - t0 > 15000) return void (window.requestIdleCallback ? requestIdleCallback(go, { timeout: 1500 }) : setTimeout(go, 300));
+        setTimeout(poll, 400);
+      };
+      poll();
+    };
+    whenRevealed(waitScene);
+  }
+
+  /* ---------------------------------------------------------------- 12. dock: Fizz Lab + pause the light (r5) */
+  // A small paper dock outside #root, bottom-left: the way into the Fizz Lab (/fizz-lab/, a page of its own) and a
+  // pause button for the moving light (WCAG 2.2.2), remembered per browser. Hidden over the home hero (it would cover
+  // the carousel's captions) and while reading (scrolling down), so it never sits on text people are reading; it comes
+  // back on scroll up and on keyboard focus, and opens into a fuller invitation once the footer is in view.
+  const STILL_KEY = 'ydx-still';
+  let stillOn = false;
+  try { stillOn = localStorage.getItem(STILL_KEY) === '1'; } catch (e) {}
+  if (stillOn) html.setAttribute('data-ydx-still', '1');
+  function coverAndGo(href) {
+    // the page is covered by a tangerine label laid on along the "/" edge, then we navigate (the lab peels it off)
+    const c = document.createElement('div');
+    c.className = 'ydx-cover-in'; c.setAttribute('aria-hidden', 'true');
+    c.innerHTML = '<i class="ydx-cover-in__flap"></i>';
+    document.body.appendChild(c);
+    const go = () => location.assign(href);
+    if (reduced() || !c.animate) {
+      const a = c.animate ? c.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, fill: 'forwards' }) : null;
+      setTimeout(go, a ? 170 : 0);
+      return;
+    }
+    c.classList.add('is-peeling');
+    setTimeout(go, 560);
+  }
+  addEventListener('pageshow', (e) => { if (e.persisted) document.querySelectorAll('.ydx-cover-in').forEach((n) => n.remove()); });
+  function buildDock() {
+    const dock = document.createElement('div');
+    dock.className = 'ydx-dock';
+    dock.innerHTML =
+      '<a class="ydx-dock__lab" href="/fizz-lab/" data-ydx-lab>' +
+      '<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M9 6h14l-2 21a2 2 0 0 1-2 1.8h-6A2 2 0 0 1 11 27Z" class="g"/><path d="M10.4 13h11.2" class="l"/><circle cx="14" cy="22" r="1.6" class="b"/><circle cx="18.4" cy="18.2" r="1.2" class="b"/><circle cx="15.6" cy="16" r=".9" class="b"/><path d="M19 6c1-3 4-4 6-3" class="s"/></svg>' +
+      '<span class="ydx-dock__t"><span class="ydx-dock__k">Fizz Lab</span><span class="ydx-dock__m"> · mix your own</span></span></a>' +
+      '<button type="button" class="ydx-dock__still" aria-pressed="false"><span class="ydx-dock__i" aria-hidden="true"></span><span class="sr-only-ydx">Pause the moving light</span></button>';
+    document.body.appendChild(dock);
+    const btn = dock.querySelector('.ydx-dock__still');
+    const sync = () => {
+      btn.setAttribute('aria-pressed', String(stillOn));
+      btn.title = stillOn ? 'Let the light move again' : 'Pause the moving light';
+      btn.querySelector('.sr-only-ydx').textContent = btn.title;
+    };
+    sync();
+    btn.addEventListener('click', () => {
+      stillOn = !stillOn;
+      if (stillOn) html.setAttribute('data-ydx-still', '1'); else html.removeAttribute('data-ydx-still');
+      try { localStorage.setItem(STILL_KEY, stillOn ? '1' : '0'); } catch (e) {}
+      if (field) field.redraw();
+      sync();
+    });
+    dock.querySelector('[data-ydx-lab]').addEventListener('click', (e) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      coverAndGo('/fizz-lab/');
+    });
+    // visibility: not over the home hero; away while reading (scrolling down), back on scroll up, open at the footer
+    let lastY = scrollY, rafD = 0;
+    const footerIO = 'IntersectionObserver' in window ? new IntersectionObserver((es) => {
+      dock.classList.toggle('is-open', es.some((x) => x.isIntersecting));
+    }, { threshold: 0.35 }) : null;
+    let watchedFooter = null;
+    const update = () => {
+      rafD = 0;
+      const y = scrollY, heroish = location.pathname === '/' && y < innerHeight * 0.7;
+      const down = y > lastY + 2;
+      if (down && !dock.classList.contains('is-open')) dock.classList.add('is-away');
+      else if (y < lastY - 2) dock.classList.remove('is-away');
+      dock.classList.toggle('is-hidden', heroish || html.dataset.peelEntry === 'loading');
+      lastY = y;
+      const f = document.querySelector('#root > .footer');
+      if (footerIO && f !== watchedFooter) { if (watchedFooter) footerIO.unobserve(watchedFooter); if (f) footerIO.observe(f); watchedFooter = f; }
+    };
+    const queue = () => { if (!rafD) rafD = requestAnimationFrame(update); };
+    addEventListener('scroll', queue, { passive: true });
+    addEventListener('popstate', () => setTimeout(queue, 400));
+    const root = document.getElementById('root');
+    if (root) new MutationObserver(queue).observe(root, { childList: true });
+    update();
+    requestAnimationFrame(() => dock.classList.add('is-ready'));
+  }
+
   /* ---------------------------------------------------------------- wiring */
   function boot() {
+    startField();
+    whenRevealed(buildDock);
     whenRevealed(startObservers);
     // React re-renders on every route: rescan for new headings/plates (debounced)
     let pending = 0;
     const root = document.getElementById('root');
     if (root) new MutationObserver((muts) => {
       watchRemovals(muts); // r2: synchronous, so the drawer copy is painted in the same frame the real one disappears
-      if (!pending) pending = requestAnimationFrame(() => { pending = 0; scan(); queueTone(); checkBag(); scanSway(); });
+      if (!pending) pending = requestAnimationFrame(() => { pending = 0; scan(); queueTone(); checkBag(); scanSway(); watchScenes(); if (field) field.invalidate(); });
     }).observe(root, { childList: true, subtree: true });
     whenRevealed(scanSway);
     addEventListener('scroll', queueTone, { passive: true });
@@ -352,7 +563,10 @@
     html.addEventListener('pointerleave', magOff, { passive: true });
     document.addEventListener('click', (e) => {
       const btn = e.target.closest && e.target.closest('.purchase .pill');
-      if (btn && !btn.disabled) fizz(btn);
+      if (btn && !btn.disabled) {
+        fizz(btn);
+        if (field && !reduced()) { const r = btn.getBoundingClientRect(); field.burst(r.left + r.width / 2, r.top + r.height / 2, 1); } // r5: the light ripples too
+      }
     }, true);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();

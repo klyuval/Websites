@@ -147,3 +147,44 @@ dialog .close:focus-visible,.recipe-tabs button:focus-visible{outline-color:var(
   .route-next a{font-size:19vw}
   .route-next a .wide{font-size:.5em}
 }
+
+/* ---------- 9. round 5: the soda field ---------- */
+/* One fixed WebGL canvas behind the page (ydx/soda.js). Once its first frame is drawn (html.ydx-gl) the field-coloured
+   sections and the footer turn transparent and show it; pith and flip sections stay solid and slide over the soda.
+   The html element keeps the flat field colour underneath as the fallback. */
+.ydx-soda{position:fixed;inset:0;z-index:-1;pointer-events:none;contain:strict}
+.ydx-soda canvas{display:block;width:100%;height:100%;opacity:0;transition:opacity .7s ease-out}
+html.ydx-gl .ydx-soda canvas{opacity:1}
+html.ydx-gl body,html.ydx-gl main>.on-field,html.ydx-gl .footer{background:transparent}
+/* No WebGL (or soda.js failed): a still, designed version of the same light. Sunlit from the top of each field
+   section, with the brand's 14° shafts; mixed lightly enough that the text keeps AA contrast on every flavour. */
+html.ydx-nogl main>.on-field,html.ydx-nogl .footer{background:
+  repeating-linear-gradient(104deg,transparent 0 7vw,color-mix(in srgb,var(--field) 93%,#fff6dc) 7vw 9vw,transparent 9vw 17vw) top/100% 70% no-repeat,
+  radial-gradient(130% 80% at 50% 0%,color-mix(in srgb,var(--field) 92%,#fff6dc),var(--field) 70%)}
+
+/* ---------- 10. round 5: the way into the Fizz lab ---------- */
+/* a round sticker (rotating text, a little can with rising fizz) parked bottom-right on every page */
+.ydx-labchip{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:45;width:92px;height:92px;
+  border-radius:50%;background:var(--on);color:var(--field);box-shadow:0 0 0 3px var(--field);display:grid;place-items:center;text-decoration:none;
+  opacity:0;scale:.6;visibility:hidden;transition:opacity .4s,scale .6s var(--out),transform .35s var(--out),visibility 0s .6s}
+.ydx-labchip.is-in{opacity:1;scale:1;visibility:visible;transition-delay:0s}
+.ydx-labchip svg{width:100%;height:100%;overflow:visible}
+.ydx-labchip text{font:900 10.5px/1 Anybody,sans-serif;font-stretch:120%;letter-spacing:.06em;fill:currentColor}
+.ydx-labchip .ch-spin{transform-origin:50px 50px}
+.ydx-labchip .ch-can rect,.ydx-labchip .ch-can path{fill:none;stroke:currentColor;stroke-width:3.2;stroke-linejoin:round}
+.ydx-labchip .ch-b{fill:none;stroke:currentColor;stroke-width:1.6}
+.ydx-labchip:hover{transform:scale(1.06,.94)}
+.ydx-labchip:active{transform:scale(.94,1.06)}
+.ydx-labchip:focus-visible{outline:3px solid var(--on);outline-offset:4px}
+@media (prefers-reduced-motion:no-preference){
+  .ydx-labchip .ch-spin{animation:ydx-chip-spin 14s linear infinite}
+  .ydx-labchip:hover .ch-spin{animation-duration:4s}
+  .ydx-labchip .ch-b{animation:ydx-chip-b 1.6s ease-in infinite}
+  .ydx-labchip .ch-b:nth-of-type(2){animation-delay:-.55s}
+  .ydx-labchip .ch-b:nth-of-type(3){animation-delay:-1.1s}
+  @keyframes ydx-chip-spin{to{transform:rotate(360deg)}}
+  @keyframes ydx-chip-b{0%{opacity:0;transform:translateY(8px)}30%{opacity:1}100%{opacity:0;transform:translateY(-10px)}}
+}
+@media (width<=700px){.ydx-labchip{width:72px;height:72px}}
+/* out of the way while the mobile menu or a dialog is open, and inside the hub preview */
+.header.menu-open~.ydx-labchip,html:has(dialog[open]) .ydx-labchip{opacity:0;pointer-events:none}

@@ -131,6 +131,8 @@
     if (nav) { e.preventDefault(); return; }
     if (!motionOK() || !cssOK()) { ss(function (s) { s.setItem('ydx-nav', String(Date.now())); }); return; }
     e.preventDefault();
+    // a link inside the open menu dialog: the dialog sits in the top layer, above any wipe, so close it first
+    var dlg = a.closest('dialog[open]'); if (dlg) try { dlg.close(); } catch (er) {}
     // two coats, like a lipstick stroke: a pigment lead in the active family, then the burgundy that the next page opens from
     // (the lead keeps the wipe visible on the burgundy footer, where a burgundy-only wipe disappeared)
     var mk = function (cls) { var el = d.createElement('div'); el.className = 'ydx-wipe ' + cls; el.setAttribute('aria-hidden', 'true'); el.dataset.tone = html.dataset.family || html.dataset.tone || 'rose'; d.body.appendChild(el); return el; };
@@ -354,10 +356,33 @@
     d.addEventListener('pointercancel', function () { dot.classList.remove('is-down'); });
   }
 
+  /* ------------------------------------------------------------------ 7. round 5: the liquid-pigment background (home only), loaded late
+     (after load, once the loader has left, in an idle slot) so it never competes with the first paint or the loader exit */
+  function loadPigment() {
+    if (!d.querySelector('.hero.s-field, [data-ydx-pigment]') || !cssOK() || w.__ydxPig) return;
+    var go = function () { var s = d.createElement('script'); s.src = '/ydx/pigment.js'; s.async = true; d.head.appendChild(s); };
+    var idle = function () { if (w.requestIdleCallback) requestIdleCallback(go, { timeout: 1200 }); else setTimeout(go, 200); };
+    var afterLoader = function () { (function chk() { if (d.getElementById('ydx-loader')) setTimeout(chk, 120); else idle(); })(); };
+    if (d.readyState === 'complete') afterLoader(); else w.addEventListener('load', afterLoader, { once: true });
+  }
+
+  /* ------------------------------------------------------------------ 8. round 5: the shade lab hands its mix to the inquiry form (read once) */
+  function labHandoff() {
+    var raw = ss(function (s) { var v = s.getItem('ydx-lab-mix'); s.removeItem('ydx-lab-mix'); return v; });
+    var sel = d.getElementById('chosen-shade'), note = d.getElementById('note');
+    if (!raw || !sel) return;
+    var o; try { o = JSON.parse(raw); } catch (e) { return; }
+    if (!o || Date.now() - (o.t || 0) > 10 * 60 * 1000) return;
+    if (o.family && [].some.call(sel.options, function (op) { return op.value === o.family; })) {
+      sel.value = o.family; sel.dispatchEvent(new Event('change', { bubbles: true })); // the app recolours the page to that family
+    }
+    if (note && !note.value.trim() && o.note) note.value = String(o.note).slice(0, 1000);
+  }
+
   /* ------------------------------------------------------------------ boot */
   function boot() {
     // each part is optional polish: one that throws must not take the others (or the page) down with it
-    [setupReveals, setupReactive, setupHeroScroll, setupPointer, function () {
+    [setupReveals, setupReactive, setupHeroScroll, setupPointer, loadPigment, labHandoff, function () {
       // menu links get an index for the CSS stagger
       d.querySelectorAll('#mobile-menu nav a').forEach(function (a, i) { a.style.setProperty('--ydx-i', i); });
     }].forEach(function (f) {

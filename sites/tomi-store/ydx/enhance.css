@@ -137,3 +137,59 @@ html.ydx-hdr-bg body:not(.in-page):not(.in-dial):not(.menu-open) .top::before { 
    it floated mid-page (desktop) or sat on the wrong edge (phones) while everything around it is right-aligned.
    Put it on the reading-start edge, mirroring the header logo. */
 html[dir="rtl"] .foot-brand { text-align: right; }
+
+/* ================================================================ round 5 */
+/* the ripple field canvas styles itself from field.js (CSSOM), so it works even without this file */
+
+/* dock: Ring Lab entry + background-motion switch (bottom inline-end corner; dodges the footer's last line) */
+.ydx-dock {
+  position: fixed; z-index: 18; inset-inline-end: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 999px;
+  background: #0e0d0c; color: #fff8ef; box-shadow: 0 0 0 1px rgba(255,248,239,.16), 0 10px 30px -12px rgba(14,13,12,.55);
+  font: 700 13px/1 var(--text, "Assistant", system-ui, sans-serif);
+  opacity: 0; visibility: hidden; translate: 0 calc(14px - var(--dodge, 0px));
+  transition: opacity .45s var(--ease-out), translate .6s var(--ease-out), visibility 0s .45s;
+}
+.ydx-dock.on { opacity: 1; visibility: visible; translate: 0 calc(0px - var(--dodge, 0px)); transition-delay: 0s; }
+.ydx-lab, .ydx-mo { display: inline-flex; align-items: center; gap: 9px; min-height: 40px; border-radius: 999px; color: inherit; }
+.ydx-lab { padding: 0 16px 0 12px; text-decoration: none; }
+html[dir="rtl"] .ydx-lab { padding: 0 12px 0 16px; }
+.ydx-lab .o { width: 18px; height: 18px; border-radius: 50%; box-shadow: inset 0 0 0 3.5px #e83e7a; position: relative; }
+.ydx-lab .o::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 1.5px solid rgba(232,62,122,.55); opacity: 0; }
+.ydx-lab:hover, .ydx-lab:focus-visible, .ydx-mo:hover, .ydx-mo:focus-visible { background: rgba(255,248,239,.1); }
+.ydx-lab:focus-visible, .ydx-mo:focus-visible { outline: 2px solid #fff8ef; outline-offset: 2px; }
+.ydx-mo { justify-content: center; width: 40px; padding: 0; background: none; border: 0; cursor: pointer; font: inherit; }
+.ydx-mo svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
+.ydx-mo svg circle { fill: currentColor; stroke: none; }
+.ydx-mo .x { opacity: 0; transition: opacity .25s; }
+.ydx-mo[aria-pressed="false"] .x { opacity: 1; }
+.ydx-mo[aria-pressed="false"] svg path:not(.x) { opacity: .35; }
+@media (prefers-reduced-motion: reduce) { .ydx-mo { display: none; } }  /* the OS setting already wins */
+@media (prefers-reduced-motion: no-preference) {
+  .ydx-lab .o::after { animation: ydx-ping 2.8s cubic-bezier(.22,1,.36,1) infinite; }
+  .ydx-lab:hover .o, .ydx-lab:focus-visible .o { animation: ydx-pop .5s cubic-bezier(.34,1.56,.64,1); }
+}
+@keyframes ydx-ping { 0% { opacity: .9; transform: scale(.6); } 70%, 100% { opacity: 0; transform: scale(1.6); } }
+@keyframes ydx-pop { 40% { transform: scale(1.25); } }
+@media (max-width: 760px) { .ydx-dock { font-size: 12px; } .ydx-lab { padding-inline: 10px 13px; } }
+
+/* leaving for the lab: the curtain's ring-motif panel in the current model colour, rising */
+.ydx-wipe {
+  position: fixed; inset: 0; z-index: 95; pointer-events: none; clip-path: inset(100% 0 0 0);
+  background: radial-gradient(circle at 50% 52%, rgba(255,248,239,.10) 0 15%, rgba(255,248,239,.07) 15.1% 30%,
+    rgba(255,248,239,.045) 30.1% 48%, rgba(255,248,239,.022) 48.1% 68%, transparent 68.1%), var(--c2, #6b34b8);
+}
+
+/* add to cart: the device that drops into the cart, and the ring it leaves there */
+.ydx-fly { position: fixed; left: 0; top: 0; z-index: 25; width: 0; height: 0; pointer-events: none; }
+.ydx-fly i {
+  position: absolute; left: -7px; top: -16px; width: 14px; height: 32px; border-radius: 6px;
+  background: linear-gradient(#0e0d0c 0 26%, #fff8ef 26%); box-shadow: 0 0 0 3px #e83e7a, 0 6px 16px rgba(14,13,12,.35);
+}
+.ydx-fly-ring {
+  position: fixed; left: 0; top: 0; z-index: 25; width: 0; height: 0; pointer-events: none;
+}
+.ydx-fly-ring::before {
+  content: ""; position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%;
+  border: 3px solid #e83e7a;
+}

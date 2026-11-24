@@ -174,7 +174,7 @@
     }
     function kick(b) { active.add(b); if (!running) { running = true; raf(loop); } }
     document.addEventListener('pointermove', function (e) {
-      var b = e.target.closest && e.target.closest('.round-cta, .header-cta, .next-chapter, .pill, .text-button');
+      var b = e.target.closest && e.target.closest('.round-cta, .header-cta, .next-chapter, .pill, .text-button, #ydx-lab');
       if (!b || e.pointerType !== 'mouse') return;
       var m = b.__ydxMag || (b.__ydxMag = { x: 0, y: 0, tx: 0, ty: 0 });
       if (!b.__ydxLeave) { b.__ydxLeave = true; b.addEventListener('pointerleave', function () { m.tx = m.ty = 0; kick(b); }); }
@@ -284,8 +284,11 @@
     { id: 'trails', name: 'Choose a trail', bg: 'var(--spruce)', fg: 'var(--cream)' },
     { id: 'terrain', name: 'Read the mountain', bg: 'var(--paper)', fg: 'var(--ink)', paper: true },
     { id: 'pack', name: 'Pack with purpose', bg: 'var(--vermilion)', fg: 'var(--ink)', red: true },
-    { id: 'summit', name: 'The good part', bg: 'var(--sky)', fg: 'var(--ink)' }
+    { id: 'summit', name: 'The good part', bg: 'var(--sky)', fg: 'var(--ink)' },
+    // Round 5: not a chapter but the route lab page (/play/); its arrival cover is this same paper band.
+    { id: 'lab', name: 'Plot your own line', bg: 'var(--paper)', fg: 'var(--ink)', paper: true, eye: 'ROUTE LAB' }
   ];
+  var LAB_PIN = '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19c3-1 4-5 7-6s5 2 9-3"/><circle cx="4" cy="19" r="1.6" fill="currentColor"/><path d="M20 10V4l-4 2 4 2"/></svg>';
   var RIDGE_TOP = '<svg class="top" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 10V7l5-3 4 2 6-5 4 3 5-2.5 6 4 5-5.5 5 3 3-1.5 6 4.5 5-6 5 4 4-2 6 3 5-4 4 2.5 6-3 4 2 4-2v8z"/></svg>';
   var RIDGE_BOT = '<svg class="bot" viewBox="0 0 100 10" preserveAspectRatio="none"><path d="M0 0v3c6 2 11 4 18 3s12-4 20-3 13 4 21 4 12-4 20-4 14 3 21 2V0z"/></svg>';
   function shutter() {
@@ -337,9 +340,9 @@
       B.classList.toggle('is-paper', !!c.paper);
       A.style.background = A.style.color = c.red ? 'var(--ink)' : '';
       // Page pins are numbered 01-04 from "Choose a trail"; the hero gets the brand mountain instead.
-      $('.ydx-s-pin', s).innerHTML = to ? '0' + to : '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>';
-      var eye = $('#' + c.id + ' .eyebrow');
-      $('.ydx-s-eye', s).textContent = eye ? eye.textContent.trim() : '';
+      $('.ydx-s-pin', s).innerHTML = to === 5 ? LAB_PIN : to ? '0' + to : '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>';
+      var eye = c.eye ? null : $('#' + c.id + ' .eyebrow');
+      $('.ydx-s-eye', s).textContent = c.eye || (eye ? eye.textContent.trim() : '');
       $('.ydx-s-name', s).textContent = c.name;
       // Warm the destination's lazy images while it is covered, so nothing pops in as the strata lift.
       $$('#' + c.id + ' img[loading=lazy]').forEach(function (im) { if (!im.complete) { var pre = new Image(); pre.src = im.currentSrc || im.src; } });
@@ -377,6 +380,40 @@
     }, true);
     // Leaving the page (bfcache) mid-sweep: do not keep the cover in the cached snapshot.
     addEventListener('pagehide', stop);
+    // Round 5: the route lab. The strata sweep in, freeze while the paper band covers the screen, and the lab page
+    // starts under the identical band and lifts it, so the page change reads as one continuous sweep.
+    window.__ydxToLab = function (href) {
+      play(5);
+      try { sessionStorage.setItem('ydx-pp-xfer', 'lab'); } catch (e) {}
+      setTimeout(function () { anims.forEach(function (a) { a.pause(); }); location.href = href; }, 310);
+    };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 8b. Route lab entry chip (round 5): a real link, appended to <body>, shown while the map sheet or the summit
+   *     is mid-screen (hidden = visibility:hidden, so it is never an invisible tab stop).
+   * ------------------------------------------------------------------ */
+  function labChip() {
+    if ($('#ydx-lab')) return;
+    var a = document.createElement('a');
+    a.id = 'ydx-lab'; a.href = '/play/';
+    a.innerHTML = '<span class="ydx-lab-ico" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6"><path class="r1" d="M16 4.5c6.5 0 12 4.6 11.4 11.2-.5 6-5.6 11-11.8 10.8C9.4 26.3 4.3 21.5 4.6 15.4 4.9 9 9.6 4.5 16 4.5Z"/><path class="r2" d="M16.4 9c3.9 0 7 2.8 6.6 6.8-.4 3.7-3.4 6.4-7.2 6.2-3.6-.2-6.3-3-6.1-6.6C9.9 11.6 12.6 9 16.4 9Z"/><path class="r3" d="M16 12.8c1.9 0 3.3 1.3 3.1 3.2-.2 1.7-1.6 2.9-3.3 2.8-1.6-.1-2.9-1.4-2.8-3.1.1-1.6 1.3-2.9 3-2.9Z"/><circle cx="16" cy="15.8" r="1.7" fill="#f0441e" stroke="none"/></svg></span>' +
+      '<span class="ydx-lab-t"><small>Route lab</small>Plot your own line</span>' +
+      '<svg class="ydx-lab-go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>';
+    document.body.appendChild(a);
+    var on = {};
+    if ('IntersectionObserver' in window) {
+      var o = new IntersectionObserver(function (es) {
+        es.forEach(function (e) { on[e.target.id] = e.isIntersecting; });
+        a.classList.toggle('is-on', !!(on.terrain || on.summit));
+      }, { rootMargin: '-40% 0px -40% 0px' });
+      ['terrain', 'summit'].forEach(function (id) { var el = document.getElementById(id); if (el) o.observe(el); });
+    } else a.classList.add('is-on');
+    a.addEventListener('click', function (e) {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || reduce || !window.__ydxToLab) return;
+      e.preventDefault();
+      window.__ydxToLab(a.href);
+    });
   }
 
   /* ------------------------------------------------------------------ *
@@ -413,6 +450,7 @@
     altimeter();
     magnets();
     shutter();
+    labChip();
     fixChooseScroll();
     // React may re-render sections (trail choice re-keys the relief and kit list): rescan.
     var main = $('main.journey') || document.body, t = 0;

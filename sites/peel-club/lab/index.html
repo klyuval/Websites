@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a3bd0"><meta name="description" content="The PEEL CLUB fizz lab. Grab a can, shake it up, crack it open. A little bitter. A lot alive.">
+<title>Fizz lab — PEEL CLUB</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/anybody.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin>
+<script>/* the visitor's flavour colours the page before first paint */(function(){var n='0';try{var q=new URLSearchParams(location.search).get('flavor'),s=localStorage.getItem('peel-club-flavor');n=/^[0-3]$/.test(q||'')?q:/^[0-3]$/.test(s||'')?s:'0'}catch(e){}document.documentElement.dataset.flavor=n})()</script>
+<style>@view-transition{navigation:auto}</style>  <script type="module" crossorigin src="/assets/main-yy70UqBS.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-DFg1sV6z.css">
+<!-- ydx: loader / page-transition critical CSS (paints before anything else) -->
+<style data-ydx>
+@property --ydx-n{syntax:"<integer>";inherits:true;initial-value:0}
+#ydx-curtain{position:fixed;inset:0;z-index:2147483000;overflow:hidden;contain:strict;color:var(--on);animation:ydx-failsafe .35s 4.6s forwards}
+@keyframes ydx-failsafe{to{opacity:0;visibility:hidden;pointer-events:none}}
+.ydx-sheet{position:absolute;top:50%;left:50%;width:134vmax;height:170vmax;margin:-85vmax 0 0 -67vmax;background:var(--field);transform:rotate(14deg)}
+.ydx-sheet:before,.ydx-sheet:after{content:"";position:absolute;top:0;bottom:0}
+.ydx-sheet:before{right:100%;width:5vmax;background:var(--pith)}
+.ydx-sheet:after{right:calc(100% + 5vmax);width:1.5vmax;background:var(--on)}
+.ydx-center{position:absolute;top:50%;left:50%;display:grid;justify-items:center;gap:clamp(12px,2.2vh,24px);text-align:center;transform:translate(-50%,-50%) rotate(-14deg);white-space:nowrap}
+.ydx-can{height:min(34vh,280px);width:auto;overflow:visible;rotate:-7deg;animation:ydx-bob 1.6s cubic-bezier(.65,0,.35,1) infinite alternate}
+.ydx-can .c-rings circle{fill:none;stroke:currentColor;stroke-width:2.5;opacity:0;animation:ydx-ring 1.8s linear infinite}
+.ydx-can .c-rings circle:nth-child(2){animation-delay:-.5s;animation-duration:2.2s}.ydx-can .c-rings circle:nth-child(3){animation-delay:-1.1s}.ydx-can .c-rings circle:nth-child(4){animation-delay:-.3s;animation-duration:1.5s}.ydx-can .c-rings circle:nth-child(5){animation-delay:-1.4s;animation-duration:2s}
+.ydx-can .c-line{fill:none;stroke:currentColor;stroke-width:5;stroke-linejoin:round;stroke-linecap:round}
+.ydx-can .c-liq{fill:currentColor;transform:translateY(206px);animation:ydx-fill 1.05s cubic-bezier(.3,.7,.3,1) .1s forwards}
+.ydx-can .c-wave{animation:ydx-wave 1.1s linear infinite}
+.ydx-can .c-b{fill:var(--field);animation:ydx-rise 1.3s linear infinite}
+.ydx-can .c-b:nth-of-type(2){animation-duration:1s;animation-delay:-.4s}.ydx-can .c-b:nth-of-type(3){animation-duration:1.6s;animation-delay:-.9s}.ydx-can .c-b:nth-of-type(4){animation-duration:1.2s;animation-delay:-.2s}.ydx-can .c-b:nth-of-type(5){animation-duration:.9s;animation-delay:-.6s}
+.ydx-can .c-tab{transform-origin:50px 17px;transform-box:view-box}
+.ydx-can .c-lid{fill:var(--field)}.ydx-can mask .c-liq{fill:#fff}
+.ydx-can .c-wf{fill:var(--field)}.ydx-can .c-ws{stroke:currentColor;stroke-width:3;stroke-linecap:round}.ydx-can .c-wc{fill:currentColor}
+.ydx-can .c-line.c-body{stroke-dasharray:101;stroke-dashoffset:101;animation:ydx-draw .5s cubic-bezier(.65,0,.35,1) forwards}
+.ydx-word{margin:0;position:relative;width:5.62em;height:.8em;font:900 clamp(44px,8vw,116px)/.8 Anybody,Impact,"Arial Black",sans-serif;letter-spacing:-.01em}
+.ydx-word span{position:absolute;top:0;left:0;font-stretch:60%;animation:ydx-squeeze 1.3s cubic-bezier(.65,0,.35,1) infinite alternate}
+.ydx-word span+span{left:auto;right:0;direction:rtl;font-stretch:150%;animation-name:ydx-squeeze-b}
+.ydx-meta{margin:0;display:flex;gap:1.1em;font:900 clamp(10.5px,.82vw,13px)/1.2 Anybody,sans-serif;font-stretch:140%;letter-spacing:.06em;text-transform:uppercase;opacity:.92}
+.ydx-count{counter-reset:n var(--ydx-n);animation:ydx-count 1.05s cubic-bezier(.3,.7,.3,1) .1s forwards;min-width:4.3em;text-align:left;font-variant-numeric:tabular-nums}
+.ydx-count:after{content:counter(n) "%"}
+.ydx-done .c-liq{animation:ydx-top .32s cubic-bezier(.16,1,.3,1) forwards}
+.ydx-done .ydx-count{animation:ydx-count-top .3s ease-out forwards}
+.ydx-done .c-tab{animation:ydx-tab .34s cubic-bezier(.16,1,.3,1) forwards}
+.ydx-dest{margin:0;font:900 clamp(60px,12vw,210px)/.86 Anybody,Impact,"Arial Black",sans-serif;font-stretch:58%;letter-spacing:-.005em}
+.ydx-c--short .ydx-word{font-size:clamp(54px,11vw,170px)}
+.ydx-c--frame .c-liq,.ydx-c--frame .ydx-count{animation-duration:.5s;animation-delay:0s}
+.ydx-c--frame .c-body{animation-duration:.25s}
+@keyframes ydx-bob{from{translate:0 -2%}to{translate:0 2%}}
+@keyframes ydx-ring{0%{opacity:0;transform:translateY(20px)}25%{opacity:1}100%{opacity:0;transform:translateY(-70px)}}
+@keyframes ydx-fill{to{transform:translateY(46px)}}
+@keyframes ydx-top{from{transform:translateY(46px)}to{transform:translateY(16px)}}
+@keyframes ydx-count{to{--ydx-n:84}}
+@keyframes ydx-count-top{from{--ydx-n:84}to{--ydx-n:100}}
+@keyframes ydx-wave{to{transform:translateX(60px)}}
+@keyframes ydx-rise{from{transform:translateY(40px)}to{transform:translateY(-150px)}}
+@keyframes ydx-draw{to{stroke-dashoffset:0}}
+@keyframes ydx-tab{to{transform:translateY(-4px) rotate(-42deg)}}
+@keyframes ydx-squeeze{to{font-stretch:150%}}
+@keyframes ydx-squeeze-b{to{font-stretch:58%}}
+/* the page's own entrance choreography waits behind the curtain */
+html.ydx-hold :is(.hero__a,.hero__b,main>:first-child h1>span,.hero__obj,.hero__bit,.story-open__ribbon,.story-open__bit,.serve-open__glasses img){animation-play-state:paused!important}
+@media (prefers-reduced-motion:reduce){#ydx-curtain *{animation:none!important}.ydx-can .c-liq{transform:translateY(46px)}.ydx-can .c-line.c-body{stroke-dashoffset:0}.ydx-count{--ydx-n:100}}
+</style>
+<script data-ydx>/* ydx: decide the curtain mode before first paint: load (first visit), short (repeat), nav (arriving from a ydx page transition), frame (hub iframe) */(function(){var d=document.documentElement,m='load',l='';try{var n=performance.getEntriesByType&&performance.getEntriesByType('navigation')[0];if(n&&n.type==='back_forward')return;var f=sessionStorage.getItem('ydx-nav');if(f){sessionStorage.removeItem('ydx-nav');f=JSON.parse(f);if(Date.now()-f.t<6000&&f.p===location.pathname){m='nav';l=String(f.l||'')}}if(m!=='nav'&&sessionStorage.getItem('ydx-seen'))m='short'}catch(e){}try{if(window.self!==window.top&&m==='load')m='frame'}catch(e){m='frame'}d.dataset.ydx=m;if(l)d.dataset.ydxLabel=l;d.classList.add('ydx-hold')})()</script>
+<link rel="stylesheet" href="/ydx/enhance.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="/ydx/enhance.css"></noscript><!-- ydx: non-blocking, so a slow enhance.css can never hold up first paint or the app's boot -->
+<script src="/ydx/soda.js" async></script><!-- ydx: the soda field (shared with every page; here it is the lab's backdrop) -->
+<link rel="stylesheet" href="/ydx/lab.css"><script src="/ydx/lab.js" async></script><!-- ydx: the fizz lab page -->
+<script src="/ydx/enhance.js" async></script><!-- ydx: async, so it never delays DOMContentLoaded; it waits for the DOM itself -->
+</head>
+<body class="interior lab-page"><script data-ydx>/* ydx: curtain markup, first child of body; enhance.js animates it out, this timer is the safety net (counted from the first painted frame, or from now in a background tab, where rAF never fires) */(function(){var d=document.documentElement,m=d.dataset.ydx;if(!m)return;var c=document.createElement('div');c.id='ydx-curtain';c.className='ydx-c ydx-c--'+m;c.setAttribute('aria-hidden','true');var can='<svg class="ydx-can" viewBox="0 0 120 220"><defs><mask id="ydx-lm"><g class="c-liq"><path class="c-wave" d="M-120 8q15-9 30 0t30 0 30 0 30 0 30 0 30 0 30 0 30 0 30 0 30 0 30 0 30 0V260H-120Z"/></g></mask><clipPath id="ydx-clip"><path d="M12 36Q12 27 19 23L27 14H93L101 23Q108 27 108 36V186L103 198Q101 204 94 205H26Q19 204 17 198L12 186Z"/></clipPath></defs><g class="c-rings"><circle cx="-6" cy="150" r="5"/><circle cx="128" cy="110" r="8"/><circle cx="-14" cy="70" r="3.5"/><circle cx="134" cy="178" r="4.5"/><circle cx="122" cy="40" r="3"/></g><g clip-path="url(#ydx-clip)"><g class="c-liq"><path class="c-wave" d="M-120 8q15-9 30 0t30 0 30 0 30 0 30 0 30 0 30 0 30 0 30 0 30 0 30 0 30 0V260H-120Z"/><circle class="c-b" cx="34" cy="150" r="3.5"/><circle class="c-b" cx="58" cy="170" r="2.5"/><circle class="c-b" cx="80" cy="130" r="4.5"/><circle class="c-b" cx="47" cy="110" r="2"/><circle class="c-b" cx="90" cy="180" r="3"/></g><g class="c-wheel" mask="url(#ydx-lm)"><path class="c-wf" d="M26 188a34 34 0 0 1 68 0z"/><g class="c-ws"><path d="M60 188L86.0 173.0"/><path d="M60 188L75.0 162.0"/><path d="M60 188L60.0 158.0"/><path d="M60 188L45.0 162.0"/><path d="M60 188L34.0 173.0"/></g><circle class="c-wc" cx="60" cy="188" r="5"/></g></g><path class="c-line c-body" pathLength="100" d="M12 36Q12 27 19 23L27 14H93L101 23Q108 27 108 36V186L103 198Q101 204 94 205H26Q19 204 17 198L12 186Z"/><ellipse class="c-line c-lid" cx="60" cy="14" rx="33" ry="5"/><path class="c-line c-tab" d="M50 12.5h17a4.5 4.5 0 0 1 0 9H50"/></svg>';var w='<p class="ydx-word"><span>PEEL</span><span>CLUB</span></p>';var h=m==='nav'?'<p class="ydx-dest"></p>':m==='short'?w:can+w+'<p class="ydx-meta"><span>Pouring '+(['Bitter orange','Blood orange','Zesty lime','Pink grapefruit'][+d.dataset.flavor]||'your flavor')+'</span><span class="ydx-count"></span></p>';c.innerHTML='<div class="ydx-sheet"><div class="ydx-center">'+h+'</div></div>';if(m==='nav')c.querySelector('.ydx-dest').textContent=d.dataset.ydxLabel||'PEEL CLUB';document.body.insertBefore(c,document.body.firstChild);var s=0;function st(){if(s)return;s=1;window.__ydxT0=performance.now();setTimeout(function(){if(c.isConnected&&!c.dataset.out){c.dataset.out='1';d.classList.remove('ydx-hold');try{sessionStorage.setItem('ydx-seen','1')}catch(e){}c.style.cssText='pointer-events:none;transition:opacity .3s;opacity:0';setTimeout(function(){c.remove()},320)}},m==='load'?4000:2500)}requestAnimationFrame(st);if(document.hidden)setTimeout(st,0);else document.addEventListener('visibilitychange',function(){if(document.hidden)setTimeout(st,0)},{once:true})})()</script><a class="skip" href="#top">Skip to content</a>
+<svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><symbol id="arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol><symbol id="up" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol><symbol id="down" viewBox="0 0 24 24"><path d="M12 4v15m-6-6 6 6 6-6"/></symbol><symbol id="plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol><symbol id="minus" viewBox="0 0 24 24"><path d="M4 12h16"/></symbol><symbol id="cross" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol></svg>
+<header class="header"><a class="wordmark" href="/" aria-label="Peel Club home">PEEL CLUB</a><button class="menu-toggle" aria-expanded="false" aria-controls="main-nav">Menu <span aria-hidden="true">+</span></button><nav id="main-nav" aria-label="Main navigation"><a href="/flavors/">Flavors</a><a href="/story/">Our story</a><a href="/serve/">The good pour</a><a href="/mix/">Build a mix</a><button class="bag-trigger" data-dialog="bag" aria-label="Open your flavor selection">Your mix <span id="bag-count">0</span></button></nav></header>
+<main id="top" tabindex="-1">
+<section class="lab on-field" data-zone aria-labelledby="lab-title">
+  <canvas class="lab__fizz" aria-hidden="true"></canvas>
+  <div class="lab__copy">
+    <p class="label">THE FIZZ LAB</p>
+    <h1 id="lab-title" class="display"><span class="tight">Shake it.</span> <span class="wide">Crack it.</span></h1>
+    <p class="lede lab__how">Grab the can and give it a good shake. When the fizz hits 100%, crack it open.</p>
+    <noscript><p class="lab__nojs">The lab needs JavaScript to fizz. The cans are still cold on the <a href="/flavors/">flavors page</a>.</p></noscript>
+    <div class="lab__meter" aria-hidden="true"><span class="lab__fizzword">Fizz</span><span class="lab__num" id="lab-num">0%</span><span class="lab__bar"><i id="lab-bar"></i></span></div>
+    <p class="lab__stats label" aria-hidden="true"><span>Popped <b id="lab-popped">0</b></span><span>Cracked <b id="lab-cracked">0</b></span></p>
+    <div class="lab__actions">
+      <button class="button" id="lab-crack" type="button" disabled>Crack it open <svg class="icon" aria-hidden="true"><use href="#up"/></svg></button>
+      <button class="text-button" id="lab-tilt" type="button" hidden>Shake your phone instead</button>
+    </div>
+    <div class="swatches lab__swatches" role="group" aria-label="Pick a flavor to shake"><button data-product="0" data-flavor="0" aria-pressed="true"><i></i>Bitter orange</button><button data-product="1" data-flavor="1" aria-pressed="false"><i></i>Blood orange</button><button data-product="2" data-flavor="2" aria-pressed="false"><i></i>Zesty lime</button><button data-product="3" data-flavor="3" aria-pressed="false"><i></i>Pink grapefruit</button></div>
+    <a class="text-button lab__back" href="/"><svg class="icon lab__backicon" aria-hidden="true"><use href="#arrow"/></svg> Back to the club</a>
+  </div>
+  <div class="lab__stage">
+    <button class="lab__can" id="lab-can" type="button" aria-describedby="lab-keys"><span class="lab__canin"><picture data-f="0"><source media="(max-width: 700px)" srcset="/img/can-0-s.webp"><img src="/img/can-0.webp" alt="Blue PEEL CLUB Bitter Orange can" fetchpriority="high" decoding="async" draggable="false"></picture><picture data-f="1"><source media="(max-width: 700px)" srcset="/img/can-1-s.webp"><img src="/img/can-1.webp" alt="Burgundy PEEL CLUB Blood Orange can" loading="lazy" decoding="async" draggable="false"></picture><picture data-f="2"><source media="(max-width: 700px)" srcset="/img/can-2-s.webp"><img src="/img/can-2.webp" alt="Green PEEL CLUB Zesty Lime can" loading="lazy" decoding="async" draggable="false"></picture><picture data-f="3"><source media="(max-width: 700px)" srcset="/img/can-3-s.webp"><img src="/img/can-3.webp" alt="Coral PEEL CLUB Pink Grapefruit can" loading="lazy" decoding="async" draggable="false"></picture></span></button>
+    <p class="lab__hint label" id="lab-keys"><span class="lab__hint-p">Drag to shake</span><span class="lab__hint-k">Space or arrows to shake, Enter to crack</span></p>
+    <p class="lab__pop display" aria-hidden="true"><span class="tight">Pssssht.</span> <span class="wide">A lot alive.</span></p>
+  </div>
+  <p class="lab__status" id="lab-status" role="status" aria-live="polite"></p>
+</section>
+<section class="route-next on-flip" data-zone><svg class="edge" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0 90V52C200 4 420-8 700 34s520 52 740-12v68z"/></svg><p class="label">ALL SHAKEN UP?</p><a class="display" href="/flavors/"><span class="tight">Meet the</span> <span class="wide">whole club <svg class="icon" aria-hidden="true"><use href="#up"/></svg></span></a></section>
+<footer class="footer" data-zone><svg class="edge" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0 90V52C200 4 420-8 700 34s520 52 740-12v68z"/></svg><a href="/" class="footer-mark" aria-label="PEEL CLUB home"><span class="squeeze-a" aria-hidden="true">PEEL</span><span class="squeeze-b" aria-hidden="true">CLUB</span></a><div class="footer-bottom"><p>A little bitter. A lot alive.</p><nav aria-label="Footer navigation"><a href="/story/">Our story</a><a href="/flavors/">Flavors</a><a href="/serve/">The good pour</a><a href="/mix/">Build a mix</a><a href="/lab/" aria-current="page">Fizz lab</a></nav><small>Fictional brand · An independent design concept.</small></div></footer></main>
+<dialog id="product-dialog" data-lenis-prevent aria-labelledby="dialog-flavor-name"><button class="close" aria-label="Close flavor details"><svg class="icon" aria-hidden="true"><use href="#cross"/></svg></button><div class="dialog-product"><img id="dialog-image" src="/img/can-0-s.webp" alt=""><div><p class="label" id="dialog-flavor-mood">Bright &amp; bittersweet</p><h2 id="dialog-flavor-name">Bitter orange</h2><p id="dialog-flavor-note">Bright citrus. A clean, bitter finish.</p><button class="button" id="dialog-add">Add to your mix <svg class="icon" aria-hidden="true"><use href="#plus"/></svg></button></div></div></dialog>
+<dialog id="bag-dialog" data-lenis-prevent aria-labelledby="bag-title"><button class="close" aria-label="Close your mix"><svg class="icon" aria-hidden="true"><use href="#cross"/></svg></button><div class="bag"><h2 id="bag-title">Your mix.</h2><p id="empty-bag">Your next favorite is waiting. Explore the flavors and add one to your mix.</p><ul id="bag-items"></ul><p class="bag-context">This is a fictional soda brand. Your mix is saved on this device; no order or payment is placed.</p><a class="button" id="bag-explore" href="/mix/">Build your mix <svg class="icon" aria-hidden="true"><use href="#arrow"/></svg></a></div></dialog>
+<div class="rip" aria-hidden="true"><i></i></div>
+<div class="toast" role="status" aria-live="polite"></div></body></html>

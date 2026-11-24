@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- ydx (round 5): STRATA playground, a standalone page owned by the ydx layer. "Print your name" in 3D:
+         type a name, pick a material, infill and layer height, and watch it print layer by layer. -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#c6f24e" />
+    <meta name="description" content="STRATA playground: type your name and print it in 3D, layer by layer. Pick a material, an infill and a layer height." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400..900&family=Martian+Mono:wght@400..600&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400..900&family=Martian+Mono:wght@400..600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400..900&family=Martian+Mono:wght@400..600&display=swap" rel="stylesheet" /></noscript>
+    <link rel="preload" as="image" href="/img/o-head.webp" type="image/webp" />
+    <title>Print your name | STRATA playground</title>
+    <!-- Cover: the same ink layer shutter that brought the visitor here, painted before anything else.
+         play.js retracts it; without JS (or if play.js never runs) it is gone at once / after 2.5s. -->
+    <style>
+      html{background:#c6f24e}
+      #pl-cover{position:fixed;inset:0;z-index:1000;display:grid;grid-template-rows:repeat(8,1fr);pointer-events:none}
+      #pl-cover i{display:block;margin-bottom:-1px;background:#17151c;transform-origin:100% 50%;box-shadow:inset 0 3px 0 #c6f24e}
+      #pl-cover i:nth-child(3n+2){box-shadow:inset 0 3px 0 #ff6a1a}
+      #pl-cover i:nth-child(3n+3){box-shadow:inset 0 3px 0 #4a2cf0}
+      #pl-cover p{position:absolute;left:50%;top:50%;margin:0;transform:translate(-50%,-50%);font:900 clamp(2.4rem,8vw,7rem)/.9 Gabarito,system-ui,sans-serif;letter-spacing:-.03em;text-transform:uppercase;color:#c6f24e;white-space:nowrap;text-align:center}
+      #pl-cover p small{display:block;margin-bottom:.9em;font:500 .6875rem/1.5 "Martian Mono",ui-monospace,monospace;letter-spacing:.03em;color:#f4efe2}
+      html.pl-gone #pl-cover{display:none}
+    </style>
+    <script>
+      // Failsafe: never leave the cover up if play.js fails to load or run.
+      window.__plFail = function () { document.documentElement.classList.add('pl-gone'); };
+      setTimeout(function () { if (!window.__plRun) window.__plFail(); }, 2500);
+    </script>
+    <noscript><style>#pl-cover{display:none}</style></noscript>
+    <link rel="stylesheet" href="/ydx/play.css" />
+    <script src="/ydx/play.js" defer onerror="__plFail()"></script>
+  </head>
+  <body>
+    <div id="pl-cover" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><p><small>Layer 05</small>Playground</p></div>
+    <a class="skip" href="#pl-main">Skip to content</a>
+    <header class="pl-nav">
+      <a class="brand" href="/" data-pl-back aria-label="STRATA home"><i aria-hidden="true"><b></b><b></b><b></b></i>STRATA<sup>&reg;</sup></a>
+      <p class="label pl-file" aria-hidden="true">Playground / <span id="pl-file">HELLO</span>.3MF</p>
+      <a class="nav-cta" href="/" data-pl-back>Back to the studio <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
+    </header>
+
+    <main id="pl-main" class="pl">
+      <section class="pl-side" aria-labelledby="pl-title">
+        <p class="label">The playground</p>
+        <h1 id="pl-title" class="pl-title"><span class="pl-out">Print your</span> <span class="pl-ink">name.</span></h1>
+        <p class="pl-lede">Type it, pick a material, and watch it build one layer at a time. Drag the plate to look around.</p>
+
+        <form class="pl-form" id="pl-form" autocomplete="off">
+          <label class="pl-field">
+            <span class="pl-lab">Your name</span>
+            <input id="pl-name" name="name" type="text" maxlength="12" spellcheck="false" placeholder="Type a name" value="HELLO" aria-describedby="pl-hint" />
+          </label>
+          <p class="pl-hint" id="pl-hint">Up to 12 characters. Nothing is sent anywhere.</p>
+
+          <fieldset class="pl-set">
+            <legend class="pl-lab">Material</legend>
+            <div class="pl-mats" role="radiogroup" aria-label="Material">
+              <button type="button" role="radio" aria-checked="true" data-mat="0"><i style="background:#c4f051"></i>PLA</button>
+              <button type="button" role="radio" aria-checked="false" data-mat="1"><i style="background:#eb9b60"></i>PETG</button>
+              <button type="button" role="radio" aria-checked="false" data-mat="2"><i style="background:#b8b0da"></i>RESIN</button>
+              <button type="button" role="radio" aria-checked="false" data-mat="3"><i style="background:#ded8c5"></i>NYLON</button>
+            </div>
+          </fieldset>
+
+          <div class="pl-row">
+            <fieldset class="pl-set">
+              <legend class="pl-lab">Infill</legend>
+              <div class="pl-chips" role="radiogroup" aria-label="Infill pattern">
+                <button type="button" class="chip" role="radio" aria-checked="true" data-infill="0">Gyroid</button>
+                <button type="button" class="chip" role="radio" aria-checked="false" data-infill="1">Honeycomb</button>
+                <button type="button" class="chip" role="radio" aria-checked="false" data-infill="2">Grid</button>
+                <button type="button" class="chip" role="radio" aria-checked="false" data-infill="3">Solid</button>
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="pl-row pl-two">
+            <label class="pl-slider">
+              <span class="pl-lab">Density <output id="pl-dens-out">20%</output></span>
+              <input id="pl-dens" type="range" min="8" max="60" step="1" value="20" />
+            </label>
+            <fieldset class="pl-set">
+              <legend class="pl-lab">Layer height</legend>
+              <div class="pl-chips" role="radiogroup" aria-label="Layer height">
+                <button type="button" class="chip" role="radio" aria-checked="false" data-lh="0.12">0.12</button>
+                <button type="button" class="chip" role="radio" aria-checked="true" data-lh="0.2">0.20</button>
+                <button type="button" class="chip" role="radio" aria-checked="false" data-lh="0.28">0.28</button>
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="pl-actions">
+            <button class="btn" type="submit" id="pl-go"><span>Print it <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg></span></button>
+            <button class="chip" type="button" id="pl-snap" disabled>Save a snapshot</button>
+          </div>
+          <p class="pl-status" id="pl-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="pl-stage" aria-label="Print preview">
+        <div class="pl-plate" id="pl-plate">
+          <canvas id="pl-canvas" role="img" aria-label="3D preview of your name being printed layer by layer"></canvas>
+          <img class="pl-head" id="pl-head" src="/img/o-head.webp" alt="" draggable="false" />
+          <span class="pl-laser" id="pl-laser" aria-hidden="true"></span>
+          <div class="pl-hud" aria-hidden="true">
+            <p class="pl-tl">STRATA / BUILD_PLATE_01</p>
+            <p class="pl-tr" id="pl-spec">PLA &middot; FDM &middot; 0.20 MM</p>
+            <p class="pl-bl">Layer <b id="pl-layer">00</b> / <span id="pl-layers">40</span> &middot; Z <b id="pl-z">0.0</b> MM</p>
+            <p class="pl-br" id="pl-proc">Nozzle 210&deg;C &middot; <span id="pl-time">00:00</span></p>
+          </div>
+          <p class="pl-drag" aria-hidden="true">Drag to orbit</p>
+          <div class="pl-seam" aria-hidden="true"><i></i><i></i><i></i></div>
+          <noscript><p class="pl-nojs">The playground needs JavaScript and WebGL.</p></noscript>
+        </div>
+        <div class="pl-inspect" id="pl-inspect" hidden>
+          <label for="pl-cut" class="pl-lab">Layer view <output id="pl-cut-out"></output></label>
+          <input id="pl-cut" type="range" min="1" max="40" step="1" value="40" />
+        </div>
+      </section>
+    </main>
+
+    <footer class="pl-foot">
+      <p class="label">&copy; 2026 STRATA studio</p>
+      <p class="label">Designed with intent. Printed with precision.</p>
+      <a class="label" href="/#brief" data-pl-back>Have an idea? Start here &nearr;</a>
+    </footer>
+  </body>
+</html>

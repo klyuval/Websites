@@ -200,3 +200,20 @@ html:has(main.tile) { background: var(--tint); }
 }
 @keyframes ydx-dome { from { scale: 1 1; } to { scale: 1 0; } }
 @media print { .s-deep::before, .s-field::before { display: none !important; } }
+
+/* ---------------------------------------------------------------- round 5: liquid-pigment background (ydx/pigment.js).
+   One fixed layer behind .page; the pink (s-field) scenes turn transparent over it, tint and burgundy scenes stay paper.
+   Its own CSS gradient is the designed fallback (no WebGL, software GL, context lost, before the canvas fades in). */
+.ydx-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; --ydx-lift: var(--hi);
+  background: var(--field);
+  background: radial-gradient(46% 40% at 74% 28%, color-mix(in srgb, var(--ydx-lift) 70%, transparent), transparent 72%),
+    radial-gradient(40% 52% at 16% 76%, color-mix(in srgb, var(--ydx-lift) 52%, transparent), transparent 70%), var(--field);
+}
+.ydx-bg[data-tone=berry] { --ydx-lift: color-mix(in srgb, var(--field) 45%, var(--deep)); }
+.ydx-bg canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity .9s ease; }
+.ydx-bg[data-state=ready] canvas { opacity: 1; }
+html.ydx-bg-on .page { position: relative; z-index: 1; }
+html.ydx-bg-on .s-field { background-color: transparent; }
+@media print { .ydx-bg { display: none; } html.ydx-bg-on .s-field { background-color: var(--field); } }
+.ydx-bg[data-tone=custom] { --field: var(--lab-field, #e27a90); --ydx-lift: color-mix(in srgb, var(--lab-field, #e27a90) 60%, #fff); }

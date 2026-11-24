@@ -1,0 +1,140 @@
+/* ydx round 5 — מעבדת הגוונים (/lab/). Same grid, rhythm and type tiers as the home page's compose.css.
+   The page colours come from the dish: lab.js sets --lab-field / --lab-ink / --lab-pig / --lab-hi on <html>. */
+:root {
+  --ydx-m: max(var(--gutter), calc((100vw - 1760px) / 2));
+  --ydx-cg: clamp(14px, 1.7vw, 28px);
+  --ydx-lead: clamp(1.04rem, .92rem + .36vw, 1.3rem);
+  --lab-field: #e27a90; --lab-ink: #4a0d22; --lab-pig: #c94f69; --lab-hi: #f08ba0; --lab-rule: rgba(74, 13, 34, .3);
+}
+body { background: var(--lab-field); }
+.lab-defs { position: absolute; width: 0; height: 0; }
+.lab-top, .lab {
+  --field: var(--lab-field); --on: var(--lab-ink); --pig: var(--lab-pig);
+  color: var(--lab-ink); transition: color .5s ease;
+}
+.lab-top { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; padding: 18px var(--ydx-m) 0; }
+.lab-top .wordmark { color: inherit; }
+.lab {
+  --btn-bg: var(--lab-ink); --btn-fg: var(--lab-field);
+  display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--ydx-cg); align-content: start;
+  padding: clamp(22px, 3vw, 44px) var(--ydx-m) clamp(80px, 8vw, 140px); background: var(--lab-field); min-height: 100svh;
+}
+.lab .button { transition: transform .25s var(--ease), background-color .5s, color .5s; }
+.lab-meta {
+  grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: 20px;
+  min-height: 2.6rem; padding-bottom: 12px; border-bottom: 1.5px solid currentColor;
+}
+.lab-meta .latin { font-size: clamp(1.1rem, 1.6vw, 1.6rem); }
+.lab-intro { grid-column: 1 / 7; grid-row: 2; margin-top: clamp(26px, 2.8vw, 46px); }
+.lab h1 { font-size: clamp(3.4rem, 7.3vw, 8.8rem); line-height: .88; }
+.lab h1 > span { display: block; width: max-content; max-width: 100%; }
+.lab h1 > span:first-child, .lab h1 > span:nth-child(2) { display: inline; }
+.lab h1 em { background: linear-gradient(transparent 56%, var(--lab-pig) 56%, var(--lab-pig) 90%, transparent 90%); margin-inline: -.08em; padding-inline: .08em; transition: background .5s; }
+.lab-lead { margin-top: clamp(20px, 2vw, 32px); max-width: 28em; font-size: var(--ydx-lead); line-height: 1.55; font-weight: 500; }
+
+/* the mirror: a burgundy stage like the home atelier's, sticky beside the mixer on desktop */
+.lab-mirror {
+  grid-column: 8 / -1; grid-row: 2 / 4; align-self: start; position: sticky; top: 18px;
+  margin-top: clamp(26px, 2.8vw, 46px); background: #4a0d22; color: #fde5e6; border-radius: 6px;
+  padding: clamp(18px, 2.2vw, 32px); display: grid; gap: clamp(8px, 1vw, 14px); overflow: hidden;
+}
+.mirror-head { display: flex; justify-content: space-between; align-items: baseline; font: italic 500 1.05rem var(--latin); }
+.mirror-hex { font: 600 .82rem var(--text); letter-spacing: .14em; direction: ltr; }
+.mirror-latin { color: var(--lab-hi); font-size: clamp(2rem, 4.2vw, 4.8rem); line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .5s; }
+.mirror-stage { position: relative; aspect-ratio: 650 / 470; }
+.mirror-lips { position: absolute; z-index: 2; left: 5%; top: 0; width: 90%; height: auto; }
+.mirror-smear { position: absolute; z-index: 1; left: -6%; bottom: 0; width: 112%; height: auto; transform: scaleX(-1); }
+.mirror-fallback { position: absolute; left: 5%; top: 0; width: 90%; height: auto; }
+.lab.is-ready .mirror-fallback { display: none; }
+.lab:not(.is-ready) .mirror-lips, .lab:not(.is-ready) .mirror-smear { visibility: hidden; }
+.mirror-foot { border-top: 1px solid rgba(253, 229, 230, .26); padding-top: 14px; }
+.mirror-foot h2 { font-size: clamp(2.4rem, 4vw, 4.4rem); line-height: .95; }
+.mirror-foot p { margin-top: 10px; font-weight: 500; min-height: 3.2em; }
+
+/* the mixer */
+.lab-mixer { grid-column: 1 / 7; grid-row: 3; margin-top: clamp(30px, 3.6vw, 60px); display: grid; gap: 16px; align-content: start; }
+.mixer-step { display: flex; align-items: baseline; gap: .6em; padding-top: 12px; margin-top: 12px; border-top: 1.5px solid currentColor; font-weight: 700; font-size: 1.05rem; }
+.mixer-step .latin { font-size: 1.45rem; }
+.mixer-step small { font-weight: 500; font-size: .86rem; opacity: .85; }
+.pigments { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--ydx-cg); }
+.pigment {
+  position: relative; display: grid; justify-items: center; gap: 8px; padding: 10px 6px 12px; border: 0; border-radius: 4px;
+  background: var(--paper); color: #4a0d22; transition: transform .45s var(--out), box-shadow .45s var(--out);
+}
+.pigment img { height: clamp(84px, 7.4vw, 128px); width: auto; transition: translate .5s var(--out); }
+.pg-label { display: grid; justify-items: center; line-height: 1.2; font-weight: 700; font-size: .95rem; }
+.pg-label i { font: italic 500 .74rem var(--latin); }
+.pg-count { position: absolute; inset-block-start: 8px; inset-inline-start: 8px; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 999px; background: #4a0d22; color: #fde5e6; font: 600 .8rem/26px var(--text); text-align: center; transition: opacity .3s, scale .4s var(--out); }
+.pg-count[data-n="0"] { opacity: 0; scale: .6; }
+.pigment:focus-visible { outline: 3px solid var(--lab-ink); outline-offset: 3px; }
+@media (hover: hover) { .pigment:hover { transform: translateY(-4px); box-shadow: 0 18px 34px -22px rgba(43, 6, 22, .6); } .pigment:hover img { translate: 0 -4px; } }
+.pigment:active { transform: scale(.96); }
+
+.dish {
+  position: relative; height: clamp(190px, 17vw, 270px); border-radius: 50%; overflow: hidden; touch-action: none; cursor: grab;
+  background: radial-gradient(ellipse at 50% 38%, #fffaf6 0 52%, #f4e8e4 72%, #e8d4ce 100%);
+  box-shadow: inset 0 -12px 26px rgba(74, 13, 34, .14), inset 0 6px 10px rgba(255, 255, 255, .8), 0 22px 44px -28px rgba(43, 6, 22, .7);
+}
+.dish.is-stirring { cursor: grabbing; }
+.dish-goo { position: absolute; inset: 0; filter: url(#ydx-goo); --pool: 0px; --rot: 0deg; }
+.dish-goo i { position: absolute; border-radius: 50%; display: block; }
+.dish-goo .pool {
+  left: 50%; top: 50%; width: var(--pool); height: calc(var(--pool) * .82); margin: calc(var(--pool) * -.41) 0 0 calc(var(--pool) * -.5);
+  background: var(--mix); transition: width .7s var(--out), height .7s var(--out), margin .7s var(--out), background-color .9s ease;
+}
+.dish-goo .sat {
+  left: 50%; top: 50%; width: calc(var(--pool) * .34); height: calc(var(--pool) * .34); margin: calc(var(--pool) * -.17) 0 0 calc(var(--pool) * -.17);
+  background: var(--c); transform: rotate(calc(var(--a) + var(--rot))) translateX(calc(var(--pool) * .42)) rotate(calc(-1 * (var(--a) + var(--rot))));
+  transition: background-color .9s ease, width .7s var(--out), height .7s var(--out), margin .7s var(--out), opacity .4s;
+}
+.dish-goo .sat[data-on="0"] { opacity: 0; }
+.dish-hint { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; font-size: .8rem; font-weight: 600; color: #4a0d22; opacity: .55; pointer-events: none; }
+
+.mixer-controls { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--ydx-cg); align-items: end; }
+.lab-depth input { accent-color: var(--lab-ink); }
+.lab .intensity input:focus-visible { outline: 3px solid var(--lab-ink); outline-offset: 6px; border-radius: 999px; }
+.finish { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.finish legend { padding: 0; margin-bottom: 10px; font-weight: 600; }
+.finish label { position: relative; }
+.finish input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.finish span { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1.15em; border-radius: 999px; border: 1.5px solid currentColor; font-weight: 600; transition: background-color .3s, color .3s; }
+.finish input:checked + span { background: var(--btn-bg); color: var(--btn-fg); border-color: var(--btn-bg); }
+.finish input:focus-visible + span { outline: 3px solid currentColor; outline-offset: 3px; }
+.mixer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin-top: 12px; }
+.lab .edit-button { min-height: 44px; color: inherit; }
+.lab .disclaimer { margin-top: 4px; }
+
+.lab-foot { position: relative; z-index: 1; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 24px 40px; padding: clamp(50px, 6vw, 90px) var(--ydx-m) 44px; }
+.lab-foot .footer-line { font: 900 clamp(2rem, 4.2vw, 4.4rem)/.96 var(--display); font-stretch: 68%; }
+.lab-foot .footer-links { display: flex; flex-wrap: wrap; gap: 10px 30px; }
+.lab-foot .footer-links a { text-underline-offset: .3em; font-weight: 500; }
+
+@media (max-width: 1000px) {
+  .lab-intro, .lab-mixer { grid-column: 1 / -1; }
+  .lab-intro { grid-row: 2; }
+  .lab-mirror { grid-column: 1 / -1; grid-row: 3; position: relative; top: auto; }
+  .lab-mixer { grid-row: 4; }
+}
+@media (max-width: 760px) {
+  /* phones: the mirror docks to the top as a compact strip, so the lips stay in view while you mix below */
+  .lab-mirror {
+    position: sticky; top: 0; z-index: 3; margin: 22px calc(var(--ydx-m) * -1) 0; border-radius: 0 0 6px 6px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-rows: auto auto 1fr; gap: 2px 12px; padding: 12px var(--ydx-m);
+    box-shadow: 0 16px 30px -22px rgba(43, 6, 22, .8);
+  }
+  .mirror-head { grid-area: 1 / 1; font-size: .9rem; }
+  .mirror-latin { grid-area: 2 / 1; font-size: 6.4vw; white-space: normal; }
+  .mirror-stage { grid-area: 1 / 2 / 4 / 3; align-self: center; }
+  .mirror-foot { grid-area: 3 / 1; border: 0; padding-top: 4px; align-self: end; }
+  .mirror-foot h2 { font-size: 8.4vw; }
+  .mirror-foot p { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; min-height: 0; }
+  .mirror-hex { display: none; }
+  .lab h1 { font-size: 17vw; }
+  .pigments { gap: 8px; }
+  .pigment img { height: 84px; }
+  .pg-label i { display: none; }
+  .mixer-controls { grid-template-columns: 1fr; }
+  .mirror-latin { font-size: 9vw; }
+  .lab-top .text-link { padding-block: 11px; }
+}
+@media (prefers-reduced-motion: reduce) { .dish-goo .pool, .dish-goo .sat { transition: none; } }

@@ -253,13 +253,33 @@
       whenCSS((late) => {
         if (!LATE && !late) safe(setupReveals, root);
         if (WAAPI) safe(setupShutter);
+        safe(setupPlayChip);
         if (!RM) {
+          safe(loadField);
           safe(setupScrollFx);
           if (FINE) { safe(setupMagnetic); if (WAAPI) safe(setupFooterScrub); }
         }
       });
     });
   }
+  /* Round 5: the slicer field (ydx/field.js, WebGL). Heavy, so it loads only once the loader has gone and
+     the main thread is idle; it never delays the app or the hand-off. Not in reduced motion. */
+  function loadField() {
+    if (d.querySelector('script[src^="/ydx/field.js"]')) return;
+    let tries = 0;
+    (function wait() {
+      const L = d.getElementById('ydx-loader');
+      if (L && tries++ < 60) { setTimeout(wait, 200); return; }
+      const go = () => {
+        const s = d.createElement('script');
+        s.src = '/ydx/field.js';
+        s.async = true;
+        d.head.appendChild(s);
+      };
+      if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 1200 }); else setTimeout(go, 300);
+    })();
+  }
+
   /* Deep links (/#materials) never scrolled on the live site: the browser looks for the
      fragment before React has rendered it. Jump there while the loader still covers the page. */
   function fixDeepLink() {
@@ -464,6 +484,39 @@
     const plain = (e) => !(e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
     const far = (y) => Math.abs(y - scrollY) > innerHeight * 1.6;
 
+    // Round 5: the playground (/play/) is a real page. The same layer shutter covers the page, then the browser
+    // navigates; /play/ opens under the same ink bands and retracts them.
+    function coverTo(href) {
+      busy = true;
+      let went = false;
+      const nav = () => { if (!went) { went = true; location.href = href; } };
+      try {
+        small.textContent = 'Layer 05'; big.textContent = 'Playground';
+        sh.classList.add('on');
+        bands.forEach((el) => { el.style.transformOrigin = '0 50%'; });
+        const n = bands.length;
+        const cover = bands.map((el, i) => el.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }],
+          { duration: 230, delay: (n - 1 - i) * 14, easing: EASE_MOVE, fill: 'forwards' }));
+        label.animate([{ opacity: 0, transform: 'translate(-50%,-30%)' }, { opacity: 1, transform: 'translate(-50%,-50%)' }],
+          { duration: 180, delay: 170, easing: EASE_OUT, fill: 'forwards' });
+        Promise.all(cover.map((a) => a.finished)).then(() => setTimeout(nav, 80), nav);
+      } catch (e) { nav(); }
+      setTimeout(nav, 900);
+    }
+    addEventListener('click', (e) => {
+      const a = e.target.closest && e.target.closest('a[data-ydx-play]');
+      if (!a || !plain(e) || a.target === '_blank') return;
+      e.preventDefault();
+      if (!busy) coverTo(a.getAttribute('href'));
+    }, true);
+    // Coming back through the back/forward cache: never return to a covered page.
+    addEventListener('pageshow', (e) => {
+      if (!e.persisted) return;
+      sh.getAnimations({ subtree: true }).forEach((a) => { try { a.cancel(); } catch (err) { /* ignore */ } });
+      sh.classList.remove('on');
+      busy = false;
+    });
+
     // "#top" links (brand, footer word, back to top) call Lenis from a React handler; catch them first.
     addEventListener('click', (e) => {
       const a = e.target.closest && e.target.closest('a[href="#top"]');
@@ -495,6 +548,46 @@
       e.stopPropagation();
       play(y, href, href.slice(1), e.detail === 0 ? el : null);
     });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 5b. Round 5: the playground chip ("Print your name", /play/)          */
+  /* ------------------------------------------------------------------ */
+  // A floating chip outside the app root, in the brand pill's language (ink, the three layer bars). It
+  // appears once the hero is behind you; on touch screens it steps aside while you scroll down and
+  // comes back when you scroll up, so it never sits on what you are reading.
+  function setupPlayChip() {
+    if (d.getElementById('ydx-play')) return;
+    const a = d.createElement('a');
+    a.id = 'ydx-play';
+    a.href = '/play/';
+    a.setAttribute('data-ydx-play', '');
+    a.innerHTML = '<i aria-hidden="true"><b></b><b></b><b></b></i><span><small>Playground</small>Print your name</span>' +
+      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>';
+    d.body.appendChild(a);
+    const coarse = matchMedia('(pointer: coarse)').matches;
+    let lastY = scrollY, raf = 0;
+    const upd = () => {
+      raf = 0;
+      const y = scrollY, vh = innerHeight;
+      const L = d.getElementById('ydx-loader');
+      let on = y > vh * 0.6 && !(L && !L.classList.contains('is-out'));
+      if (on && coarse) {
+        if (y > lastY + 4) a.classList.add('away');
+        else if (y < lastY - 4) a.classList.remove('away');
+      }
+      lastY = y;
+      // at the very end of the page it becomes the closing invitation
+      a.classList.toggle('end', y + vh > d.documentElement.scrollHeight - 40);
+      if (a.classList.contains('end')) a.classList.remove('away');
+      a.classList.toggle('on', on);
+    };
+    const kick = () => { if (!raf) raf = requestAnimationFrame(upd); };
+    addEventListener('scroll', kick, { passive: true });
+    addEventListener('resize', kick, { passive: true });
+    // A keyboard user tabbing to it always gets it back in view.
+    a.addEventListener('focus', () => { a.classList.add('on'); a.classList.remove('away'); });
+    kick();
   }
 
   /* ------------------------------------------------------------------ */
@@ -585,6 +678,12 @@
     let zTimer = 0;
     function zTone() {
       if (getComputedStyle(z).display === 'none') return;
+      // The sections are transparent while the slicer field paints them: ask the field for the colour.
+      const F = window.__ydxField;
+      if (F && html.classList.contains('ydx-gl')) {
+        const c = F.colorAt(Math.round(innerHeight / 2));
+        if (c) { z.style.color = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) > 0.4 ? '#17151c' : '#f4efe2'; return; }
+      }
       const r = z.getBoundingClientRect();
       const stack = d.elementsFromPoint(Math.round(r.left + r.width / 2), Math.round(innerHeight / 2));
       for (const el of stack) {

@@ -374,3 +374,176 @@ regression introduced by ydx itself.
   (10023 / 8719).
 - Live headers (`curl -sI https://strata.ydesign.workers.dev/`) are unchanged: no CSP or XFO, and
   `cache-control: public, max-age=0, must-revalidate`.
+
+## Round 5
+
+The owner found the site still too calm. This round gives it one signature idea that runs through the whole page,
+plus one real toy. Both come from what the studio does. **The page is a slicer preview of the build plate, and you
+can print your own name.**
+
+### 1. The slicer field: a living background (`ydx/field.js`, about 9.8 KB gzip, raw WebGL 1)
+
+- **What it looks like.** Each flat section field (hero, Our work, Materials, The process, the brief banner and
+  body, the FAQ, the footer) is now painted by one WebGL canvas behind the page. The canvas uses each section's
+  exact colour and overlays that section's **infill toolpaths**, printed with the same layer stripes as the site's
+  striped type. The infill is a gyroid in the hero and footer, a honeycomb on Our work and the FAQ, topographic
+  slice contours on the ink Process section, a 45° grid on the violet banner, and faint resin layer lines behind
+  the form. The walls sit 5–10% off the field colour, so they read as texture. Cards, plates, slabs, seams and the
+  ticker stay opaque on top.
+- **It moves on its own.** The slice height Z drifts slowly, so the gyroid morphs between its wave and network
+  phases, and it lingers on the network phase. The toolpaths also flow through a slow domain warp.
+- **It reacts.**
+  - Scroll speed scrubs Z, so a fast scroll slices through the part. The right-edge Z readout (round 1) now
+    describes the same build.
+  - The pointer is the hot nozzle. The infill swells and magnifies under it, and its toolpaths are outlined in
+    the section's accent colour (violet on light fields, lime on ink).
+  - The pointer also extrudes a **filament trail**: a shaded tube with an orange-hot tip that cools and fades
+    over 1.5s. The trail is laid in document coordinates, so it stays on the plate when you scroll.
+  - On touch screens, a finger drag does the same.
+- **It changes with the content.**
+  - A new hero filament or material colour **rises in 9 layers**, with a nozzle line at the front. This replaces
+    the site's own `.field-rise`, keeps its steps and timing, and is drawn in GL.
+  - The **material tabs switch the infill**: PLA gyroid, PETG honeycomb, resin layer lines, nylon sintered powder.
+  - The first appearance prints in from the bottom of the viewport in 24 layers, after the loader has gone.
+- **How it is built.**
+  - Technique 1 (domain warp) feeds technique 6 (a layer-line field that bends around the cursor) and technique 3
+    (a trail; here an analytic polyline of 32 points instead of an FBO).
+  - Infill functions: a gyroid level set, a hex distance, a rotated grid, simplex contours (exact AA with
+    `OES_standard_derivatives` where it exists), and hashed powder.
+  - The canvas is **absolute in document coordinates with 20% overscan**, not fixed. A fixed canvas repainted
+    from JS lags a frame behind compositor-thread scrolling on phones, which would slide section edges out of
+    register. This one scrolls natively with the content.
+  - The flat colours become transparent only through `html.ydx-gl`, which is set in the same frame as the first
+    drawn frame. The canvas paints the identical colours, so the swap is invisible.
+  - Live colours come from the sections' own inline `--field` / `--bg` (React remounts `.field-rise` on every
+    change; reading that node was a bug found in testing).
+- **Fallbacks.** Without WebGL, with reduced motion, if a shader fails, if the context is lost, if `field.js` is
+  missing or if `enhance.css` is missing, there is no `ydx-gl` and the site's own flat colours stay. On a **software
+  rasteriser** (SwiftShader, llvmpipe, a blocklisted GPU), the field is skipped on purpose: a decorative
+  full-screen shader is not worth CPU rendering. This includes the headless test browser here, so add `?ydxhq` to
+  the URL to see it in tests. In the hub iframe it runs a light version: 0.72 resolution, 30 fps and no trail.
+- **Performance.**
+  - Loads only after the loader has gone, in `requestIdleCallback`. Compiles with `KHR_parallel_shader_compile`
+    where available.
+  - One full-screen triangle and one draw call. DPR is capped at 1.25 (1 on phones and low-power devices,
+    quality 0.72).
+  - When nothing is moving it draws at about 30 fps. It pauses in hidden tabs and while the project sheet or the
+    mobile menu covers the page.
+  - Adaptive resolution: a sustained frame interval over 24ms drops it one step at a time, never back up.
+  - Measured: field JS (including GL command submission) is **0.56 ms per draw, 0.79 ms with CPU throttled 4×**.
+  - Main-thread script time over a wheel and pointer walk at 4× throttle: 0.39s with the field against 0.43s
+    without it, so the same within noise.
+  - GPU cost cannot be measured here, because the container's GL is SwiftShader on the CPU.
+- **Contrast** (WCAG, worst case = the wall colour under the nozzle, calculated from the shader's mix; idle walls
+  are lighter):
+
+  | Field | Idle wall | Under nozzle |
+  | --- | --- | --- |
+  | Hero lime | 11.9 | 9.1 |
+  | Hero violet (dark filament) | 5.6 | 4.7 |
+  | Hero orange | 5.7 | 4.6 |
+  | Work paper | 13.1 | 10.5 |
+  | Materials PETG / resin | 7.1 / 7.7 | 5.6 / 6.1 |
+  | Process ink | 12.2 | 8.8 |
+  | Banner violet | 5.5 | 4.7 |
+  | FAQ orange | 5.6 | 4.7 |
+  | Footer ink | 12.2 | 8.8 |
+
+  Everything is at least 4.5:1. The intensities of the hero and the FAQ were lowered to get there. The thin
+  accent outlines under the pointer are transient and decorative.
+- **Z readout:** its ink/bone choice now asks the field for the section colour (`__ydxField.colorAt`), because the
+  sections are transparent while the field is on.
+
+### 2. The playground: "Print your name" (`/play/`, `ydx/play.js` about 12 KB gzip, `ydx/play.css`)
+
+A standalone page, owned completely by the ydx layer (the worker serves real files before the SPA fallback).
+
+- **What you do.**
+  - Type a name of up to 12 characters, choose a **material** (PLA, PETG, resin or nylon, with the site's material
+    library colours), an **infill** (gyroid, honeycomb, grid or solid), a **density** and a **layer height**
+    (0.12, 0.20 or 0.28 mm, giving 67, 40 or 29 layers).
+  - Watch the name print in 3D on an ink build plate, layer by layer.
+  - Drag (or use the arrow keys on the focused plate) to orbit. After the print, **Layer view** cuts down through
+    the part to show the infill, and **Save a snapshot** downloads a PNG.
+  - Typing reprints after a 1.1s pause. Enter reprints at once.
+- **The process follows the material, as in the site's materials library.**
+  - PLA and PETG are FDM: the site's own print head (`o-head.webp` and its rail) rides the toolpath, the moving
+    front glows hot orange, and each layer runs boustrophedon (alternate layers in opposite directions).
+  - Resin is SLA: whole layers cure under a violet UV flash, with no head.
+  - Nylon is SLS: a lime laser dot sinters the layer.
+  - The HUD reads `LAYER 19 / 40 · Z 3.8 MM`, `NOZZLE 210°C`, `UV 405 NM` or `LASER 30 W`, with a 60× time-lapse
+    clock.
+  - The lime/orange/violet seam under the plate fills as the progress bar, like the loader's.
+- **How it is built.**
+  - The name is rasterised in Gabarito 900 into a mask texture. Its G channel is the glyphs eroded by about 6px,
+    made by intersecting shifted copies with `destination-in` (no `ctx.filter`, so it works in Safari). That
+    interior is where the infill goes.
+  - The part is N stacked layer quads in one draw call. The fragment shader discards what is not printed yet,
+    cuts the infill out of the interior so you see down into it, and shades layers that are visible from the side
+    as darker stepped walls with alternating layer lines. The top skin carries diagonal toolpath lines.
+  - A ghost outline of the finished top layer and a 3D **CAD selection box with lime handles** (the hero's
+    marquee) show the slicer preview.
+  - The bed is a procedural grid with derivative AA.
+- **The page carries the site.** It has the same fonts, tokens, brand pill, nav CTA, layered `.btn`, chips,
+  material tabs, hero "slicer" sliders and outlined/striped display title. On phones, tablets and anything up to
+  1023px, the plate is **sticky** at the top, so every change is visible while the controls scroll under it.
+- **Transitions.**
+  - The way in is the site's **layer shutter**: ink bands extrude ("LAYER 05 / PLAYGROUND"), the browser
+    navigates, and `/play/` opens under the same bands (inline critical CSS) and retracts them bottom-first.
+  - "Back to the studio" and the brand play the reverse ("LAYER 00 / STUDIO"), and the studio's loader then runs
+    its short repeat-visit version.
+  - Both pages reset the cover on a bfcache restore.
+- **Fallbacks.**
+  - Without WebGL, the name prints in 2D in the site's striped type (CSS steps).
+  - With reduced motion, the finished part appears at once with no sway, and the cover is a 200ms fade.
+  - Without JS, a `<noscript>` note shows and the cover is hidden.
+  - If `play.js` fails to load (404 / `onerror`), or has not started after 2.5s, an inline failsafe lifts the
+    cover.
+  - On a software rasteriser the playground still runs, at 0.6 resolution with DPR 1.
+  - It pauses offscreen and in hidden tabs, and only renders while something moves: printing, orbit inertia, or
+    the 9s sway after a print.
+- **Entry point: a playground chip** (enhance.js `setupPlayChip`). It sits outside `#root`, in the brand pill's
+  language: ink, the three layer bars, which reprint on hover, and a lime/orange/violet layer stack.
+  - It slides up once the hero is behind you. On touch screens it steps aside while you scroll down and returns
+    when you scroll up.
+  - At the end of the page it turns lime, as the closing invitation.
+  - It is hidden under the loader and the open mobile menu, and is focusable and shown on `:focus-visible`.
+  - It sits bottom-left on desktop and bottom-right on phones.
+
+### Kept and removed
+
+Nothing from rounds 1–4 competed with the field, so nothing was removed. The Z readout, the ticker velocity, the
+seams and the shutter all read as part of the same build now. The field replaces the site's `.field-rise` colour
+animation visually, with the same 9 steps. The DOM animation still runs underneath, on a transparent element.
+
+### Verification (scripts in `scratchpad/strata-r5/js`, results in `strata-r5/regress`)
+
+- **Round 3 scenarios** (`scen.cjs`):
+  - Cases run: nojs, js404, jshtml, css404, csshtml, both404, bothhtml, jsdelay8, cssdelay8, noanimate,
+    appdelay8 and iframe.
+  - Every case ends as in round 4: the loader gone, the app and hero visible, nothing inert, docH 10023.
+  - The only log lines are the same expected ones: 404s, `Unexpected token '<'` and the bundle's `R.animate`.
+- **Round 3 interactions** (`inter.cjs` menuesc, menulink, topbusy, dbl, cancel, dialogkbd, twice, deeplate;
+  `inter2` topbusy2; `misc`; `wheel`; `after`): all pass with round-4 values, for example brief top 72,
+  `#process 3`, one shutter and one Z readout, Lenis reset 6565 → 5965, and no console errors.
+- **With the field running** (`?ydxhq` under SwiftShader): dbl, deeplate, dialogkbd, menuesc and wheel pass with
+  the same values. The wheel test needed a longer wait because software GL frames take seconds.
+- **Round 4 checks:** the tab press scale is restored, the footer scrub reprints, the ticket prints 3 times and
+  the brief result has no double entrance.
+- **`shoot.mjs`:** desktop 13 shots and mobile 15, with 0 log lines and unchanged heights (10023 / 8719).
+  `/play/`: desktop 5 and mobile 5.
+- **Playground checks:**
+  - No WebGL gives the 2D print.
+  - Reduced motion gives the finished part (layer 40/40).
+  - With JS off, the cover is hidden. With a `play.js` 404, the cover is gone at 600ms.
+  - Tab order: skip, brand, back, name, material, infill, density, layer height, print, snapshot, plate, layer
+    view, footer.
+  - Arrow keys move the radio groups, and Enter reprints.
+  - The page flow chip → shutter → `/play/` → back → studio works, history back/forward works, and the shutter
+    is never left on.
+- **Known environment noise:** any WebGL canvas in this headless Chromium logs Chrome's own
+  `GPU stall due to ReadPixels` warning, up to 4 times. Software compositing reads back the GL frame. The ydesign
+  hub's three.js logs the same line. It appears only on `/play/` and with `?ydxhq`; the studio page in a default
+  run logs nothing, because the field skips software GL.
+- **Not verifiable here:** real-GPU frame times and iOS Safari. Both are reasoned from the code: one context per
+  page, DPR caps, adaptive resolution, and pausing.

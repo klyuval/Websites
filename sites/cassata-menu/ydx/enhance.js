@@ -255,14 +255,17 @@
     h.style.setProperty('--ydx-vx', Math.round(r.left + r.width / 2) + 'px');
     h.style.setProperty('--ydx-vy', Math.round(r.top + r.height / 2) + 'px');
     h.classList.add('ydx-vt-lang');
+    const fld = w.__ydxField; // round 5: the living field stands still while the page is snapshotted
+    if (fld && fld.hold) fld.hold(true);
+    const release = () => { h.classList.remove('ydx-vt-lang'); if (fld && fld.hold) fld.hold(false); };
     let vt;
     try {
       vt = d.startViewTransition(() => new Promise(res => {
         replaying = true; b.click(); replaying = false;
         setTimeout(res, 30); // React commits the discrete update synchronously; one tick is plenty
       }));
-    } catch (err) { h.classList.remove('ydx-vt-lang'); replaying = true; b.click(); replaying = false; return; }
-    vt.finished.finally(() => h.classList.remove('ydx-vt-lang'));
+    } catch (err) { release(); replaying = true; b.click(); replaying = false; return; }
+    vt.finished.finally(release);
   }, true);
 
   /* ---------------------------------------------------------------- */
@@ -323,6 +326,41 @@
     }
     hadSheet = has;
   }).observe(d.body, { childList: true });
+
+  /* ---------------------------------------------------------------- */
+  /* Round 5: a sticker that invites to the Scoop Lab (/play/).         */
+  /* Home page only (never /host), outside the app root, shown once the */
+  /* hero has scrolled away; hidden over the sheet and the footer.      */
+  /* ---------------------------------------------------------------- */
+  if ($('.site:not(.host-site) .hero')) whenCss.then(() => {
+    if (!cssOK() || $('.ydx-lab')) return;
+    const a = d.createElement('a');
+    a.className = 'ydx-lab'; a.href = '/play/';
+    a.innerHTML = '<svg viewBox="-30 -58 60 92" aria-hidden="true"><g class="ydx-lab__st">' +
+      '<path d="M-14,0 L14,0 L0,32 Z" fill="#f5c543" stroke="#1d1b16" stroke-width="2.5" stroke-linejoin="round"/>' +
+      '<path d="M-18,2 C-20,-12 -10,-20 0,-20 C10,-20 20,-12 18,2 C12,0 8,6 2,4 C-4,8 -10,1 -18,2 Z" fill="#b9cc5a" stroke="#1d1b16" stroke-width="2.5" stroke-linejoin="round"/>' +
+      '<path d="M-16,-18 C-18,-32 -9,-40 0,-40 C9,-40 18,-32 16,-18 C10,-20 6,-14 0,-16 C-6,-13 -10,-20 -16,-18 Z" fill="#f4a7b9" stroke="#1d1b16" stroke-width="2.5" stroke-linejoin="round"/>' +
+      '<path d="M0,-52 V-44 M-3.5,-50 L3.5,-46 M-3.5,-46 L3.5,-50" stroke="#d2382b" stroke-width="2.5" stroke-linecap="round"/>' +
+      '</g></svg><span></span>';
+    const label = () => {
+      const en = isEn();
+      a.dir = en ? 'ltr' : 'rtl';
+      a.lastChild.textContent = en ? 'Stack a cone' : 'בנו גביע';
+      a.setAttribute('aria-label', en ? 'The scoop lab: stack a cone' : 'מעבדת הכדורים: בנו גביע');
+    };
+    label();
+    d.body.appendChild(a);
+    const siteEl = $('.site'); if (siteEl) new MutationObserver(label).observe(siteEl, { attributes: true, attributeFilter: ['class'] });
+    let pastHero = false, atFoot = false;
+    const show = () => a.classList.toggle('is-on', pastHero && !atFoot);
+    const watch = new IntersectionObserver(es => es.forEach(e => {
+      if (e.target.classList.contains('hero')) pastHero = !e.isIntersecting || e.intersectionRatio < 0.3;
+      else atFoot = e.isIntersecting;
+      show();
+    }), { threshold: [0, 0.3] });
+    const hero = $('.hero'); if (hero) watch.observe(hero);
+    const foot = $('.footer-row'); if (foot) watch.observe(foot);
+  });
 
   if (RM) { onReadyStatic(); return; }
 

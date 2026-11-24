@@ -276,3 +276,51 @@
   writing-mode: vertical-rl; transform: translateX(-50%); white-space: nowrap;
 }
 @media (max-width: 1099px), (pointer: coarse), (prefers-reduced-motion: reduce) { #ydx-z { display: none; } }
+
+/* ---------- Round 5: the slicer field (ydx/field.js) ------------------------------------------------
+   field.js paints every section field with one WebGL canvas behind the page (#ydx-field, z-index -1,
+   in document coordinates) and only then sets html.ydx-gl, in the same frame as its first drawn frame.
+   The canvas draws each section in its exact colour, so the swap is invisible; the flat fields become
+   transparent so the living one shows. No WebGL / reduced motion / field.js missing = no class = the
+   site's own flat colours. Cards, plates, slabs, seams and the ticker stay opaque. */
+html.ydx-gl body { background-color: transparent; }
+html.ydx-gl .hero > .field, html.ydx-gl .hero > .field > .field-rise,
+html.ydx-gl #materials > .field, html.ydx-gl #materials > .field > .field-rise { background: transparent !important; }
+html.ydx-gl #work, html.ydx-gl #process, html.ydx-gl .brief-banner, html.ydx-gl .brief-body,
+html.ydx-gl .faq, html.ydx-gl .footer { background-color: transparent; }
+
+/* ---------- Round 5: playground chip (enhance.js setupPlayChip) -------------------------------------
+   The brand pill's language: ink, bone type, the three layer bars, the lime/orange/violet layer stack
+   under it. Hidden (but focusable) at the top of the page; slides up once the hero is behind you. */
+#ydx-play {
+  position: fixed; left: var(--gut); bottom: 22px; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); z-index: 55;
+  display: inline-flex; align-items: center; gap: .7em; min-height: 48px; padding: .55em .95em .55em .8em;
+  border-radius: var(--r-s); background: var(--ink); color: var(--bone); text-decoration: none;
+  font: 700 .9375rem/1.1 var(--display); letter-spacing: -.005em;
+  box-shadow: 0 3px 0 var(--lime), 0 6px 0 var(--orange), 0 9px 0 var(--violet);
+  opacity: 0; translate: 0 calc(100% + 40px); pointer-events: none;
+  transition: translate .5s var(--ydx-move), opacity .3s linear;
+}
+#ydx-play.on, #ydx-play:focus-visible { opacity: 1; translate: none; pointer-events: auto; }
+#ydx-play.on.away { opacity: 0; translate: 0 calc(100% + 40px); pointer-events: none; }
+#ydx-play small { display: block; margin-bottom: 3px; font: 500 .625rem/1.2 var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--lime); }
+#ydx-play i { display: grid; gap: 2px; width: 18px; flex: none; }
+#ydx-play i b { display: block; height: 4px; border-radius: 2px; background: var(--lime); transform-origin: 0 50%; }
+#ydx-play i b:nth-child(2) { background: var(--orange); width: 82%; }
+#ydx-play i b:nth-child(3) { background: var(--bone); }
+#ydx-play svg { flex: none; transition: transform .2s var(--ease); }
+#ydx-play:focus-visible { outline: 2px solid var(--bone); box-shadow: 0 0 0 6px var(--ink), 0 9px 0 6px var(--violet); outline-offset: 0; }
+/* the end of the page: the chip grows into a closing invitation */
+#ydx-play.end { background: var(--lime); color: var(--ink); box-shadow: 0 0 0 2.5px var(--ink), 0 5px 0 2.5px var(--ink), 0 8px 0 2.5px var(--violet); }
+#ydx-play.end small { color: var(--violet); }
+#ydx-play.end i b:nth-child(1), #ydx-play.end i b:nth-child(3) { background: var(--ink); }
+html:has(.nav.open) #ydx-play, html:has(#ydx-loader:not(.is-out)) #ydx-play { opacity: 0; pointer-events: none; }
+@media (hover: hover) and (pointer: fine) {
+  #ydx-play:hover svg { transform: translate(3px, -3px); }
+  #ydx-play:hover i b { animation: ydx-play-bars .5s steps(5, end) both; }
+  #ydx-play:hover i b:nth-child(2) { animation-delay: .08s; }
+  #ydx-play:hover i b:nth-child(1) { animation-delay: .16s; }
+}
+@keyframes ydx-play-bars { from { transform: scaleX(0); } }
+@media (max-width: 560px) { #ydx-play { left: auto; right: var(--gut); min-height: 46px; font-size: .875rem; } }
+@media (prefers-reduced-motion: reduce) { #ydx-play { transition: none; } #ydx-play svg { transition: none; } }

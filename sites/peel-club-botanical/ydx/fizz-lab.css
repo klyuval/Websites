@@ -1,0 +1,163 @@
+/* ydx r5: the Fizz Lab page (/fizz-lab/). Loaded after the app's own stylesheet, so tokens (--tang, --green, --paper,
+ * --serif, --type, --pad, --ease), .display, .tag, .pill, .sheet, .header, .footer and .desk come from the brand itself. */
+
+html { background: var(--tang); }
+body.lab-page { background: var(--tang); overflow-x: clip; }
+
+/* ---- komorebi field (same geometry as on the main site, see enhance.css) */
+html.ydx-field body { position: relative; }
+#ydx-field { position: absolute; inset: 0; z-index: -1; overflow: hidden; overflow: clip; pointer-events: none; contain: layout paint; }
+#ydx-field canvas { position: absolute; left: 0; top: 0; width: 100%; display: block; will-change: transform; }
+html.ydx-field-on body.lab-page { background: transparent; }
+html.ydx-field .lab-page .desk { transition: background-color .9s var(--ease); }
+html.ydx-field-on .lab-page .desk { background-color: transparent; }
+html.ydx-field-css .lab-desk {
+  background-image:
+    radial-gradient(42% 36% at 80% 16%, rgba(255, 214, 140, .55), rgba(255, 196, 110, 0) 70%),
+    radial-gradient(30% 26% at 14% 62%, rgba(255, 186, 86, .42), rgba(255, 186, 86, 0) 72%);
+}
+
+/* ---- header (the app's own .header, static here: it scrolls away with the page) */
+.lab-header { position: absolute; }
+.lab-header .lab-right { position: absolute; top: 22px; right: calc(var(--pad) - 14px); background: none; box-shadow: none; }
+.lab-back { display: inline-flex; gap: 8px; align-items: center; min-height: 44px; }
+.lab-right { gap: 2px; }
+.lab-right a, .lab-right button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; font: inherit; font-weight: 650; color: inherit; background: none; border: 0; cursor: pointer; }
+.lab-still__i { position: relative; width: 10px; height: 11px; }
+.lab-still__i::before, .lab-still__i::after { content: ""; position: absolute; top: 0; bottom: 0; width: 3.4px; background: currentColor; border-radius: 1px; }
+.lab-still__i::before { left: 0; } .lab-still__i::after { right: 0; }
+.lab-still[aria-pressed="true"] .lab-still__i::before { width: 0; height: 0; background: none; border-style: solid; border-width: 5.5px 0 5.5px 9px; border-color: transparent transparent transparent currentColor; }
+.lab-still[aria-pressed="true"] .lab-still__i::after { display: none; }
+html:not(.ydx-field-on) .lab-still { display: none; }
+.lab-header a:focus-visible, .lab-header button:focus-visible { outline: 2.5px solid var(--green); outline-offset: 3px; }
+
+/* ---- layout: wide screens put the intro and the shelf on the left, the glass in the middle, the card on the right,
+ * so the glass is fully in view on arrival */
+.lab-desk { padding: clamp(110px, 14vh, 150px) var(--pad) clamp(80px, 12vh, 130px); min-height: 100vh; outline: none;
+  display: grid; grid-template-columns: minmax(280px, 400px) minmax(0, 1fr) minmax(260px, 330px);
+  grid-template-areas: "intro glass card" "shelf glass card"; grid-template-rows: auto 1fr; gap: 26px clamp(20px, 3vw, 48px); align-items: start; }
+.lab-bench { display: contents; }
+.lab-intro { grid-area: intro; display: grid; gap: 16px; }
+.lab-shelf { grid-area: shelf; }
+.lab-glass { grid-area: glass; position: sticky; top: 90px; }
+.lab-card { grid-area: card; margin-top: 30px; }
+.lab-kicker { justify-self: start; transform: rotate(-2deg); }
+.lab-intro h1 { font-size: clamp(48px, 5.4vw, 92px); }
+.lab-intro p { font-size: 17px; line-height: 1.45; max-width: 34ch; }
+.lab-h { font: 700 13px/1.3 var(--type); letter-spacing: .04em; text-transform: uppercase; margin: 0 0 14px; }
+.lab-h span { text-transform: none; font-weight: 400; letter-spacing: .01em; opacity: .8; margin-left: 6px; }
+
+html:not(.lab-js) .lab-shelf, html:not(.lab-js) .lab-glass, html:not(.lab-js) .lab-card { display: none; }
+
+/* ---- the shelf */
+.lab-group + .lab-group { margin-top: 18px; }
+.lab-group__t { display: block; font: 400 12.5px/1.3 var(--type); margin-bottom: 8px; }
+.lab-group__row { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.lab-ing {
+  position: relative; display: grid; justify-items: center; align-content: end; gap: 4px; min-height: 108px; padding: 8px 4px 6px;
+  background: rgba(244, 235, 214, .0); border: 0; border-radius: 4px; cursor: grab; color: inherit; touch-action: manipulation;
+  transition: background-color .25s, translate .45s var(--ydx-ease-pop);
+}
+.lab-ing img { width: 74px; height: 64px; object-fit: contain; filter: drop-shadow(0 8px 8px rgba(8, 26, 18, .25)); transition: scale .45s var(--ydx-ease-pop), rotate .45s var(--ydx-ease-pop); pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.lab-ing .tag { font-size: 11.5px; padding: 4px 7px 3px; white-space: normal; text-align: center; max-width: 100%; }
+.lab-ing:hover, .lab-ing:focus-visible { background: rgba(244, 235, 214, .22); }
+.lab-ing:hover img, .lab-ing:focus-visible img { scale: 1.1; rotate: -6deg; }
+.lab-ing:active { cursor: grabbing; }
+.lab-ing:focus-visible { outline: 2.5px solid var(--green); outline-offset: 2px; }
+.lab-ing[data-n]::after {
+  content: attr(data-n); position: absolute; top: 4px; right: 8px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 11px;
+  background: var(--green); color: var(--paper); font: 700 12px/22px var(--type); text-align: center;
+}
+.lab-ing.is-dragging { opacity: .35; }
+.lab-ghost { position: fixed; left: 0; top: 0; z-index: 90; width: 96px; height: 84px; pointer-events: none; object-fit: contain; filter: drop-shadow(0 16px 14px rgba(8, 26, 18, .35)); }
+
+/* ---- the glass */
+.lab-glass { position: relative; }
+.lab-glass__stage { position: relative; height: clamp(400px, calc(100vh - 290px), 640px); touch-action: none; cursor: grab; }
+.lab-glass__stage.is-shaking { cursor: grabbing; }
+.lab-glass__stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.lab-glass__stage.is-target::before { content: ""; position: absolute; inset: 4% 14%; border: 2px dashed rgba(15, 59, 45, .5); border-radius: 18px; pointer-events: none; }
+.lab-glass__hint { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%) rotate(1.5deg); font: 400 12.5px/1.3 var(--type); background: var(--paper); color: #17251d; padding: 5px 10px 4px; box-shadow: 1px 2px 2px #081a123d; white-space: nowrap; transition: opacity .4s; pointer-events: none; }
+.lab-glass__hint.is-gone { opacity: 0; }
+.lab-controls { display: grid; gap: 14px; justify-items: center; margin-top: 18px; }
+.lab-fizz { display: flex; align-items: center; gap: 12px; font: 400 13px/1 var(--type); }
+.lab-fizz__l { font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.lab-fizz output { min-width: 9ch; }
+.lab-fizz input { width: min(220px, 46vw); accent-color: var(--green); height: 32px; }
+.lab-buttons { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+.lab-small { cursor: pointer; border: 0; min-height: 44px; padding: 6px 14px 4px; font-size: 13px; transition: rotate .4s var(--ydx-ease-pop), translate .4s var(--ydx-ease-pop); }
+.lab-small:hover, .lab-small:focus-visible { rotate: -2deg; translate: 0 -2px; }
+.lab-small:focus-visible, .lab-shake:focus-visible, .lab-add:focus-visible, .lab-fizz input:focus-visible { outline: 2.5px solid var(--green); outline-offset: 3px; }
+.lab-shake { border: 0; cursor: pointer; }
+
+/* ---- the recipe card */
+.lab-card { padding: 26px 24px 24px; rotate: 1.2deg; --em: var(--tang-deep); }
+.lab-card__tag { transform: rotate(-3deg); margin: -40px 0 16px -6px; }
+.lab-card h2 { font-size: clamp(34px, 3.2vw, 48px); line-height: .9; color: var(--green); }
+.lab-card__sub { font-size: 15.5px; margin-top: 10px; line-height: 1.4; }
+.lab-card__list { list-style: none; padding: 0; margin: 16px 0 0; font: 400 13px/1.5 var(--type); border-top: 1px solid var(--line); }
+.lab-card__list li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.lab-card__list li:empty { display: none; }
+.lab-match { margin-top: 20px; display: grid; gap: 12px; }
+.lab-match[hidden] { display: none; }
+.lab-match__k { font: 700 12px/1.3 var(--type); text-transform: uppercase; letter-spacing: .05em; }
+.lab-match__can { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 14px; color: var(--green); }
+.lab-match__can img { width: 64px; height: auto; rotate: -6deg; filter: drop-shadow(0 10px 10px rgba(8, 26, 18, .28)); transition: rotate .45s var(--ydx-ease-pop), scale .45s var(--ydx-ease-pop); }
+.lab-match__can .display { font-size: 30px; line-height: .9; border-bottom: 2px solid; padding-bottom: 4px; justify-self: start; }
+.lab-match__can:hover img, .lab-match__can:focus-visible img { rotate: 3deg; scale: 1.06; }
+.lab-match__can:focus-visible { outline: 2.5px solid var(--green); outline-offset: 4px; }
+.lab-add { border: 0; cursor: pointer; justify-self: start; font-size: 16px; min-height: 48px; padding: 0 20px; }
+.lab-added { font: 400 13px/1.4 var(--type); min-height: 1.4em; }
+.lab-noscript { margin-top: 24px; font-size: 18px; }
+.lab-noscript a { border-bottom: 2px solid; }
+
+/* ---- footer */
+.lab-footer { padding-bottom: 26px; }
+
+/* ---- narrower screens */
+@media (width <= 1100px) {
+  .lab-desk { grid-template-columns: minmax(0, 1fr) minmax(250px, 320px); grid-template-areas: "intro intro" "glass card" "shelf shelf"; grid-template-rows: auto; }
+  .lab-intro { grid-template-columns: minmax(0, 1fr) minmax(0, 360px); align-items: end; column-gap: 40px; }
+  .lab-kicker { grid-column: 1 / -1; }
+  .lab-glass { position: relative; top: auto; }
+}
+@media (width <= 760px) {
+  .lab-desk { grid-template-columns: minmax(0, 1fr); grid-template-areas: "intro" "stage" "shelf" "controls" "card"; padding-top: 96px; row-gap: 14px; }
+  /* the shelf sits right under the glass, so a tapped ingredient is seen landing */
+  .lab-glass { display: contents; }
+  .lab-glass__stage { grid-area: stage; }
+  .lab-controls { grid-area: controls; }
+  .lab-header { height: 74px; grid-template-columns: auto 1fr auto; }
+  .lab-header .wordmark { grid-column: 2; justify-self: center; text-align: center; font-size: 25px; }
+  .lab-back { font-size: 15px; }
+  .lab-back .lab-back__long { display: none; }
+  .lab-header .lab-right { position: static; grid-column: 3; justify-self: end; }
+  .lab-right a { display: none; }
+  .lab-still__t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .lab-right button { min-width: 44px; justify-content: center; padding: 0; }
+  .lab-intro { grid-template-columns: minmax(0, 1fr); }
+  .lab-intro h1 { font-size: clamp(44px, 13vw, 64px); }
+  .lab-intro p { font-size: 16px; }
+  .lab-shelf { margin: 0 calc(var(--pad) * -1); }
+  .lab-shelf .lab-h { padding: 0 var(--pad); }
+  .lab-card { margin-top: 30px; }
+  .lab-glass__stage { height: min(48vh, 400px); }
+  .lab-controls { margin-top: 0; }
+  /* one swipeable row of ingredients right under the glass */
+  .lab-shelf__groups { display: flex; gap: 6px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 4px var(--pad) 10px; scrollbar-width: none; }
+  .lab-group { display: contents; }
+  .lab-group__t { display: none; }
+  .lab-group__row { display: contents; }
+  .lab-ing { flex: 0 0 auto; width: 92px; scroll-snap-align: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lab-ing, .lab-ing img, .lab-small, .lab-match__can img { transition-duration: .01s; }
+}
+
+/* the cover laid on when leaving the lab (mirror of the site's) */
+.ydx-cover-in { position: fixed; inset: 0; z-index: 2147483600; background: var(--tang); }
+.ydx-cover-in.is-peeling { animation: ydx-cover-in .56s var(--ydx-ease-peel) both; }
+@keyframes ydx-cover-in {
+  from { clip-path: polygon(calc(100% + var(--ydx-fw) + var(--ydx-s)) 0, 100% 0, 100% 100%, calc(100% + var(--ydx-fw)) 100%); }
+  to   { clip-path: polygon(calc(0px - var(--ydx-fw)) 0, 100% 0, 100% 100%, calc(0px - var(--ydx-fw) - var(--ydx-s)) 100%); }
+}

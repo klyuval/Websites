@@ -50,7 +50,7 @@
     /* times are counted from the moment the sheet was painted (inline head script), not from navigation start,
        so a slow HTML download does not eat the minimum, and a slow script download cannot stretch the cap */
     const T0 = window.__ydxT0 || 0;
-    const MIN = T0 + ({ first: 1450, quick: 380, frame: 220, reduced: 300 }[mode] || 1200);
+    const MIN = T0 + ({ first: 1450, quick: 380, frame: 220, reduced: 300, cut: 70 }[mode] || 1200);   // cut (round 5): back from the press under its plates
     const HARD = T0 + (mode === 'frame' ? 420 : 4000);   // never trap anyone (the hub's iframe preview stays under ~.8s in all)
     const late = performance.now() > HARD - 250;          // enhance.js arrived too late for the full show
     const word = $('#ydx-word'), base = $('#ydx-base'), wght = $('#ydx-wght'), pct = $('#ydx-pct'), status = $('#ydx-status');
@@ -98,6 +98,15 @@
     }
     function exit() {
       p = 1; paint();
+      if (mode === 'cut' && location.hash) {                // back from the press: land the field flush, as the in-page plates do
+        try {
+          const t = d.getElementById(decodeURIComponent(location.hash.slice(1)));
+          if (t && t.matches('.sec[data-field]')) {
+            const y = t.getBoundingClientRect().top + scrollY, lenis = window.ffLenis;
+            if (lenis) lenis.scrollTo(y, { immediate: true, force: true }); else window.scrollTo(0, y);
+          }
+        } catch (e) { /* keep the native landing */ }
+      }
       try { sessionStorage.setItem('ydx-ff-seen', '1'); } catch (e) { /* storage blocked */ }
       if (!motion() || !canAnimate || !cssOK) {
         heroIntro(0);
@@ -106,11 +115,11 @@
         return;
       }
       const first = mode === 'first' && !late, frame = mode === 'frame';
-      const dur = first ? 660 : frame ? 340 : 460, st = first ? 56 : frame ? 22 : 34, lag = first ? 120 : frame ? 50 : 70, sheetOut = first ? 60 : 0;
+      const dur = first ? 660 : frame ? 340 : 460, st = first ? 56 : frame ? 22 : 34, lag = first ? 120 : frame ? 50 : mode === 'cut' ? 0 : 70, sheetOut = first ? 60 : 0;
       /* the printed proof is torn into the five strips and carried off with them (each strip holds a copy of the
          sheet, offset to its own column), so the wordmark leaves as paper instead of fading to grey */
       const sheet = $('.ydx-sheet', loader), cols = $$('.ydx-cols > i', loader);
-      if (sheet) {
+      if (sheet && mode !== 'cut') {
         const star = $('.ydx-star', sheet), turn = star ? getComputedStyle(star).rotate : 'none';   // the clones stand still: keep the star's angle
         cols.forEach((c, i) => {
           const k = sheet.cloneNode(true);
@@ -202,6 +211,45 @@
     e.preventDefault(); e.stopPropagation();                                 // Lenis listens on window, after us
     play(target, a.hash);
   });
+  /* round 5: to the proof press (another page). The plates close in the press room's ink, the word and weight from
+     the playground travel in the URL, and the press opens under the same plates (sessionStorage 'ydx-ff-cut', read by
+     its inline boot script). Without motion, CSS or WAAPI it is a plain link, still carrying the word. */
+  d.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a[data-ydx-go]');
+    if (!a || e.defaultPrevented || e.button !== 0 || a.target) return;
+    try {
+      const u = new URL(a.getAttribute('href'), location.href), w = $('#lab-word'), g = $('#weight');
+      if (w && w.value.trim()) u.searchParams.set('w', w.value.trim().slice(0, 14));
+      if (g) u.searchParams.set('wght', g.value);
+      a.href = u.pathname + u.search;
+    } catch (err) { /* keep the plain link */ }
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // a new tab still gets the word
+    if (busy) { e.preventDefault(); return; }
+    if (!cssOK || !motion() || !canAnimate || html.classList.contains('ydx-loading')) return;
+    const c = a.getAttribute('data-ydx-go');
+    if (!/^#[0-9a-f]{6}$/i.test(c)) return;
+    e.preventDefault(); e.stopPropagation(); busy = true;
+    shutter.style.setProperty('--field', c); shutter.style.setProperty('--on', 'var(--paper)'); shutter.style.setProperty('--accent', 'var(--pink)');
+    $('.ydx-sh-k', shutter).textContent = '005 / The proof press';
+    const t = $('.ydx-sh-t', shutter), em = d.createElement('em'); t.textContent = 'Pull a '; em.textContent = 'proof.'; t.append(em);
+    shutter.classList.add('on');
+    $$('.ydx-sh-cols i', shutter).forEach((el, i) => el.animate([{ transform: 'translate3d(0,101%,0)' }, { transform: 'translate3d(0,0,0)' }],
+      { duration: 220, delay: i * 16, easing: INOUT, fill: 'forwards' }));
+    $('.ydx-sh-label', shutter).animate([{ opacity: 0, transform: 'translate3d(0,calc(-50% + 22px),0)' }, { opacity: 1, transform: 'translate3d(0,-50%,0)' }],
+      { duration: 150, delay: 220, easing: OUT, fill: 'forwards' });
+    setTimeout(() => {
+      try { sessionStorage.setItem('ydx-ff-cut', JSON.stringify({ c, t: Date.now() })); } catch (err) { /* the press just opens on its own loader */ }
+      location.href = a.href;
+      setTimeout(liftAway, 4000);                              // navigation blocked or cancelled: never leave the plates up
+    }, 360);
+  }, true);
+  /* back from the press through the bfcache: the plates that covered the page on the way out must not still be up */
+  const liftAway = () => {
+    busy = false; shutter.classList.remove('on');
+    shutter.querySelectorAll('*').forEach(el => el.getAnimations && el.getAnimations().forEach(a => a.cancel()));
+  };
+  addEventListener('pageshow', e => { if (e.persisted) liftAway(); });
+
   /* Back / Forward while the plates are closing: the jump and the history entry are dropped, the plates just lift */
   let aborted = false;
   addEventListener('popstate', () => { if (busy) aborted = true; });
