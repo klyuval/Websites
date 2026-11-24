@@ -100,3 +100,16 @@ html.ydx-hdr-bg body:not(.in-page):not(.in-dial):not(.menu-open) .top::before { 
   .co-steps li { padding-inline: 4px 9px; gap: 5px; font-size: 12px; }
   .co-steps li::before { width: 22px; height: 22px; font-size: 11px; }
 }
+
+/* ================================================================ round 2 */
+/* hero: between 761 and ~860px (iPad mini portrait, small tablets) the centred carousel arrows ran into the
+   2x2 stat grid (the prev arrow sat on "2%" / the price). Tighten the grid there so they clear. */
+@media (min-width: 761px) and (max-width: 900px) {
+  .hero-stats { grid-template-columns: repeat(2, minmax(92px, auto)); gap: 0 16px; }
+}
+/* tablets (touch, >760px): the desktop header links were 18px tall tap targets. Grow the hit area only
+   (padding + equal negative margin, so nothing moves) and keep the underline where it was. */
+@media (pointer: coarse) and (min-width: 761px) {
+  .nav a, .tools > a, .tools > button { padding: 13px 8px; margin: -13px -8px; }
+  .nav a::after, .tools > button::after { bottom: 9px; inset-inline: 8px; }
+}
