@@ -274,3 +274,79 @@ Mobile CLS stays at 0.000 and desktop at about 0.004.
     feature-checked or progressive.
   - `getAnimations({subtree})` is wrapped in `try`.
   - Storage access is wrapped everywhere.
+
+## Round 4
+
+This was a creative-director pass over the whole site. I walked the home page scroll by scroll at 1440 and on an iPhone 13, in
+Hebrew and English. I also checked `/host`, the data states (live, API down, everything sold out) and the
+reduced-motion view. Scripts and shots are in `scratchpad/cassata-menu-r4/`.
+
+### What I judged
+
+- **The weakest moment was the hand-offs between colour fields.** The page moves paper → red (servings) → forest
+  (visit) → pink (footer) through three straight ink cuts. Everything else on the page has a motion moment of its
+  own, but these cuts were the abrupt, generic part. The site already owns the right motif: the loader's
+  melting-gelato drip curtain.
+- **Motion language.** `enhance.js` used 14 different cubic-béziers for what are really five kinds of motion.
+- **Idle states.** The "All scooped up" card and the "Checking the counter…" box were the only static corners of the
+  live menu. The app already handles the sold-out hero beautifully with its empty coupe.
+- **Noise review.** I reviewed each earlier addition (cursor, magnetic CTAs, ticker boost, hero sink, dialog blur,
+  card drops, price stamps, sheet ghost) against the frame sequences and screenshots. Each still earns its place,
+  none duplicates the app's motion, and nothing was removed.
+
+### Changed
+
+1. **Melting section hand-offs** (`enhance.css`, CSS only). The colour above now melts over each edge, drawn with the
+   loader curtain's own drip: an ink stroke and the site's hard offset shadow.
+   - The three edges are paper drips into the red, red drips into the forest, and forest drips into the pink
+     around the licked-clean coupe.
+   - Each drip is a `::before` pseudo-element painted under the section's content (`z-index:-1` inside an isolated
+     section), so no node goes into the React tree.
+   - Each strip is offset differently so the edges don't repeat.
+   - **Motion:** with `animation-timeline` support, a named `view-timeline` per section drives a scroll-linked
+     stretch. The drips start as short nubs as the edge enters and reach full length by about 70% of the entry.
+   - The strip has `will-change: scale`, so the stretch scales a rasterised layer instead of repainting the SVG.
+     Scroll frame-gap p95 matched round 3 in A/B runs.
+   - **Fallbacks:** without timeline support, with reduced motion, and without JS (via the `<noscript>` stylesheet),
+     the drips are simply drawn at full length.
+   - The drips are not used on `/host`.
+2. **Motion tokens.** `enhance.js` now uses five named curves, mirrored as CSS custom properties:
+   - `EASE` (the site's `--ease`)
+   - `SPRING` (the site's `--spring`)
+   - `INOUT` `(.65,0,.35,1)` for curtains and wipes: drip lift and pour, and the language scoop
+   - `IN` `(.5,0,.75,0)` for exits: the sheet ghost and the loader stack leaving
+   - `LAND` `(.3,.6,.35,1)` for squash landings: scoop art and price stamps
+
+   I first tried `(.76,0,.24,1)` for INOUT. It made the pour start visibly later after a click, which is worse
+   feedback, so I settled on the softer curve.
+3. **Idle states.** The ✳ on the app's empty card turns slowly with the site's own `turn` keyframes, like its seals.
+   The waiting box gets the same turning ✳ above its line, so "checking" reads as alive while the app polls every
+   5s. Both are behind `ydx-motion` and reduced motion.
+
+### Regression (round-3 suite, copied to `scratchpad/cassata-menu-r4/suite/`, live CSP, stubbed `/api/menu`)
+
+- **`bugs.mjs`:** 12/12 PASS.
+  - `lateJs` and `clickDuringLift` failed intermittently while the machine was at load average ~25 from parallel
+    agents.
+  - rAF sampling showed the same pour curve and the same intermittent miss with the round-3 files, so these were
+    timing samples, not regressions. Both passed on the full run.
+- **`matrix.mjs`:** 27/27 PASS. That covers base, no-JS, 404s, 8s delays, API down, reduced motion, English, iframe,
+  background tab and frozen.
+- **`regress.mjs`:** desktop and mobile ok on rerun. The language scoop, sheet, ghost exit, focus return, pour to
+  `/host` and back, and bfcache all work. The first run's mobile screenshot timed out under load.
+- **`order.mjs`:** app hydration and FCP are not delayed by slow `enhance.js` or `enhance.css`.
+- **`cssdelay.mjs`:** ok.
+- **`shoot.mjs`:** `/` and `/host/`, desktop and mobile, showed no console errors. The only warning is the app's own
+  `/host` preload notice.
+- **Layout:** no horizontal overflow at 360, 390, 1440 or 1920 in either language.
+- **CLS:** 0.000 on mobile and 360px, and 0.004 on desktop in Hebrew.
+
+### Known, not changed
+
+- **Desktop English CLS is about 0.26–0.46.** The hero's fit-text columns, copy and note re-lay out once when the
+  English data arrives, at about 350–600ms. This happens under the loader, so nobody sees it. It is identical with
+  the round-3 files: the sources are `fit__col`, `hero__copy` and `hero__note`. It comes from the app's English
+  fit-text measuring, not from the ydx layer. Fixing it would mean patching the bundle's fit logic, which is out of
+  scope for a visual pass that can't be seen.
+- **The app shows "Checking the counter…" in the menu box even when its notice says the connection failed.** That
+  is app copy in the bundle.
