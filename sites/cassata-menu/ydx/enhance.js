@@ -2,10 +2,15 @@
    Vanilla JS, no dependencies, no build step.
    Rules this file follows (the app is a React 19 / TanStack Start build hydrated on `document`):
    - never adds, removes or reorders nodes inside .site — only data-ydx-* attributes, classes on
-     <html>, and Web Animations using the individual `translate` / `rotate` / `scale` properties,
-     so nothing fights the site's own `transform`s or framer-motion's inline styles;
-   - everything it adds to the DOM (loader, cursor) sits directly in <body>, outside the app;
-   - all motion is skipped under prefers-reduced-motion. */
+     <html>, an inline `translate` on the magnetic .btn, and Web Animations using the individual
+     `translate` / `rotate` / `scale` properties, so nothing fights the site's own `transform`s or
+     framer-motion's inline styles;
+   - everything it adds to the DOM (loader, cursor, the closing sheet's ghost) sits directly in
+     <body>, outside the app;
+   - all motion is skipped under prefers-reduced-motion;
+   - it can never leave the page covered: the inline failsafe in <body> fades the loader if this
+     file doesn't run (DOMContentLoaded) or hasn't lifted it by 4.5s, lift() parks the curtain if
+     anything throws, and a page transition whose navigation never commits lifts it again. */
 (() => {
   'use strict';
   const d = document, h = d.documentElement, w = window;
@@ -228,7 +233,7 @@
     let u; try { u = new URL(a.href, location.href); } catch (err) { return; }
     if (u.origin !== location.origin) return; // also javascript:, mailto:, tel:
     const samePage = u.pathname.replace(/\/$/, '') === location.pathname.replace(/\/$/, '') && u.search === location.search;
-    if (samePage && u.hash) return; // in-page anchor: the site's Lenis already glides there
+    if (samePage && (u.hash || a.getAttribute('href').charAt(0) === '#')) return; // in-page anchor (incl. href="#"): the site's Lenis already glides there
     if (RM || /\.(xml|txt|jpe?g|png|webp|svg|pdf)$/i.test(u.pathname)) return;
     e.preventDefault();
     cover(u.href);
