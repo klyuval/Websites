@@ -10,6 +10,7 @@
  *   3. Language switch: a quick iris blink hides the text swap / RTL flip.
  *   4. Pointer: autofocus brackets that lock onto links and buttons (fine pointers only).
  *   5. Small things: footer wordmark "develops" into view, mobile-menu current page.
+ * Round 2: first-screen hand-off (hero type rises as the opening clears), retimed loader, SPA record cleanup.
  * Nothing here inserts into React-rendered nodes: overlays are custom elements appended to <body>, app nodes only get
  * data-ydx-* attributes. Everything is skipped or reduced to fades under prefers-reduced-motion.
  */
