@@ -12,7 +12,7 @@
   window.__ydxPeel = true;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once: true });
   else run();
-function run() {
+  function run() {
   const d = document.documentElement;
   const RM = matchMedia('(prefers-reduced-motion: reduce)');
   const FINE = matchMedia('(hover: hover) and (pointer: fine)');
@@ -80,7 +80,24 @@ function run() {
 
   /* ---------------- 2. page transitions ---------------- */
   const NAMES = { '/': 'PEEL CLUB', '/flavors/': 'Flavors', '/story/': 'Our story', '/serve/': 'The good pour', '/mix/': 'Build a mix' };
-  let leaving = null;
+  let leaving = null, goTimer = 0, stuckTimer = 0;
+  const isFile = u => /\.(?!html?$)[a-z0-9]{2,5}$/i.test(u.pathname); // images, pdf, ...
+  // an HTML <a> to another page of this site (SVG <a>.href is an object, not a URL string)
+  const pageLink = a => {
+    if (!(a instanceof HTMLAnchorElement) || a.hasAttribute('download')) return null;
+    let u; try { u = new URL(a.href, location.href); } catch (err) { return null; }
+    if (u.origin !== location.origin || !/^https?:$/.test(u.protocol) || isFile(u)) return null;
+    // same page + any fragment, "#" included (its URL keeps the bare "#" but has an empty .hash): an in-page jump
+    if (u.pathname === location.pathname && u.search === location.search && (u.hash || u.href.endsWith('#'))) return null;
+    return u;
+  };
+  // undo a leave whose navigation never committed (204 / Esc / stopped): the page must never stay covered
+  const unleave = () => {
+    clearTimeout(goTimer); clearTimeout(stuckTimer);
+    const o = leaving; leaving = null;
+    ss.set('ydx-nav', '');
+    if (o) anim(o, [{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: 'forwards' }).finished.catch(() => {}).then(() => o.remove());
+  };
 
   function wheelSVG() {
     let lines = '';
@@ -95,7 +112,7 @@ function run() {
     if (leaving) return;
     document.querySelectorAll('dialog[open]').forEach(dl => dl.close());
     const label = NAMES[url.pathname] || 'PEEL CLUB';
-    ss.set('ydx-nav', JSON.stringify({ t: Date.now(), l: label }));
+    ss.set('ydx-nav', JSON.stringify({ t: Date.now(), l: label, p: url.pathname })); // the next page shows the label only if it is this one
     const q = url.searchParams.get('flavor');
     const flavor = /^[0-3]$/.test(q || '') ? q : d.dataset.flavor || '0';
     const o = document.createElement('div');
@@ -103,11 +120,13 @@ function run() {
     o.dataset.flavor = flavor;
     o.setAttribute('aria-hidden', 'true');
     leaving = o;
-    const go = () => location.assign(url.href);
+    // timers, not animation promises: those never settle in a background tab
+    const go = () => { location.assign(url.href); stuckTimer = setTimeout(unleave, 5000); };
     if (RM.matches) {
       o.classList.add('ydx-out--calm');
       document.body.append(o);
-      anim(o, [{ opacity: 0 }, { opacity: 1 }], { duration: 160, fill: 'forwards' }).finished.then(go, go);
+      anim(o, [{ opacity: 0 }, { opacity: 1 }], { duration: 160, fill: 'forwards' });
+      goTimer = setTimeout(go, 170);
       return;
     }
     const W = innerWidth, H = innerHeight;
@@ -126,18 +145,15 @@ function run() {
     anim(wheel, [{ transform: 'scale(.02) rotate(-200deg)' }, { transform: 'scale(1) rotate(0deg)' }], { duration: 480, easing: 'cubic-bezier(.6,0,.3,1)', fill: 'forwards' });
     anim(disk, [{ transform: 'scale(0)' }, { transform: 'scale(1.02)' }], { duration: 300, delay: 220, easing: 'cubic-bezier(.55,0,.25,1)', fill: 'both' });
     anim(dest, [{ opacity: 0, transform: 'scaleX(.6)' }, { opacity: 1, transform: 'none' }], { duration: 240, delay: 340, easing: OUT, fill: 'forwards' });
-    setTimeout(go, 540);
+    goTimer = setTimeout(go, 540);
   }
 
   document.addEventListener('click', e => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const a = e.target.closest && e.target.closest('a[href]');
-    if (!a || a.hasAttribute('download') || (a.target && a.target !== '_self')) return;
-    let url;
-    try { url = new URL(a.href, location.href); } catch (err) { return; }
-    if (url.origin !== location.origin || !/^https?:$/.test(url.protocol)) return;
-    if (/\.(?!html?$)[a-z0-9]{2,5}$/i.test(url.pathname)) return; // files (images, pdf, …)
-    if (url.hash && url.pathname === location.pathname && url.search === location.search) return; // in-page anchor
+    if (!a || (a.target && a.target !== '_self')) return;
+    const url = pageLink(a);
+    if (!url) return;
     e.preventDefault();
     let x = e.clientX, y = e.clientY;
     if (!e.detail && !x && !y) { const r = a.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; } // keyboard
@@ -148,18 +164,22 @@ function run() {
   addEventListener('pageswap', e => {
     if (leaving && e.viewTransition) { e.viewTransition.ready?.catch(() => {}); e.viewTransition.finished?.catch(() => {}); e.viewTransition.skipTransition(); }
   });
+  // back pressed mid-transition: the page can go into the back/forward cache with the navigation still pending,
+  // and a later forward restore would fire it. Cancel it on the way out.
+  addEventListener('pagehide', () => { clearTimeout(goTimer); clearTimeout(stuckTimer); });
   // back/forward cache: never come back to a covered page
   addEventListener('pageshow', e => {
     if (e.persisted) { leaving?.remove(); leaving = null; document.getElementById('ydx-curtain')?.remove(); releaseHold(); }
   });
+  // Esc can stop a pending navigation: uncover the page
+  addEventListener('keydown', e => { if (e.key === 'Escape' && leaving) unleave(); });
 
   // prefetch the next page on intent so the peel opens onto a ready page
   const fetched = new Set();
   const prefetch = e => {
     const a = e.target.closest && e.target.closest('a[href]');
-    if (!a) return;
-    let u; try { u = new URL(a.href, location.href); } catch (err) { return; }
-    if (u.origin !== location.origin || u.pathname === location.pathname || fetched.has(u.pathname)) return;
+    const u = a && pageLink(a);
+    if (!u || u.pathname === location.pathname || fetched.has(u.pathname)) return;
     fetched.add(u.pathname);
     const l = document.createElement('link'); l.rel = 'prefetch'; l.href = u.pathname; document.head.append(l);
   };
@@ -331,5 +351,5 @@ function run() {
       btn.addEventListener('pointerleave', () => { btn.style.translate = ''; });
     });
   }
-}
+  }
 })();
