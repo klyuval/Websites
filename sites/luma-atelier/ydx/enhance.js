@@ -573,6 +573,7 @@
       el.setAttribute('data-ydx-watch', '');
       if (io) io.observe(el); else el.setAttribute('data-ydx-in', '');
     });
+    try { riseScan(); } catch (e) { /* decorative */ }
     // mobile menu: mark the current page (the desktop nav already has aria-current)
     const here = location.pathname.replace(/\/$/, '') || '/';
     d.querySelectorAll('.mobile-menu nav a[href]').forEach((a) => {
@@ -580,6 +581,35 @@
       const on = p === here;
       a.toggleAttribute('data-ydx-current', on);
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+  }
+
+  /* r4: section headings rise into their line as they scroll in (see enhance.css). Only h2s that start below the
+     first screen (never hide something that may already be visible), that the site does not animate itself (own
+     animation, GSAP scene, data-reveal, the service folio and poster), and only once per node. */
+  const RISE_SKIP = '.service-folio,.alex-poster,[data-reveal],.spread-copy,.studio-workbench,.work-archive,.loupe-scene,[role=dialog],.mobile-menu';
+  const riseSeen = new WeakSet();
+  let riseIO = null;
+  const riseDone = (h) => { h.setAttribute('data-ydx-in', ''); setTimeout(() => h.setAttribute('data-ydx-done', ''), 1000); };
+  function riseScan() {
+    if (RM.matches || !CSSOK || !d.body.animate || !('IntersectionObserver' in window)) return;
+    if (!riseIO) {
+      riseIO = new IntersectionObserver((list) => list.forEach((en) => {
+        if (en.isIntersecting || en.boundingClientRect.bottom < 0) { riseIO.unobserve(en.target); riseDone(en.target); }
+      }), { rootMargin: '0px 0px -8% 0px' });
+      addEventListener('beforeprint', () => d.querySelectorAll('[data-ydx-rise]:not([data-ydx-done])').forEach(riseDone));
+    }
+    const H = innerHeight;
+    const moving = (e) => getComputedStyle(e).animationName !== 'none';
+    d.querySelectorAll('main h2').forEach((h) => {
+      if (riseSeen.has(h)) return;
+      riseSeen.add(h);
+      if (h.closest(RISE_SKIP) || h.style.transform || h.style.translate) return;
+      const r = h.getBoundingClientRect();
+      if (!r.width || r.top < H) return;
+      if (moving(h) || [...h.querySelectorAll('*')].some(moving)) return;
+      h.setAttribute('data-ydx-rise', '');
+      riseIO.observe(h);
     });
   }
 

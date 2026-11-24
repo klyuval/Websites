@@ -21,6 +21,8 @@
   var easeInOut = function (t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
   var easeOut = function (t) { return 1 - Math.pow(1 - t, 3); };
   var fmt = function (n) { return Math.round(n).toLocaleString('en-US'); };
+  // Motion tokens: the same vocabulary as the :root --ydx-* custom properties in enhance.css (round 4).
+  var EASE = { out: 'cubic-bezier(.2,.8,.2,1)', draw: 'cubic-bezier(.6,0,.2,1)', pop: 'cubic-bezier(.3,1.6,.5,1)', sweep: 'cubic-bezier(.7,0,.3,1)' };
   var SUMMIT = 2380, TRAILHEAD = 1520;               // fictional Dolomite ridgeline (860 m gain)
   var lastInput = 0;                                 // time of the user's latest wheel / touch / key / pointer press
   ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach(function (t) {
@@ -95,13 +97,14 @@
     var final = tn.nodeValue, m = /^(\d+)(?:\.(\d+))?$/.exec(final);
     if (!m) return;
     var target = parseFloat(final), dec = m[2] ? m[2].length : 0, last = null, start = 0;
+    strong.__ydxFinal = final;                                 // readers (altimeter, summit tag) use the real value
     function step(now) {
-      if (last !== null && tn.nodeValue !== last) return;      // React updated it: stand down
+      if (last !== null && tn.nodeValue !== last) { strong.__ydxFinal = null; return; }   // React updated it: stand down
       if (!start) start = now + delay;
       var t = clamp((now - start) / 1100, 0, 1);
       last = (target * easeOut(t)).toFixed(dec);
       tn.nodeValue = t >= 1 ? final : last;
-      if (t < 1) raf(step);
+      if (t < 1) raf(step); else strong.__ydxFinal = null;
     }
     raf(step);
   }
@@ -110,10 +113,10 @@
     $$('.route-stats strong', card).forEach(function (s, i) { countUp(s, (replay ? 60 : 250) + i * 90); });
     var prof = $('.profile', card);
     if (prof) prof.animate([{ clipPath: 'inset(-10% 100% -10% 0)' }, { clipPath: 'inset(-10% 0 -10% 0)' }],
-      { duration: 1100, delay: replay ? 0 : 200, easing: 'cubic-bezier(.6,0,.2,1)', fill: 'backwards' });
+      { duration: 1100, delay: replay ? 0 : 200, easing: EASE.draw, fill: 'backwards' });
     var tag = $('.weather span', card);
     if (tag) tag.animate([{ scale: 2.2, opacity: 0 }, { scale: .92, opacity: 1, offset: .7 }, { scale: 1, opacity: 1 }],
-      { duration: 520, delay: replay ? 380 : 900, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'backwards' });
+      { duration: 520, delay: replay ? 380 : 900, easing: EASE.draw, fill: 'backwards' });
   }
   function watchReadout() {
     var card = $('.terrain-readout'), h3 = card && $('h3', card);
@@ -138,7 +141,7 @@
     new MutationObserver(function () {
       if (cur.textContent === label) return;
       label = cur.textContent;
-      cur.animate([{ opacity: 0, translate: '0 9px' }, { opacity: 1, translate: '0 0' }], { duration: 360, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      cur.animate([{ opacity: 0, translate: '0 9px' }, { opacity: 1, translate: '0 0' }], { duration: 360, easing: EASE.out });
     }).observe(cur, { childList: true, characterData: true, subtree: true });
   }
   function watchCount() {
@@ -149,7 +152,7 @@
     new MutationObserver(function () {
       if (s.textContent === v) return;
       v = s.textContent;
-      s.animate([{ scale: 1 }, { scale: 1.12, rotate: '-3deg' }, { scale: 1, rotate: '0deg' }], { duration: 420, delay: 470, easing: 'cubic-bezier(.3,1.4,.5,1)' });
+      s.animate([{ scale: 1 }, { scale: 1.12, rotate: '-3deg' }, { scale: 1, rotate: '0deg' }], { duration: 420, delay: 470, easing: EASE.pop });
     }).observe(s, { childList: true, characterData: true, subtree: true });
   }
 
@@ -197,7 +200,8 @@
     var foot = $('.summit-footer');
     if (foot && 'IntersectionObserver' in window) new IntersectionObserver(function (es) { footerIn = es[0].isIntersecting; update(); }).observe(foot);
     function gain() {
-      var s = $$('.route-stats strong')[1], v = s && s.firstChild && parseFloat(s.firstChild.nodeValue);
+      // while the counter is running its text is an in-between number: read the value it is counting to
+      var s = $$('.route-stats strong')[1], v = s && parseFloat(s.__ydxFinal || (s.firstChild && s.firstChild.nodeValue));
       return v > 0 ? v : SUMMIT - TRAILHEAD;
     }
     var queued = false;
@@ -210,10 +214,20 @@
       a.classList.toggle('is-on', on);
       var g = gain(), alt = Math.round((TRAILHEAD + g * Math.min(1, p / .92)) / 5) * 5;   // reach the summit as the last chapter lands
       if (alt !== shown) { shown = alt; b.firstChild.nodeValue = fmt(alt); }
+      summitTag(g);
       var top = p >= .92;
       if (top !== onFlag) { onFlag = top; a.classList.toggle('is-summit', top); small.textContent = top ? 'SUMMIT' : 'ALT.'; }
     }
     function q() { if (!queued) { queued = true; raf(update); } }
+    // Round 4, trail's end: the summit route's end marker (CSS pseudo-elements of the app's .route box) is labelled
+    // with the chosen trail's summit altitude, the same number the pill reads at the top. Attribute only; it is
+    // re-applied on every update, so a React re-render of the route box loses it for at most one frame of scroll.
+    var endBox = null;
+    function summitTag(g) {
+      if (!endBox || !endBox.isConnected) endBox = $('.summit-rockimg .route');
+      var t = 'Summit · ' + fmt(Math.round((TRAILHEAD + g) / 5) * 5) + ' m';
+      if (endBox && endBox.getAttribute('data-ydx-summit') !== t) endBox.setAttribute('data-ydx-summit', t);
+    }
     addEventListener('scroll', q, { passive: true });
     addEventListener('resize', q, { passive: true });
     document.addEventListener('ydx:ready', q);
@@ -341,12 +355,12 @@
       anims.forEach(function (a) { a.cancel(); });
       started = now;
       s.classList.add('is-on');
-      var e = 'cubic-bezier(.7,0,.3,1)';
+      var e = EASE.sweep;
       // A (accent) leads in and leaves last; B (destination field) arrives second and leaves first.
       anims = [
         A.animate([{ translate: '0 115%', easing: e }, { translate: '0 0', offset: .34 }, { translate: '0 0', offset: .66, easing: e }, { translate: '0 -115%' }], { duration: 720, fill: 'both' }),
         B.animate([{ translate: '0 115%' }, { translate: '0 115%', offset: .06, easing: e }, { translate: '0 0', offset: .4 }, { translate: '0 0', offset: .6, easing: e }, { translate: '0 -115%', offset: .92 }, { translate: '0 -115%' }], { duration: 720, fill: 'both' }),
-        $('.ydx-s-pin', s).animate([{ scale: 0, rotate: '-30deg' }, { scale: 0, rotate: '-30deg', offset: .26, easing: 'cubic-bezier(.3,1.6,.5,1)' }, { scale: 1, rotate: '0deg', offset: .46 }, { scale: 1, rotate: '0deg' }], { duration: 720 })
+        $('.ydx-s-pin', s).animate([{ scale: 0, rotate: '-30deg' }, { scale: 0, rotate: '-30deg', offset: .26, easing: EASE.pop }, { scale: 1, rotate: '0deg', offset: .46 }, { scale: 1, rotate: '0deg' }], { duration: 720 })
       ];
       landT = setTimeout(land, 300);
       anims[1].onfinish = function () { s.classList.remove('is-on'); };

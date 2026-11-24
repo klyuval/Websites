@@ -18,7 +18,10 @@
   const fine = matchMedia('(hover: hover) and (pointer: fine)');
   const motion = () => !reduce.matches;
   const mode = html.getAttribute('data-ydx-mode') || 'first';
-  const OUT = 'cubic-bezier(.2,.8,.2,1)', INOUT = 'cubic-bezier(.7,0,.2,1)';
+  /* round 4: motion tokens. Four curves for the whole layer, mirrored in enhance.css (--ease is the site's own):
+     OUT settles anything arriving, INOUT moves plates and wipes, IN takes things away, SPRING is kept for the one
+     object that is dropped onto the page (the lens). */
+  const OUT = 'cubic-bezier(.2,.8,.2,1)', INOUT = 'cubic-bezier(.7,0,.2,1)', IN = 'cubic-bezier(.5,0,.75,0)', SPRING = 'cubic-bezier(.3,1.35,.5,1)';
   const canAnimate = typeof Element.prototype.animate === 'function';
   const wait = ms => new Promise(r => setTimeout(r, ms));
   /* enhance.css loaded? (the link sits before this script, so it has loaded or failed by now). Without it the shutter,
@@ -144,7 +147,7 @@
     if (img) img.style.transformOrigin = '37.4% 38.97%';      // the lens centre inside the photographed loupe
     [lens, img].forEach(el => el && el.animate(
       [{ opacity: 0, scale: '.55', rotate: '-24deg' }, { opacity: 1, offset: 0.1 }, { opacity: 1, scale: '1', rotate: '0deg' }],   // opaque at once: a see-through lens read as a muddy ghost
-      { ...b, duration: 1000, delay: delay + 380, easing: 'cubic-bezier(.3,1.35,.5,1)' }));
+      { ...b, duration: 1000, delay: delay + 380, easing: SPRING }));
     const flood = $('.flood');                                 // the violet disc behind the lens must not show around it
     if (flood) flood.animate([{ opacity: 0 }, { opacity: 0, offset: 0.7 }, { opacity: 1 }], { ...b, duration: 1000, delay: delay + 380, easing: 'linear' });
     $$('.hero-top>span, .hero-lede>*, .hero-marks>span, .proof-strip>*').forEach((el, i) => el.animate(
@@ -155,7 +158,7 @@
     const hint = $('.hero-hint');
     if (hint) {
       hint.animate([{ clipPath: 'inset(-60% 100% -140% -70%)' }, { clipPath: 'inset(-60% -10% -140% -70%)' }],
-        { ...b, duration: 700, delay: delay + 1100, easing: 'cubic-bezier(.4,0,.2,1)' });
+        { ...b, duration: 700, delay: delay + 1100, easing: INOUT });
       const path = $('path', hint);
       if (path && path.getTotalLength && getComputedStyle(hint.querySelector('svg')).display !== 'none') {
         const L = Math.ceil(path.getTotalLength());
@@ -237,7 +240,7 @@
     const cols = $$('.ydx-sh-cols i', shutter), label = $('.ydx-sh-label', shutter);
     const COVER = 200, REVEAL = 260, ST = 16;
     cols.forEach((c, i) => c.animate([{ transform: 'translate3d(0,101%,0)' }, { transform: 'translate3d(0,0,0)' }],
-      { duration: COVER, delay: i * ST, easing: 'cubic-bezier(.7,0,.3,1)', fill: 'forwards' }));
+      { duration: COVER, delay: i * ST, easing: INOUT, fill: 'forwards' }));
     label.animate([{ opacity: 0, transform: 'translate3d(0,calc(-50% + 22px),0)' }, { opacity: 1, transform: 'translate3d(0,-50%,0)' }],
       { duration: 150, delay: COVER, easing: OUT, fill: 'forwards' });   // only once the plates have closed
     await wait(COVER + ST * 4 + 20);
@@ -256,7 +259,7 @@
     /* the label is gone before the plates open: on a plate of the same colour as the field it would otherwise
        cross-dissolve with the real headline underneath */
     label.animate([{ opacity: 1, transform: 'translate3d(0,-50%,0)' }, { opacity: 0, transform: 'translate3d(0,calc(-50% - 20px),0)' }],
-      { duration: 120, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' });
+      { duration: 120, easing: IN, fill: 'forwards' });
     const anims = cols.map((c, i) => c.animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(0,-101%,0)' }],
       { duration: REVEAL, delay: 85 + i * ST, easing: INOUT, fill: 'forwards' }));
     /* the plates' finish, or their planned end if the tab is hidden and animation promises are held back */
@@ -324,7 +327,7 @@
     if (!h.classList.contains('ydx-split-wait')) return;
     h.classList.add('ydx-split-run'); h.classList.remove('ydx-split-wait');
     const anims = ws.map((w, i) => w.animate([{ transform: 'translate3d(0,135%,0) rotate(4deg)' }, { transform: 'none' }],
-      { duration: 1000, delay: i * 70, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'backwards' }));
+      { duration: 1000, delay: i * 70, easing: OUT, fill: 'backwards' }));
     Promise.all(anims.map(a => a.finished.catch(() => {}))).then(() => h.classList.remove('ydx-split-run'));
   };
   const io = new IntersectionObserver(entries => entries.forEach(en => {
@@ -343,6 +346,34 @@
   /* footer colour bar */
   const foot = $('.site-footer');
   if (foot) new IntersectionObserver((en, o) => { if (en[0].isIntersecting) { foot.classList.add('ydx-in'); o.disconnect(); } }, { threshold: 0.3 }).observe(foot);
+
+  /* round 4, the end of the page answers the loader: the footer wordmark inks up from weight 200 to 800 once, the way
+     the proof sheet did at the start, and the brand star turns. The word's box is locked at its inked width first,
+     a screen before the footer, so the letters ink inside it and nothing beside them moves (no layout shift). */
+  const fw = foot && $('.wordmark', foot), fstar = fw && $('.brand-star', fw);
+  if (fw && fw.animate) {
+    let primed = false;
+    const prime = new IntersectionObserver(en => {
+      if (!en[0].isIntersecting || primed) return;
+      primed = true; prime.disconnect();
+      if (!motion() || en[0].boundingClientRect.top < innerHeight) return;   // already on screen (restored at the bottom): leave it inked
+      const fs = parseFloat(getComputedStyle(fw).fontSize) || 1;
+      fw.style.minWidth = (fw.getBoundingClientRect().width / fs).toFixed(3) + 'em';   // in em, so a resize keeps it true
+      fw.style.fontWeight = '200';
+      inkObs.observe(fw);
+    }, { rootMargin: '0px 0px 100% 0px' });
+    const inkObs = new IntersectionObserver(en => {
+      if (!en[0].isIntersecting) return;
+      inkObs.disconnect();
+      const done = () => { fw.style.fontWeight = ''; fw.style.minWidth = ''; };
+      if (!motion()) return done();
+      fw.style.fontWeight = '';
+      fw.animate([{ fontWeight: 200 }, { fontWeight: 800 }], { duration: 1100, delay: 120, easing: OUT, fill: 'backwards' })
+        .finished.then(done, done);
+      if (fstar) fstar.animate([{ rotate: '0deg' }, { rotate: '180deg' }], { duration: 900, delay: 900, easing: OUT });
+    }, { threshold: 0.9 });
+    prime.observe(foot);
+  }
 
   /* ================= 4. small things ================= */
   /* magnetic: the pill buttons and round arrows lean toward the pointer */

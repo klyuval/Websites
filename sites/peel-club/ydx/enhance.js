@@ -16,8 +16,13 @@
     const d = document.documentElement;
     const RM = matchMedia('(prefers-reduced-motion: reduce)');
     const FINE = matchMedia('(hover: hover) and (pointer: fine)');
+    // motion tokens. OUT and IN_OUT are the site's own --out / --in-out; PEEL is the one curve of the layer's own
+    // (a hard pull then a long settle, used for everything that peels or floods: the curtain, the wheel's flood).
+    // FLOAT is only for fizz bubbles (they decelerate as they rise, never overshoot).
     const OUT = 'cubic-bezier(.16,1,.3,1)';
+    const IN_OUT = 'cubic-bezier(.65,0,.35,1)';
     const PEEL = 'cubic-bezier(.7,0,.22,1)';
+    const FLOAT = 'cubic-bezier(.3,.6,.4,1)';
     const wait = ms => new Promise(r => setTimeout(r, ms));
     const ss = {
       get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
@@ -92,6 +97,29 @@
       if (u.pathname === location.pathname && u.search === location.search && (u.hash || u.href.endsWith('#'))) return null;
       return u;
     };
+    // a link to the page you are already on (the wordmark on /, "Build a mix" on /mix/, the bag's "Build your mix"):
+    // the wheel used to play and reload the same page. Now whatever is open closes, the page glides back to the top
+    // and the link gives the brand's squash as a "you're here".
+    const isHere = u => u.pathname === location.pathname && u.search === location.search;
+    function stayHere(a) {
+      const open = [...document.querySelectorAll('dialog[open]')];
+      open.forEach(dl => dl.close()); // the site's own close handler restarts Lenis and returns focus to the trigger
+      const menu = document.querySelector('.header.menu-open .menu-toggle');
+      if (menu) menu.click(); // closed through the site's own toggle, so its aria-expanded stays right
+      if (!RM.matches && !a.closest('dialog')) anim(a, [{ scale: '1' }, { scale: '1.05 .95', offset: 0.3 }, { scale: '.98 1.02', offset: 0.65 }, { scale: '1' }], { duration: 460, easing: OUT });
+      // Glide up once the page is still: the site's Lenis keeps writing its own position while it eases out a wheel
+      // (up to a second, in sub-pixel steps that can look still), which would cancel a native smooth scroll. Lenis
+      // marks that with `lenis-scrolling` on <html>. It is also stopped while a dialog is open and restarts on the
+      // dialog's close event, so the first check waits a beat. Never waits more than 1.2s.
+      const t0 = performance.now();
+      let y = -1, still = 0;
+      const settle = () => {
+        still = scrollY === y && !d.classList.contains('lenis-scrolling') ? still + 1 : 0; y = scrollY;
+        if (still < 2 && performance.now() - t0 < 1200) return requestAnimationFrame(settle);
+        scrollTo({ top: 0, behavior: RM.matches ? 'auto' : 'smooth' });
+      };
+      setTimeout(settle, open.length ? 80 : 0);
+    }
     // undo a leave whose navigation never committed (204 / Esc / stopped): the page must never stay covered
     const unleave = () => {
       clearTimeout(goTimer); clearTimeout(stuckTimer);
@@ -143,7 +171,9 @@
       dest.textContent = label;
       o.append(wheel, disk, dest);
       document.body.append(o);
-      anim(wheel, [{ transform: 'scale(.02) rotate(-200deg)' }, { transform: 'scale(1) rotate(0deg)' }], { duration: 480, easing: 'cubic-bezier(.6,0,.3,1)', fill: 'forwards' });
+      anim(wheel, [{ transform: 'scale(.02) rotate(-200deg)' }, { transform: 'scale(1) rotate(0deg)' }], { duration: 480, easing: IN_OUT, fill: 'forwards' });
+      // the flood keeps its own curve, tuned by eye so the wheel reads before the field covers it (PEEL floods too
+      // late and leaves the label over a half-covered wheel; OUT floods at once and hides the wheel)
       anim(disk, [{ transform: 'scale(0)' }, { transform: 'scale(1.02)' }], { duration: 300, delay: 220, easing: 'cubic-bezier(.55,0,.25,1)', fill: 'both' });
       anim(dest, [{ opacity: 0, transform: 'scaleX(.6)' }, { opacity: 1, transform: 'none' }], { duration: 240, delay: 340, easing: OUT, fill: 'forwards' });
       goTimer = setTimeout(go, 540);
@@ -156,6 +186,7 @@
       const url = pageLink(a);
       if (!url) return;
       e.preventDefault();
+      if (isHere(url)) { if (!leaving) stayHere(a); return; }
       let x = e.clientX, y = e.clientY;
       if (!e.detail && !x && !y) { const r = a.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; } // keyboard
       leave(url, x, y);
@@ -202,9 +233,9 @@
         { transform: `translate(${sx}px,${sy}px) scale(.3)`, opacity: 0 },
         { transform: `translate(${sx + drift * 0.3}px,${sy - rise * 0.25}px) scale(1)`, opacity: 0.9, offset: 0.2 },
         { transform: `translate(${sx + drift}px,${sy - rise}px) scale(1.1)`, opacity: 0 },
-      ], { duration: dur, delay, easing: 'cubic-bezier(.3,.6,.4,1)' }).finished.then(() => { b.remove(); alive--; }, () => { b.remove(); alive--; });
+      ], { duration: dur, delay, easing: FLOAT }).finished.then(() => { b.remove(); alive--; }, () => { b.remove(); alive--; });
     }
-    const zones = document.querySelectorAll('.hero, .story-open, .chapter--zing');
+    const zones = document.querySelectorAll('.hero, .chapter--zing');
     zones.forEach(z => {
       let lx = 0, ly = 0;
       z.addEventListener('pointermove', e => {
@@ -269,7 +300,7 @@
         el.style.transformOrigin = right ? '100% 50%' : '0 50%';
         anim(el, [{ transform: 'scaleX(.58)', opacity: 0 }, { opacity: 1, offset: 0.35 }, { transform: 'none', opacity: 1 }], { duration: 950, delay: sibs.indexOf(el) * 110, easing: OUT, fill: 'backwards' });
       } else if (el.classList.contains('ydx-kick')) {
-        anim(el, [{ clipPath: 'inset(0 100% 0 0)', opacity: 1 }, { clipPath: 'inset(0 0 0 0)', opacity: 1 }], { duration: 700, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'backwards' });
+        anim(el, [{ clipPath: 'inset(0 100% 0 0)', opacity: 1 }, { clipPath: 'inset(0 0 0 0)', opacity: 1 }], { duration: 700, easing: IN_OUT, fill: 'backwards' });
       } else {
         const kids = [...el.children];
         const round = el.matches('.minicrate, #mix-slots');

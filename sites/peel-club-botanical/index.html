@@ -15,6 +15,9 @@
     <noscript><style data-ydx>#peel-loading-note{display:none!important}</style></noscript><!-- ydx r3: without JS, "Preparing your first taste..." would wait forever; only the noscript note shows -->
     <!-- ydx: botanical loader critical styles (the cover must paint before the app CSS arrives) -->
     <style data-ydx>
+      /* ydx r4: motion tokens, the one set of curves the whole ydx layer uses (enhance.css reads these; enhance.js mirrors them).
+         out = the app's own --ease (arrivals, rises, settles); peel = every wipe/peel/draw along the label edge; pop = cut-outs, tags and tape corners landing */
+      :root{--ydx-ease-out:cubic-bezier(.22,1,.36,1);--ydx-ease-peel:cubic-bezier(.65,0,.25,1);--ydx-ease-pop:cubic-bezier(.3,1.45,.5,1)}
       @font-face{font-family:"Fraunces Variable";font-style:italic;font-display:swap;font-weight:100 900;src:url(/assets/fraunces-latin-full-italic-D2JnYqd-.woff2) format("woff2-variations");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
       @font-face{font-family:"Courier Prime";font-style:normal;font-display:swap;font-weight:400;src:url(/assets/courier-prime-latin-400-normal-BbyBr73r.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
       /* ydx r2: the peel geometry is static CSS (an oversized box whose right edge is the peel line, parked off-screen right;
@@ -45,16 +48,16 @@
       #peel-entry .ydx-dots i{font-style:normal;opacity:.2}
       @media (max-height:520px){#peel-entry .ydx-art{height:max(110px,34vh)}#peel-entry .entry-caption{margin-bottom:14px}#peel-entry p#peel-loading-note{margin-top:16px}#peel-entry strong{font-size:clamp(34px,6vw,64px)}}
       @media (prefers-reduced-motion:no-preference){
-        #peel-entry .ydx-art .draw{stroke-dasharray:1;stroke-dashoffset:1;animation:ydx-draw .9s cubic-bezier(.45,0,.2,1) forwards}
+        #peel-entry .ydx-art .draw{stroke-dasharray:1;stroke-dashoffset:1;animation:ydx-draw .9s var(--ydx-ease-peel) forwards}
         #peel-entry .ydx-art .stem.draw{animation-duration:.75s;animation-delay:.12s}
         #peel-entry .ydx-art .stem.draw.r{animation-delay:.35s;animation-duration:.5s}
-        #peel-entry .ydx-art .label-g{clip-path:inset(0 100% 0 0);animation:ydx-wrap .62s cubic-bezier(.65,0,.2,1) .32s forwards}
-        #peel-entry .ydx-art .lf{transform-box:fill-box;transform-origin:0 50%;transform:scale(0) rotate(-55deg);animation:ydx-unfurl .6s cubic-bezier(.3,1.5,.5,1) forwards;animation-delay:calc(.3s + var(--i) * 55ms)}
-        #peel-entry .ydx-art .bloom{transform-box:fill-box;transform-origin:50% 50%;transform:scale(0) rotate(-120deg);animation:ydx-bloom .7s cubic-bezier(.3,1.4,.5,1) .72s forwards}
+        #peel-entry .ydx-art .label-g{clip-path:inset(0 100% 0 0);animation:ydx-wrap .62s var(--ydx-ease-peel) .32s forwards}
+        #peel-entry .ydx-art .lf{transform-box:fill-box;transform-origin:0 50%;transform:scale(0) rotate(-55deg);animation:ydx-unfurl .6s var(--ydx-ease-pop) forwards;animation-delay:calc(.3s + var(--i) * 55ms)}
+        #peel-entry .ydx-art .bloom{transform-box:fill-box;transform-origin:50% 50%;transform:scale(0) rotate(-120deg);animation:ydx-bloom .7s var(--ydx-ease-pop) .72s forwards}
         #peel-entry .ydx-art .bub{animation:ydx-fizz 1.5s cubic-bezier(.3,.1,.6,1) infinite;animation-delay:calc(.55s + var(--b) * 190ms)}
-        #peel-entry .entry-caption{animation:ydx-tag .55s cubic-bezier(.3,1.4,.5,1) .15s both}
-        #peel-entry strong{animation:ydx-rise .8s cubic-bezier(.22,1,.36,1) .05s both}
-        #peel-entry strong em:before{animation:ydx-tape .55s cubic-bezier(.65,0,.25,1) .45s both}
+        #peel-entry .entry-caption{animation:ydx-tag .55s var(--ydx-ease-pop) .15s both}
+        #peel-entry strong{animation:ydx-rise .8s var(--ydx-ease-out) .05s both}
+        #peel-entry strong em:before{animation:ydx-tape .55s var(--ydx-ease-peel) .45s both}
         #peel-entry .ydx-dots i{animation:ydx-dot 1.2s steps(1) infinite}
         #peel-entry .ydx-dots i:nth-child(2){animation-delay:.2s}#peel-entry .ydx-dots i:nth-child(3){animation-delay:.4s}
         html.ydx-quick #peel-entry *,html.ydx-quick #peel-entry *:before{animation-duration:.01s!important;animation-delay:0s!important}
@@ -183,7 +186,7 @@
               peel.style.display = "block";
               cover.style.display = "grid";
               peel.style.pointerEvents = "none";
-              const reveal = peel.firstElementChild.animate([{ transform: "translateY(0)" }, { transform: "translateY(-101%)" }], {duration: 550, easing: "cubic-bezier(.76,0,.24,1)", fill: "forwards"}); // ydx r2: slide the viewport-sized inner box
+              const reveal = peel.firstElementChild.animate([{ transform: "translateY(0)" }, { transform: "translateY(-101%)" }], {duration: 550, easing: "cubic-bezier(.65,0,.25,1)", fill: "forwards"}); // ydx r2: slide the viewport-sized inner box
               reveal.finished.then(drop, drop);
               setTimeout(drop, 700);
             } else drop();

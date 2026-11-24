@@ -130,3 +130,20 @@ dialog .close:focus-visible,.recipe-tabs button:focus-visible{outline-color:var(
 @media (prefers-reduced-motion:reduce){
   .ydx-fizz{display:none}
 }
+
+/* ---------- 8. round 4 ---------- */
+
+/* "Mix things up ↗" / "Bring the whole club ↗" / "Give them a twist ↗" (the end-of-page link to the next page):
+   on hover or keyboard focus the line stretches towards you, the same squeeze gesture (font-stretch, .7s --out)
+   as the footer wordmark right below it. The arrow keeps its own nudge. */
+.route-next a>:is(.tight,.wide){transition:font-stretch .7s var(--out)}
+@media (hover:hover){.route-next a:hover>.tight{font-stretch:66%}.route-next a:hover>.wide{font-stretch:146%}}
+.route-next a:focus-visible>.tight{font-stretch:66%}
+.route-next a:focus-visible>.wide{font-stretch:146%}
+
+/* Phones: at the site's 25vw the same links broke into a ragged stair ("Give them / a / twist ↗", "Mix / things /
+   up ↗", "Bring the / whole / club ↗"). Sized so each keeps the desktop's two-line shape from 360 to 700px. */
+@media (width<=700px){
+  .route-next a{font-size:19vw}
+  .route-next a .wide{font-size:.5em}
+}

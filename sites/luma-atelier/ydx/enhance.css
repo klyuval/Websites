@@ -5,6 +5,16 @@
 /* r3: enhance.js checks this to know the stylesheet arrived; without it, it creates no overlays */
 :root { --ydx-css: 1; }
 
+/* r4: motion tokens. Every ydx curve now comes from the site's own vocabulary (its CSS uses these three most):
+   out = type and menus arriving (optical-type-in, atelier-arrive), soft = prints and images settling (hover zooms,
+   loupe), inout = the RouteTransition shutter. `in` is the site's own accelerate-away curve for things leaving. */
+:root {
+  --ydx-out: cubic-bezier(.16, 1, .3, 1);
+  --ydx-soft: cubic-bezier(.2, .8, .2, 1);
+  --ydx-inout: cubic-bezier(.65, 0, .15, 1);
+  --ydx-in: cubic-bezier(.7, 0, .84, 0);
+}
+
 /* ---------------------------------------------------------------------------------------------------------------
    1. Loader: hold / iris / fade states around the site's own arrival (StudioArrival)
    ------------------------------------------------------------------------------------------------------------- */
@@ -25,8 +35,8 @@ ydx-meter {
   position: fixed; z-index: 10001; left: 50%; top: 60%;
   width: 132px; transform: translate(-50%, -50%);
   pointer-events: none; text-align: center; color: #8d805f; direction: ltr; /* a dial reads left to right in he too */
-  animation: ydx-meter-in .6s .1s cubic-bezier(.2, .8, .2, 1) both;
-  transition: opacity .3s ease, transform .4s cubic-bezier(.2, .8, .2, 1);
+  animation: ydx-meter-in .6s .1s var(--ydx-soft) both;
+  transition: opacity .3s ease, transform .4s var(--ydx-soft);
 }
 ydx-meter svg { display: block; width: 100%; height: auto; overflow: visible; }
 ydx-meter .ydx-m-arc { fill: none; stroke: #8d805f; stroke-width: .8; opacity: .55; }
@@ -61,13 +71,13 @@ ydx-iris.is-over .ydx-edge { stroke: rgba(238, 232, 216, .2); }
    2. Route shutter (the site's RouteTransition): the label develops like a print, a light sweep crosses the paper
    ------------------------------------------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: no-preference) {
-  div.route-shutter[data-active] .route-shutter-panel > * { animation: ydx-develop .5s .04s cubic-bezier(.3, .7, .25, 1) both; } /* r2: crisper tail (the last letter hung clipped) */
+  div.route-shutter[data-active] .route-shutter-panel > * { animation: ydx-develop .5s .04s var(--ydx-out) both; } /* r2: crisper tail (the last letter hung clipped); r4: token */
   html[dir=rtl] div.route-shutter[data-active] .route-shutter-panel > span { animation-name: ydx-develop-rtl; }
   div.route-shutter-panel::before {
     content: ""; position: absolute; inset: 0; pointer-events: none; transform: translateX(-110%);
     background: linear-gradient(100deg, transparent 30%, rgba(255, 236, 190, .16) 50%, transparent 70%);
   }
-  div.route-shutter[data-active] .route-shutter-panel::before { animation: ydx-sweep .95s .08s cubic-bezier(.3, .6, .3, 1) both; }
+  div.route-shutter[data-active] .route-shutter-panel::before { animation: ydx-sweep .95s .08s var(--ydx-soft) both; }
   div.route-shutter[data-active] .route-shutter-panel:nth-child(2)::before { animation-delay: .16s; }
 }
 /* r2: the end state clipped at the box edge, which cut the overhanging last glyph ("ALEXSTUDI", "PRINTS & FRAME")
@@ -100,7 +110,7 @@ ydx-veil { pointer-events: none !important; }
   content: ""; width: 7px; height: 7px; border-radius: 50%; background: #b8a67d; align-self: center; flex: none;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .mobile-menu[data-state=open] nav a { animation: ydx-menu-in .7s cubic-bezier(.16, 1, .3, 1) both; }
+  .mobile-menu[data-state=open] nav a { animation: ydx-menu-in .7s var(--ydx-out) both; }
   .mobile-menu[data-state=open] nav a:nth-child(1) { animation-delay: .12s; }
   .mobile-menu[data-state=open] nav a:nth-child(2) { animation-delay: .16s; }
   .mobile-menu[data-state=open] nav a:nth-child(3) { animation-delay: .2s; }
@@ -109,16 +119,16 @@ ydx-veil { pointer-events: none !important; }
   .mobile-menu[data-state=open] nav a:nth-child(6) { animation-delay: .32s; }
   .mobile-menu[data-state=open] nav a:nth-child(7) { animation-delay: .36s; }
   .mobile-menu[data-state=open] nav a:nth-child(8) { animation-delay: .4s; }
-  .mobile-menu[data-state=open] > .eyebrow { animation: ydx-fade-up .7s .46s cubic-bezier(.16, 1, .3, 1) both; }
+  .mobile-menu[data-state=open] > .eyebrow { animation: ydx-fade-up .7s .46s var(--ydx-out) both; }
 }
 /* r2: the panel itself comes down like a blind and retracts upward on close (the arrival's own clip-path wipe and
    curve), instead of a 180ms cross-fade that left the menu type muddled over the hero type. Radix waits for the
    content's animationend, so the longer exit is honoured; the dim overlay is slowed to match. */
 @media (prefers-reduced-motion: no-preference) {
-  html .mobile-menu[data-state=open] { animation: ydx-blind-in .5s cubic-bezier(.7, 0, .2, 1) both; }
-  html .mobile-menu[data-state=closed] { animation: ydx-blind-out .38s cubic-bezier(.55, 0, .2, 1) both; }
+  html .mobile-menu[data-state=open] { animation: ydx-blind-in .5s var(--ydx-inout) both; }
+  html .mobile-menu[data-state=closed] { animation: ydx-blind-out .38s var(--ydx-inout) both; }
   html .mobile-menu[data-state=closed] nav a,
-  html .mobile-menu[data-state=closed] > .eyebrow { animation: ydx-menu-out .22s cubic-bezier(.4, 0, .7, .2) both; }
+  html .mobile-menu[data-state=closed] > .eyebrow { animation: ydx-menu-out .22s var(--ydx-in) both; }
   html body:has(.mobile-menu) > [data-slot=dialog-overlay][data-state=closed] { animation-duration: .38s; }
 }
 @keyframes ydx-blind-in { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
@@ -147,7 +157,7 @@ ydx-af i:nth-child(4) { left: 0; bottom: 0; border-width: 0 0 1.5px 1.5px; }
 ydx-af s { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px; border-radius: 50%; background: currentColor; transition: opacity .2s; }
 ydx-af.is-lock i { width: 10px; height: 10px; }
 ydx-af.is-lock s { opacity: 0; }
-ydx-af.is-fire i { animation: ydx-af-fire .32s cubic-bezier(.2, .8, .2, 1); }
+ydx-af.is-fire i { animation: ydx-af-fire .32s var(--ydx-soft); }
 @keyframes ydx-af-fire { 40% { transform: scale(.7); } }
 @media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) { ydx-af { display: none; } }
 
@@ -159,16 +169,44 @@ ydx-af.is-fire i { animation: ydx-af-fire .32s cubic-bezier(.2, .8, .2, 1); }
   html.ydx-js .site-footer .footer-top .brand[data-ydx-watch] {
     background: linear-gradient(90deg, currentColor 0 40%, rgba(236, 233, 223, .13) 60% 100%) 100% 0 / 250% 100% no-repeat;
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
-    transition: background-position 1.6s cubic-bezier(.2, .8, .2, 1) .1s;
+    transition: background-position 1.6s var(--ydx-soft) .1s;
   }
   html.ydx-js .site-footer .footer-top .brand[data-ydx-in] { background-position: 0 0; }
+}
+
+/* r4: section headings. Below the first screen the site's display h2s were simply there when scrolled to, while
+   its own type (hero h1s, the poster, reveal words) rises into its line. enhance.js marks h2s that start below the
+   fold and that nothing else animates; they rise the same way (clip from below + 26px, the site's optical-type-in),
+   once. Hidden state only under html.ydx-js and only on marked nodes, so no-JS / no-CSS keeps them plain. */
+@media (prefers-reduced-motion: no-preference) {
+  html.ydx-js [data-ydx-rise] { transition: clip-path .9s var(--ydx-out), translate .9s var(--ydx-out); }
+  html.ydx-js [data-ydx-rise]:not([data-ydx-in]) { clip-path: inset(-10% -4% 100% -4%); translate: 0 26px; }
+  html.ydx-js [data-ydx-rise][data-ydx-in]:not([data-ydx-done]) { clip-path: inset(-10% -4% -14% -4%); }
+}
+
+/* r4: paper on the darkroom table. Where a paper-coloured section follows a dark one (and the olive field on the
+   paper About page), the hand-off was a hard horizontal cut. The section now arrives a little inset, like a print
+   laid on the table, and widens to full bleed as it scrolls in (scroll-driven, so it is scrubbed and reversible,
+   the way the site's own poster entry is). Only the entry range; fill backwards, so once in nothing is clipped. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    :is(.project-brief, .event-editorial, .restoration-editorial, .work-index, .biography-field) {
+      animation: ydx-laydown linear backwards;
+      animation-timeline: view();
+      animation-range: entry 0% entry 75%;
+    }
+  }
+}
+@keyframes ydx-laydown {
+  from { clip-path: inset(0 5% 0 5%); }
+  to { clip-path: inset(0 0 0 0); }
 }
 
 /* Credits: contact prints develop as they scroll in (grey and underexposed -> full tone), staggered by column */
 @media (prefers-reduced-motion: no-preference) {
   html.ydx-js .credit-item[data-ydx-dev] img {
     /* r2: 1.4s left fast scrollers looking at murky thumbnails; shorter and from a less extreme start */
-    transition: opacity .6s ease, filter 1s cubic-bezier(.2, .8, .2, 1), transform 1s cubic-bezier(.2, .8, .2, 1);
+    transition: opacity .6s ease, filter 1s var(--ydx-soft), transform 1s var(--ydx-soft);
   }
   html.ydx-js .credit-item[data-ydx-dev]:not([data-ydx-in]) img { opacity: .3; filter: grayscale(1) brightness(.55) contrast(1.2); transform: scale(1.03); }
   html.ydx-js .credit-item[data-ydx-dev]:nth-child(3n+2) img { transition-delay: .09s; }

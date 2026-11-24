@@ -27,8 +27,11 @@
   const mqReduce = matchMedia('(prefers-reduced-motion: reduce)');
   const reduced = () => mqReduce.matches;
   const fine = matchMedia('(hover: hover) and (pointer: fine)');
-  const EASE = 'cubic-bezier(.22,1,.36,1)';
-  const BACK = 'cubic-bezier(.3,1.45,.5,1)';
+  // r4: motion tokens, mirrored from the inline :root tokens in index.html (--ydx-ease-out / -peel / -pop).
+  // WAAPI cannot take var(), so the curves are repeated here; keep the two in step.
+  const EASE = 'cubic-bezier(.22,1,.36,1)';   // out: arrivals, rises, settles (= the app's --ease)
+  const PEEL = 'cubic-bezier(.65,0,.25,1)';   // peel: wipes and peels along the label edge
+  const BACK = 'cubic-bezier(.3,1.45,.5,1)';  // pop: cut-outs, tags and counts landing
   const anim = (el, kf, opts) => { try { return el.animate(kf, Object.assign({ fill: 'backwards' }, opts)); } catch (e) { return null; } };
 
   /* ---------------------------------------------------------------- 1. loader peel */
@@ -58,7 +61,7 @@
     wrap.style.boxShadow = '0 0 46px rgba(8,26,18,.3)';
     const u0 = D / 2 + fw * 0.6, u1 = -D / 2 - 30;
     const duration = opts.framed ? 450 : opts.quick ? 720 : 980;
-    const t = { duration, easing: 'cubic-bezier(.62,0,.2,1)', fill: 'forwards' };
+    const t = { duration, easing: PEEL, fill: 'forwards' };
     const a = wrap.animate([{ transform: `translateX(${-S}px) rotate(${PHI}deg) translateX(${u0}px)` }, { transform: `translateX(${-S}px) rotate(${PHI}deg) translateX(${u1}px)` }], t);
     inner.animate([{ transform: `translateX(${S - u0}px) rotate(${-PHI}deg)` }, { transform: `translateX(${S - u1}px) rotate(${-PHI}deg)` }], t);
     // the lifted part of the label: narrow as it starts to lift, widest mid-peel
@@ -259,7 +262,7 @@
     if (!btn) return;
     const n = parseInt((btn.textContent.match(/\d+/) || ['0'])[0], 10);
     if (bagCount !== null && n > bagCount && !reduced()) {
-      anim(btn, [{ scale: '1', rotate: '0deg' }, { scale: '1.16', rotate: '-4deg', offset: 0.35 }, { scale: '1', rotate: '0deg' }], { duration: 560, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'none' });
+      anim(btn, [{ scale: '1', rotate: '0deg' }, { scale: '1.16', rotate: '-4deg', offset: 0.35 }, { scale: '1', rotate: '0deg' }], { duration: 560, easing: BACK, fill: 'none' });
     }
     bagCount = n;
   }

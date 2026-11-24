@@ -1,6 +1,8 @@
 /* ydx enhancement layer for PEEL CLUB (Botanical).
  * Loaded after the app CSS. Loader critical CSS lives inline in index.html (<style data-ydx>).
- * Palette/type come from the app's own tokens: --tang, --green, --paper, --paper-edge, --pink, --rust, --serif, --type, --ease. */
+ * Palette/type come from the app's own tokens: --tang, --green, --paper, --paper-edge, --pink, --rust, --serif, --type, --ease.
+ * r4: easing comes from the three ydx motion tokens defined inline in index.html (--ydx-ease-out / -peel / -pop), with
+ * literal fallbacks so this file still works on its own. */
 
 /* ------------------------------------------------------------------ route peel (View Transitions)
  * The app calls document.startViewTransition for route changes and styles ::view-transition-old/new(root) with a
@@ -11,15 +13,15 @@
 
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-old(root) {
-    animation: ydx-vt-peel .68s cubic-bezier(.68, 0, .26, 1) both;
+    animation: ydx-vt-peel .68s var(--ydx-ease-peel, cubic-bezier(.65, 0, .25, 1)) both;
     z-index: 1;
   }
   ::view-transition-new(root) {
-    animation: ydx-vt-settle .72s cubic-bezier(.22, 1, .36, 1) both;
+    animation: ydx-vt-settle .72s var(--ydx-ease-out, cubic-bezier(.22, 1, .36, 1)) both;
     transform-origin: 100% 100%;
   }
   ::view-transition-group(ydx-flap) {
-    animation: ydx-vt-flap .68s cubic-bezier(.68, 0, .26, 1) both;
+    animation: ydx-vt-flap .68s var(--ydx-ease-peel, cubic-bezier(.65, 0, .25, 1)) both;
     z-index: 2;
   }
   ::view-transition-new(ydx-flap) { animation: none; }
@@ -53,15 +55,16 @@ html.ydx-vt .ydx-vt-flap { visibility: visible; }
   html.ydx-js:not(.ydx-tape-off) .desk-tang :is(h1, h2).display em::before,
   html.ydx-js:not(.ydx-tape-off) .brand-phrase.desk-tang .display em::before {
     clip-path: inset(0 100% 0 0);
-    transition: clip-path .8s cubic-bezier(.65, 0, .25, 1) .12s;
+    opacity: 0; /* r4: a fully clipped, rotated strip still left a 2-3px cream sliver at its left edge before taping */
+    transition: clip-path .8s var(--ydx-ease-peel, cubic-bezier(.65, 0, .25, 1)) .12s, opacity 0s .12s;
   }
   html.ydx-js:not(.ydx-tape-off) .desk-tang :is(h1, h2).display em::after,
   html.ydx-js:not(.ydx-tape-off) .brand-phrase.desk-tang .display em::after {
     opacity: 0; scale: .4;
-    transition: opacity .25s .72s, scale .45s cubic-bezier(.3, 1.5, .5, 1) .72s;
+    transition: opacity .25s .72s, scale .45s var(--ydx-ease-pop, cubic-bezier(.3, 1.45, .5, 1)) .72s;
   }
   html.ydx-js .desk-tang :is(h1, h2).display em[data-ydx-taped]::before,
-  html.ydx-js .brand-phrase.desk-tang .display em[data-ydx-taped]::before { clip-path: inset(0 0 0 0); }
+  html.ydx-js .brand-phrase.desk-tang .display em[data-ydx-taped]::before { clip-path: inset(0 0 0 0); opacity: 1; }
   html.ydx-js .desk-tang :is(h1, h2).display em[data-ydx-taped]::after,
   html.ydx-js .brand-phrase.desk-tang .display em[data-ydx-taped]::after { opacity: 1; scale: 1; }
 }
@@ -147,3 +150,43 @@ html:not([data-peel-entry=loading]):not([data-peel-entry=recovery]) #ydx-peel { 
 @media (max-width: 700px) {
   .recipe-heading, .recipe-body { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ================================================================== round 4 */
+
+/* section hand-off on the peel line: where the colour changes from one desk to the next, the new desk's top edge
+ * arrives on the same "/" slant as the loader and route peels, and is smoothed flat as it scrolls up (like a label
+ * being pressed down). A wedge of the previous desk's colour, at z-index -1 inside the new desk (desks are isolated
+ * stacking contexts), so it only ever covers the desk's own background, never content. Transform-only and
+ * scroll-linked, so it runs on the compositor. Only with scroll-driven animations; otherwise the edge stays straight. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .desk { view-timeline: --ydx-desk block; }
+    .desk-tang + .desk:not(.desk-tang), #root:has(.bc-faq-scope > .desk-tang:last-child) > .footer:not(.desk-tang) { --ydx-prev: var(--tang); }
+    .desk-green + .desk:not(.desk-green) { --ydx-prev: var(--green); }
+    .desk-pink + .desk:not(.desk-pink), #root:has(.bc-faq-scope > .desk-pink:last-child) > .footer:not(.desk-pink) { --ydx-prev: var(--pink); }
+    :is(.desk-tang + .desk:not(.desk-tang), .desk-green + .desk:not(.desk-green), .desk-pink + .desk:not(.desk-pink),
+        #root:has(.bc-faq-scope > .desk-tang:last-child) > .footer:not(.desk-tang),
+        #root:has(.bc-faq-scope > .desk-pink:last-child) > .footer:not(.desk-pink))::before {
+      content: ""; position: absolute; z-index: -1; left: 0; right: 0; top: -1px; height: clamp(26px, 5.5vw, 88px);
+      background: var(--ydx-prev); clip-path: polygon(0 0, 100% 0, 0 100%); pointer-events: none;
+      transform-origin: 0 0; animation: ydx-desk-edge linear both; animation-timeline: --ydx-desk;
+      animation-range: cover 0px cover 50vh;
+    }
+  }
+}
+@keyframes ydx-desk-edge { from { transform: scaleY(1); } to { transform: scaleY(0); } }
+
+/* green desk straight into the (green) footer: the two headlines ran together with no seam (/sodas, story pages,
+ * product pages, /privacy). A hairline in the footer's own rule colour marks the seam; it draws on when it can. */
+#root:has(.bc-faq-scope > .desk-green:last-child) > .footer::after {
+  content: ""; position: absolute; top: 0; left: var(--pad); right: var(--pad); height: 1px; background: var(--line);
+  transform-origin: 0 50%; pointer-events: none;
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    #root:has(.bc-faq-scope > .desk-green:last-child) > .footer::after {
+      animation: ydx-rule linear both; animation-timeline: --ydx-desk; animation-range: cover 0px cover 45vh;
+    }
+  }
+}
+@keyframes ydx-rule { from { transform: scaleX(0); } to { transform: scaleX(1); } }

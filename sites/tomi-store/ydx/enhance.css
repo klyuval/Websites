@@ -92,3 +92,40 @@ html.ydx-hdr-bg body:not(.in-page):not(.in-dial):not(.menu-open) .top::before { 
 @media (min-width: 761px) {
   .panel .fl-notes { padding-inline-start: var(--ydx-np, 0px); }
 }
+
+/* ================================================================ round 4 */
+/* home: colour hand-offs. The home sections meet in hard horizontal cuts (sand > ink > pink > green > sand).
+   Each incoming section now rises into the previous one as a dome of the ring motif: an overlay in the previous
+   section's (solid) bottom colour covers the incoming section's top corners and flattens to a straight edge as you
+   scroll (scroll-linked, so it is exact in both directions). The apex sits under the section's own ring centre
+   (--rx). The overlay lives in the section's top padding, so it never covers content. Pure CSS: transform-only
+   scroll-driven animation (compositor), only where supported (Chromium, Safari 26+; elsewhere the plain cut stays),
+   and only with motion allowed. The hero > finder cut is left alone: the stage's bottom is a live 3D-tinted
+   gradient that a solid overlay could not match. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .home > .numbers, .home > .builder, .home > .deliver { view-timeline: --ydx-hs block; }
+    .home > .deliver + .foot { position: relative; view-timeline: --ydx-hs block; }
+    .home > .numbers::after, .home > .builder::after, .home > .deliver::after, .home > .deliver + .foot::before {
+      content: ""; position: absolute; inset: 0 0 auto; z-index: 0; height: clamp(56px, 9.5vw, 150px);
+      pointer-events: none; transform-origin: 50% 0;
+      -webkit-mask-image: radial-gradient(78% 100% at var(--rx, 50%) 100%, transparent 99.2%, #000 100%);
+      mask-image: radial-gradient(78% 100% at var(--rx, 50%) 100%, transparent 99.2%, #000 100%);
+      animation: ydx-dome linear both;
+      animation-timeline: --ydx-hs;
+      animation-range: cover 0% cover 62vh;
+    }
+    .home > .numbers::after { background: var(--sand, #ede4d6); transition: opacity .9s var(--ease-out); }
+    .home > .builder::after { background: #0e0d0c; }
+    .home > .deliver::after { background: #c9255f; }            /* the builder gradient's solid bottom */
+    .home > .deliver + .foot::before { background: #0c7f57; height: clamp(32px, 5vw, 72px); } /* deliver's bottom; the footer's padding is shallower */
+    /* the finder tints itself while a flavour tile is hovered: don't draw a sand dome against a tinted edge */
+    .home:has(> .finder.lit) > .numbers::after { opacity: 0; }
+  }
+}
+@keyframes ydx-dome { from { transform: scaleY(1); } to { transform: scaleY(0); } }
+
+/* footer wordmark in Hebrew: `direction: ltr` on the Latin wordmark made `text-align: start` mean LEFT, so in RTL
+   it floated mid-page (desktop) or sat on the wrong edge (phones) while everything around it is right-aligned.
+   Put it on the reading-start edge, mirroring the header logo. */
+html[dir="rtl"] .foot-brand { text-align: right; }

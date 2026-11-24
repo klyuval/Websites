@@ -24,9 +24,13 @@
   const framed = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
   const dirSign = () => (html.dir === 'rtl' ? -1 : 1);
   const AREA = { red: '#e3242b', blue: '#1d5fd8', yellow: '#f7c600', green: '#16a34a', chalk: '#f3f1ea', steel: '#b9bcc1' };
+  // motion tokens, mirrored in enhance.css (--ydx-out / --ydx-pop / --ydx-draw).
+  // Round 4: the loader exit, sign-in/language curtains and view curtains had
+  // two different curves for the same kind of slide; one curve now.
   const EASE_OUT = 'cubic-bezier(.2,.7,.2,1)';
-  const EASE_WIPE = 'cubic-bezier(.75,0,.2,1)';
-  const EASE_PAGE = 'cubic-bezier(.55,0,.1,1)';
+  const EASE_POP = 'cubic-bezier(.2,.9,.3,1.3)';
+  const EASE_DRAW = 'cubic-bezier(.6,0,.2,1)';
+  const EASE_WIPE = 'cubic-bezier(.65,0,.15,1)';
   const t0 = window.__ydxT0 || 0;
   let busyUntil = 0; // a full-screen wipe is playing: skip smaller ones
   // enhance.css sets --ydx-css; without it overlays would render unstyled
@@ -79,7 +83,7 @@
     bodyBackground(cur);
     d.body.appendChild(w);
     try {
-      return slideOff(cur, w.querySelector('.ydx-label'), duration, 0, area ? EASE_PAGE : EASE_WIPE).then(() => w.remove());
+      return slideOff(cur, w.querySelector('.ydx-label'), duration).then(() => w.remove());
     } catch (e) { w.remove(); return Promise.resolve(); }
   }
 
@@ -237,13 +241,13 @@
       if (line) {
         line.setAttribute('pathLength', '1');
         line.animate([{ strokeDasharray: '1 1', strokeDashoffset: 1 }, { strokeDasharray: '1 1', strokeDashoffset: 0 }],
-          { duration: 1100, delay: 200, easing: 'cubic-bezier(.6,0,.2,1)', fill: 'backwards' });
+          { duration: 1100, delay: 200, easing: EASE_DRAW, fill: 'backwards' });
       }
       const fill = svg.querySelector('polygon');
       if (fill) fill.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 700, delay: 700, fill: 'backwards' });
       svg.querySelectorAll('circle').forEach((c, i) => {
         c.style.transformBox = 'fill-box'; c.style.transformOrigin = 'center';
-        c.animate([{ transform: 'scale(0)' }, { transform: 'scale(1)' }], { duration: 380, delay: 300 + i * 90, easing: 'cubic-bezier(.2,.9,.3,1.5)', fill: 'backwards' });
+        c.animate([{ transform: 'scale(0)' }, { transform: 'scale(1)' }], { duration: 360, delay: 300 + i * 90, easing: EASE_POP, fill: 'backwards' });
       });
     });
   }
@@ -253,6 +257,9 @@
   function choreograph(page, base = 90) {
     const main = d.querySelector('main.workspace');
     if (!main || reduced() || html.classList.contains('ydx-loading')) return;
+    // a view seen before this session: content is simply there (no stagger,
+    // count-ups, chart draws or scroll reveals); just remember the nodes
+    if (calm) { main.querySelectorAll(REVEAL).forEach(el => seen.add(el)); return; }
     if (!io) io = new IntersectionObserver(entries => entries.forEach(e => {
       if (!e.isIntersecting) return;
       io.unobserve(e.target);
@@ -289,6 +296,27 @@
 
   /* ---------- watch the SPA ---------------------------------------------- */
   let lastState = null, lastKey = null, lastDir = html.dir, raf = 0;
+  // Round 4, daily-use speed: the full entrance (stagger, count-ups, chart
+  // build-ups) plays the first time each view is opened in this page load.
+  // Coming back to a view, it is just there, under a quicker curtain.
+  // Decided synchronously in the MutationObserver callback, before the new
+  // view's nodes get their first style, so the CSS build-ups (html.ydx-calm
+  // in enhance.css) never start and then stop; only re-decided when the view
+  // itself changes, so a second render of the same view keeps its state.
+  const visited = new Set();
+  let calm = false, calmPage = null;
+  function classify() {
+    const f = rootEl && rootEl.firstElementChild;
+    const main = f && f.classList.contains('app-shell') ? d.querySelector('main.workspace') : null;
+    if (!main) { if (calmPage !== null) { visited.clear(); calmPage = null; calm = false; html.classList.remove('ydx-calm'); } return; }
+    const page = (main.className.match(/club-page-([\w-]+)/) || [])[1] || '';
+    if (page === calmPage) return;
+    calmPage = page;
+    // the view the loader reveals counts as a first visit
+    calm = loaderGone && visited.has(page);
+    visited.add(page);
+    html.classList.toggle('ydx-calm', calm);
+  }
   // views often render twice (plan drafts / slots arrive from effects): keep
   // choreographing new nodes for a short window after a view change
   let pageWindow = 0;
@@ -325,7 +353,7 @@
         const area = shell && (shell.className.match(/area-(\w+)/) || [])[1];
         const crumb = d.querySelector('.breadcrumbs strong');
         const r = mainRect();
-        if (r && r.width > 0 && r.height > 0) wipe({ rect: r, area, label: crumb ? crumb.textContent.trim() : '', duration: 480 });
+        if (r && r.width > 0 && r.height > 0) wipe({ rect: r, area, label: crumb ? crumb.textContent.trim() : '', duration: calm ? 380 : 480 });
       }
       pageWindow = now + 700;
       choreograph(true);
@@ -341,7 +369,7 @@
     if (st !== 'app') lastKey = null;
     pointerParallax(st === 'signin');
   }
-  const schedule = () => { if (!raf) raf = requestAnimationFrame(check); };
+  const schedule = () => { try { classify(); } catch (e) { /* decorative */ } if (!raf) raf = requestAnimationFrame(check); };
   if (rootEl) new MutationObserver(schedule).observe(rootEl, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
   new MutationObserver(schedule).observe(html, { attributes: true, attributeFilter: ['dir'] });
   schedule();

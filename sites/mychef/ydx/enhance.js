@@ -2,8 +2,8 @@
    The site is a React app hydrated over the whole document, so this file never adds, removes or reorders nodes
    inside the app. It only toggles classes on <html>, sets data-ydx-* attributes / inline custom properties on
    existing nodes, and appends its own overlays to <body> (React 19 skips unknown body children when hydrating).
-   Parts: 1 loader exit · 2 language wipe · 3 handwriting write-on · 4 course stack depth · 5 hero scroll depth ·
-          6 magnetic buttons */
+   Parts: 1 loader exit · 2 language wipe · 3 handwriting write-on (+ round 4: the footer's ✳) · 4 course stack depth ·
+          5 hero scroll depth · 6 magnetic buttons */
 (() => {
   'use strict';
   // Round 3: run once. A second copy (double include, a cached + a fresh copy) used to add a second capture
@@ -22,6 +22,9 @@
     // enhance.css present? (it sets --ydx-css on :root). Without it the wipe would be unstyled divs in the flow.
     const hasCSS = () => getComputedStyle(doc).getPropertyValue('--ydx-css').trim() === '1';
     const cls = doc.classList;
+    // Round 4: the "cloth" curve, shared by every cover (loader lift, language wipe) and by the stitching in
+    // enhance.css (--ydx-ease-cloth). Kept here as a literal: the loader can lift before enhance.css has arrived.
+    const CLOTH = 'cubic-bezier(.66,0,.22,1)', SETTLE = 'cubic-bezier(.2,.8,.2,1)';
     const loader = document.querySelector('.ydx-ld');
     // Round 3: did this script arrive late? If the loader has already gone (its CSS-only bail ran because this file
     // was slow) the guest is already looking at the page, so the entrances must not be replayed on top of it: that
@@ -90,7 +93,7 @@
       // being drawn off, and the page's own entrance is released as the lift starts: the plate, cutlery and headline
       // are being set while the hem passes over them, so there is never a blank frame.
       const dur = FRAME ? 400 : SHORT ? 520 : 760;
-      const ease = 'cubic-bezier(.62,0,.2,1)';
+      const ease = CLOTH;
       loader.style.display = 'grid';
       loader.style.animation = 'none';
       const stage = loader.querySelector('.ydx-ld__stage');
@@ -226,12 +229,12 @@
       bands[3].appendChild(word);
       document.body.appendChild(wrap);
 
-      const ease = 'cubic-bezier(.7,0,.25,1)', D = 290, S = 28;
+      const ease = CLOTH, D = 290, S = 28;
       const ins = bands.map((b, i) => b.animate(
         [{ transform: `translateX(${-dir * off}px)` }, { transform: 'translateX(0)' }],
         { duration: D, delay: i * S, easing: ease, fill: 'both' }));
       word.animate([{ opacity: 0, transform: `translateX(${-dir * 40}px)` }, { opacity: 1, transform: 'none' }],
-        { duration: 260, delay: 3 * S + 90, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'both' });
+        { duration: 260, delay: 3 * S + 90, easing: SETTLE, fill: 'both' });
 
       ins[3].finished.then(() => {
         cls.add('ydx-hold');
@@ -281,6 +284,16 @@
       : null;
     const watched = new Set();
     let firstScan = true;
+    /* Round 4: end of the page. The footer's ✳ is placed once when the footer first shows (enhance.css 4c). The
+       footer is re-mounted on a language change, so each new one is observed once; nothing is hidden beforehand. */
+    const footIO = 'IntersectionObserver' in window && !RM
+      ? new IntersectionObserver(es => es.forEach(e => {
+          if (!e.isIntersecting) return;
+          e.target.setAttribute('data-ydx-in', '');
+          footIO.unobserve(e.target);
+        }))
+      : null;
+    let foot = null;
     function scan() {
       if (visIO) {
         // Round 3: unobserve the sections of a page React has thrown away (each language change re-mounts it),
@@ -291,6 +304,12 @@
           watched.add(el);
           visIO.observe(el);
         });
+      }
+      const f = document.querySelector('.foot');
+      if (footIO && f !== foot) {
+        if (foot) footIO.unobserve(foot);
+        foot = f;
+        if (f && !f.hasAttribute('data-ydx-in')) footIO.observe(f);
       }
       if (!RM) document.querySelectorAll(WRITE).forEach(el => {
         if (el._ydxW) return;
@@ -395,6 +414,15 @@
         });
         el.addEventListener('pointerleave', () => { tx = 0; ty = 0; id ||= requestAnimationFrame(step); });
       });
+    }
+
+    /* Round 4: the stitching is sewn on with a mask (enhance.css 4a), which repaints every frame; give it a layer of
+       its own only for the 1.5s it runs. */
+    if (!RM) {
+      addEventListener('animationstart', e => { if (e.animationName === 'ydx-sew') e.target.setAttribute('data-ydx-sewing', ''); }, true);
+      const unsew = e => { if (e.animationName === 'ydx-sew') e.target.removeAttribute('data-ydx-sewing'); };
+      addEventListener('animationend', unsew, true);
+      addEventListener('animationcancel', unsew, true);
     }
 
     /* Boot + re-scan when React re-renders (language switch re-mounts the whole page). */

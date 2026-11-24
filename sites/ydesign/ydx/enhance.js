@@ -219,6 +219,33 @@
       for (const el of $$('.kick, [data-index], .next')) if (el.getBoundingClientRect().bottom < 0) el.classList.add('ydx-in');
     });
 
+    /* ---- 3b. Scene hand-offs ---------------------------------------------------------------------------------------
+     * The three scene changes (ink -> paper process, paper -> orange studio, orange -> ink contact) get a rounded top
+     * drawn by enhance.css (2b). Here its radius eases from a wide arch while the sheet comes up from the bottom of the
+     * screen to the resting radius once its top reaches the upper third, so the sheet flattens as it lifts. One rAF
+     * per scroll frame, three rect reads, and a style write only when the rounded value changes. */
+    const sheets = $$('.proc, .studio, .contact');
+    if (sheets.length && !reduce) {
+      const narrow = matchMedia('(max-width: 899px)');
+      const last = new Map();
+      let raf = 0;
+      const paint = () => {
+        raf = 0;
+        const vh = innerHeight, rest = narrow.matches ? 26 : 40;
+        const arch = Math.max(rest, Math.min(innerWidth * (narrow.matches ? 0.36 : 0.22), 360));
+        for (const s of sheets) {
+          const p = Math.min(1, Math.max(0, (vh - s.getBoundingClientRect().top) / (vh * 0.75)));
+          const r = Math.round(rest + (arch - rest) * (1 - p) * (1 - p)); // ease-out: flattens quickly, settles softly
+          if (last.get(s) !== r) { last.set(s, r); s.style.setProperty('--ydx-r', r + 'px'); }
+        }
+      };
+      const queue = () => { if (!raf) raf = requestAnimationFrame(paint); };
+      addEventListener('scroll', queue, { passive: true });
+      addEventListener('resize', queue, { passive: true });
+      addEventListener('load', queue);
+      queue();
+    }
+
     /* ---- 4. Small fixes ----------------------------------------------------------------------------------------------- */
 
     // 4a. The "Build" step demonstrates the other language 1.9s after it becomes active and switches back when another

@@ -9,7 +9,9 @@
   var reduce = w.matchMedia('(prefers-reduced-motion: reduce)');
   var fine = w.matchMedia('(hover: hover) and (pointer: fine)');
   var motionOK = function () { return !reduce.matches; };
-  var OUT = 'cubic-bezier(.16,1,.3,1)';
+  // motion tokens (the same set as the --ydx-* custom properties in enhance.css): settle, stroke, whole-screen cover, kiss stamp
+  var E = { out: 'cubic-bezier(.16,1,.3,1)', paint: 'cubic-bezier(.65,0,.35,1)', cover: 'cubic-bezier(.7,0,.2,1)', stamp: 'cubic-bezier(.3,.7,.4,1)' };
+  var OUT = E.out;
   var MASK = '/ydx/smear-mask.webp';
   var MASK_RATIO = 309 / 820;
   if (motionOK()) html.classList.add('ydx-motion');
@@ -75,7 +77,7 @@
     loader.style[P.comp] = P.exc;
     var f0 = maskFrames(cx, cy, w0, w1, true)[0]; for (var k in f0) loader.style[k] = f0[k];
     if (stage) anim(stage, [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.06)' }], { duration: dur * 0.45, easing: 'ease-in', fill: 'forwards' });
-    var a = anim(loader, maskFrames(cx, cy, w0, w1, true), { duration: dur, easing: 'cubic-bezier(.7,0,.25,1)', fill: 'forwards' });
+    var a = anim(loader, maskFrames(cx, cy, w0, w1, true), { duration: dur, easing: E.cover, fill: 'forwards' });
     // hand over to the hero's own entrance a beat into the reveal
     setTimeout(releaseHero, L.mode === 'nav' ? 40 : dur * 0.12);
     if (a) a.onfinish = done; else done();
@@ -139,8 +141,8 @@
       if (nav !== n || n.gone) return; n.gone = true;
       ss(function (s) { s.setItem('ydx-nav', String(Date.now())); }); location.href = url.href;
     };
-    n.anims.push(anim(lead, maskFrames(x, y, 0, cw, false), { duration: 440, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }));
-    var an = anim(wipe, maskFrames(x, y, 0, cw, false), { duration: 420, delay: 110, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
+    n.anims.push(anim(lead, maskFrames(x, y, 0, cw, false), { duration: 440, easing: E.cover, fill: 'forwards' }));
+    var an = anim(wipe, maskFrames(x, y, 0, cw, false), { duration: 420, delay: 110, easing: E.cover, fill: 'forwards' });
     n.anims.push(an);
     if (an && !d.hidden) an.onfinish = go; else go();
     n.timer = setTimeout(endNav, 3500); // navigation cancelled or stalled → give the page back
@@ -181,13 +183,13 @@
   var VARIANTS = {
     up: { kf: [{ opacity: 0, translate: '0 26px', offset: 0 }], dur: 900 },
     fade: { kf: [{ opacity: 0, offset: 0 }], dur: 900 },
-    card: { kf: [{ opacity: 0, translate: '0 48px', clipPath: 'inset(18% 0 0 0 round 4px)' }, { opacity: 1, translate: '0 0', clipPath: 'inset(0 0 0 0 round 4px)' }], dur: 1050 },
-    curtain: { kf: [{ opacity: 1, clipPath: 'inset(100% 0 0 0 round 6px)', translate: '0 40px' }, { opacity: 1, clipPath: 'inset(0 0 0 0 round 6px)', translate: '0 0' }], dur: 1150 },
-    swatch: { kf: [{ opacity: 0, clipPath: 'inset(0 0 0 100%)' }, { opacity: 1, clipPath: 'inset(0 0 0 0)' }], dur: 800 },
-    stamp: { kf: [{ opacity: 0, scale: '1.55' }, { opacity: 1, scale: '.94', offset: .62 }, { opacity: 1, scale: '1' }], dur: 620, ease: 'cubic-bezier(.3,.7,.4,1)' },
-    paint: { kf: [{ opacity: 1, clipPath: 'inset(0 0 0 100%)' }, { opacity: 1, clipPath: 'inset(0 0 0 0)' }], dur: 900, ease: 'cubic-bezier(.65,0,.35,1)' },
-    paintL: { kf: [{ opacity: 1, clipPath: 'inset(0 100% 0 0)' }, { opacity: 1, clipPath: 'inset(0 0 0 0)' }], dur: 1100, ease: 'cubic-bezier(.65,0,.35,1)' },
-    swipe: { kf: [{ opacity: 1, clipPath: 'inset(-10% 0 -10% 100%)' }, { opacity: 1, clipPath: 'inset(-10% 0 -10% 0)' }], dur: 1200, ease: 'cubic-bezier(.65,0,.35,1)' },
+    card: { kf: [{ opacity: 0, translate: '0 48px', clipPath: 'inset(18% 0 0 0 round 4px)' }, { opacity: 1, translate: '0 0', clipPath: 'inset(0 0 0 0 round 4px)' }], dur: 1100 },
+    curtain: { kf: [{ opacity: 1, clipPath: 'inset(100% 0 0 0 round 6px)', translate: '0 40px' }, { opacity: 1, clipPath: 'inset(0 0 0 0 round 6px)', translate: '0 0' }], dur: 1100 },
+    swatch: { kf: [{ opacity: 0, clipPath: 'inset(0 0 0 100%)' }, { opacity: 1, clipPath: 'inset(0 0 0 0)' }], dur: 900 },
+    stamp: { kf: [{ opacity: 0, scale: '1.55' }, { opacity: 1, scale: '.94', offset: .62 }, { opacity: 1, scale: '1' }], dur: 620, ease: E.stamp },
+    paint: { kf: [{ opacity: 1, clipPath: 'inset(0 0 0 100%)' }, { opacity: 1, clipPath: 'inset(0 0 0 0)' }], dur: 900, ease: E.paint },
+    paintL: { kf: [{ opacity: 1, clipPath: 'inset(0 100% 0 0)' }, { opacity: 1, clipPath: 'inset(0 0 0 0)' }], dur: 1100, ease: E.paint },
+    swipe: { kf: [{ opacity: 1, clipPath: 'inset(-10% 0 -10% 100%)' }, { opacity: 1, clipPath: 'inset(-10% 0 -10% 0)' }], dur: 1100, ease: E.paint },
     chars: null
   };
   var io = null;
@@ -269,15 +271,15 @@
         var t = r.target.nodeType === 1 ? r.target : r.target.parentElement;
         if (name && t === name && name.textContent !== last) {
           last = name.textContent; // Latin shade name writes itself in, left to right, like a swatch
-          anim(name, [{ clipPath: 'inset(-20% 100% -20% 0)', translate: '-.15em 0' }, { clipPath: 'inset(-20% -5% -20% 0)', translate: '0 0' }], { duration: 760, easing: 'cubic-bezier(.65,0,.35,1)' });
+          anim(name, [{ clipPath: 'inset(-20% 100% -20% 0)', translate: '-.15em 0' }, { clipPath: 'inset(-20% -5% -20% 0)', translate: '0 0' }], { duration: 800, easing: E.paint });
           if (idx) anim(idx, [{ opacity: 0, translate: '0 .4em' }, { opacity: 1, translate: '0 0' }], { duration: 500, easing: OUT });
         } else if (core && t === core && r.attributeName === 'src') {
-          anim(core, [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }], { duration: 820, easing: 'cubic-bezier(.65,0,.35,1)' });
+          anim(core, [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }], { duration: 800, easing: E.paint });
         } else if (stick && t === stick && r.attributeName === 'src') {
           anim(stick, [{ translate: '0 55%', opacity: 0 }, { translate: '0 0', opacity: 1 }], { duration: 800, easing: OUT });
         } else if (result && t === result && r.attributeName === 'hidden' && !result.hidden && rkiss) {
           // the prepared note gets sealed with a kiss
-          anim(rkiss, [{ opacity: 0, scale: '2.1' }, { opacity: 1, scale: '.92', offset: .6 }, { opacity: 1, scale: '1' }], { duration: 700, delay: 260, easing: 'cubic-bezier(.3,.7,.4,1)', fill: 'backwards' });
+          anim(rkiss, [{ opacity: 0, scale: '2.1' }, { opacity: 1, scale: '.92', offset: .6 }, { opacity: 1, scale: '1' }], { duration: 700, delay: 260, easing: E.stamp, fill: 'backwards' });
         }
       });
     });

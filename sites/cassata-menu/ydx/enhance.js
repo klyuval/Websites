@@ -19,9 +19,13 @@
   w.__ydxBooted = true;
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const FINE = matchMedia('(hover: hover) and (pointer: fine)').matches;
-  const EASE = 'cubic-bezier(.2,.8,.2,1)';          // the site's --ease
-  const SPRING = 'cubic-bezier(.34,1.56,.64,1)';    // the site's --spring
-  const INOUT = 'cubic-bezier(.76,0,.24,1)';
+  // Motion tokens (round 4): every animation below uses one of these five curves.
+  // Mirrored in enhance.css as --ydx-inout / --ydx-in / --ydx-land.
+  const EASE = 'cubic-bezier(.2,.8,.2,1)';          // the site's --ease: entrances, reveals
+  const SPRING = 'cubic-bezier(.34,1.56,.64,1)';    // the site's --spring: sticker pops, overshoots
+  const INOUT = 'cubic-bezier(.65,0,.35,1)';        // curtains and wipes (drip lift/pour, language scoop); soft enough that a pour answers a click at once
+  const IN = 'cubic-bezier(.5,0,.75,0)';            // exits (sheet ghost, the loader stack leaving)
+  const LAND = 'cubic-bezier(.3,.6,.35,1)';         // squash-and-settle landings (scoops, price stamps)
   const $ = (s, r = d) => r.querySelector(s);
   const $$ = (s, r = d) => Array.from(r.querySelectorAll(s));
   const anim = (el, kf, o) => { if (!el || !el.animate) return null; try { return el.animate(kf, o); } catch (e) { return null; } };
@@ -102,8 +106,8 @@
       const dur = mode === 'frame' ? 420 : mode === 'nav' ? 640 : mode === 'repeat' ? 620 : 780;
       // the stack squashes, then everything is pulled up; the drips stretch as the curtain rises
       anim(inner, [{ translate: '0 0', scale: '1 1', opacity: 1 }, { translate: '0 6px', scale: '1.04 .94', opacity: 1, offset: .25 }, { translate: '0 -70px', scale: '.96 1.04', opacity: 0 }],
-        { duration: dur * .55, easing: 'cubic-bezier(.5,0,.7,.2)', fill: 'forwards' });
-      anim(drip, [{ transform: 'scaleY(1)' }, { transform: 'scaleY(1.9)' }], { duration: dur, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+        { duration: dur * .55, easing: IN, fill: 'forwards' });
+      anim(drip, [{ transform: 'scaleY(1)' }, { transform: 'scaleY(1.9)' }], { duration: dur, easing: INOUT, fill: 'forwards' });
       const a = anim(loader, [{ transform: 'translate3d(0,0,0)' }, { transform: OFF }], { duration: dur, delay: 70, easing: INOUT, fill: 'forwards' });
       a ? a.finished.then(park, park) : park();
       try { entrance(mode === 'frame' ? 0 : 160); } catch (e) {}
@@ -158,7 +162,7 @@
 
     // home hero
     add($('.hero__top'), [{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 320 });
-    add($('.hero__coupe-wrap'), [{ translate: '0 24%', scale: '.84' }, { translate: '0 0', scale: '1' }], { duration: 1050, easing: 'cubic-bezier(.2,1.25,.35,1)', delay: 0 });
+    add($('.hero__coupe-wrap'), [{ translate: '0 24%', scale: '.84' }, { translate: '0 0', scale: '1' }], { duration: 1050, easing: SPRING, delay: 0 });
     add($('.hero .seal'), [{ scale: '0', rotate: '-150deg' }, { scale: '1', rotate: '0deg' }], { duration: 820, easing: SPRING, delay: 520 });
     $$('.hero__copy > *').forEach((el, i) => add(el, up(28), { duration: 720, delay: 340 + i * 90 }));
     add($('.hero__rail-label'), [{ opacity: 0 }, { opacity: 1 }], { duration: 500, delay: 520 });
@@ -194,9 +198,9 @@
       loader.style.opacity = ''; loader.style.transition = '';
       loader.style.pointerEvents = 'auto';
       const dur = 520;
-      anim(drip, [{ transform: 'scaleY(1.7)' }, { transform: 'scaleY(1)' }], { duration: dur + 160, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'forwards' });
+      anim(drip, [{ transform: 'scaleY(1.7)' }, { transform: 'scaleY(1)' }], { duration: dur + 160, easing: INOUT, fill: 'forwards' });
       anim(inner, [{ translate: '0 -60px', opacity: 0 }, { translate: '0 0', opacity: 1 }], { duration: 340, delay: dur - 200, easing: EASE, fill: 'both' });
-      const a = anim(loader, [{ transform: OFF }, { transform: 'translate3d(0,0,0)' }], { duration: dur, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
+      const a = anim(loader, [{ transform: OFF }, { transform: 'translate3d(0,0,0)' }], { duration: dur, easing: INOUT, fill: 'forwards' });
       // Start the request just before the curtain lands: the old page keeps painting (and the
       // curtain keeps falling) until the next document commits, so the network wait overlaps the
       // pour instead of following it. The next page opens already covered.
@@ -307,7 +311,7 @@
         ghost(s.sh, phone
           ? [{ translate: '0 0' }, { translate: '0 104%' }]
           : [{ opacity: 1, scale: '1', rotate: '0deg', translate: '0 0' }, { opacity: 0, scale: '.93', rotate: '1.6deg', translate: '0 22px' }],
-          { duration: phone ? 300 : 230, easing: phone ? 'cubic-bezier(.5,0,.75,0)' : 'cubic-bezier(.4,0,1,1)' });
+          { duration: phone ? 300 : 230, easing: IN });
       }
       const a = d.activeElement;
       if (opener && opener.isConnected && (!a || a === d.body)) { try { opener.focus({ preventScroll: true }); } catch (e) {} }
@@ -346,15 +350,15 @@
     if (k === 'card' || k === 'note') {
       const tilt = k === 'note' ? -9 : (i % 2 ? 4 : -4);
       anim(el, [{ translate: '0 80px', rotate: tilt + 'deg', opacity: 0 }, { translate: '0 -6px', rotate: (-tilt / 5) + 'deg', opacity: 1, offset: .65 }, { translate: '0 0', rotate: '0deg', opacity: 1 }],
-        { duration: 820, delay: lag, easing: 'cubic-bezier(.2,.75,.25,1)', fill: 'backwards' });
+        { duration: 820, delay: lag, easing: EASE, fill: 'backwards' });
       const art = $('.card__art img', el);
       // the scoop lands a beat after its card, with a little squash
       anim(art, [{ translate: '0 -40px', scale: '.9 1.1' }, { translate: '0 0', scale: '1.08 .9', offset: .6 }, { translate: '0 0', scale: '1 1' }],
-        { duration: 700, delay: lag + 160, easing: 'cubic-bezier(.3,.6,.35,1)', fill: 'backwards' });
+        { duration: 700, delay: lag + 160, easing: LAND, fill: 'backwards' });
     } else if (k === 'tickets') {
       $$('.ticket__price, .ticket__ask', el).forEach((p, j) => anim(p,
         [{ scale: '1.9', rotate: '-14deg', opacity: 0 }, { scale: '.92', rotate: '2deg', opacity: 1, offset: .7 }, { scale: '1', rotate: '0deg', opacity: 1 }],
-        { duration: 560, delay: 380 + j * 160, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'backwards' }));
+        { duration: 560, delay: 380 + j * 160, easing: LAND, fill: 'backwards' }));
     } else if (k === 'pop') {
       anim(el, [{ scale: '0', rotate: '-120deg', opacity: 0 }, { scale: '1', rotate: '0deg', opacity: 1 }], { duration: 800, delay: 120 + lag, easing: SPRING, fill: 'backwards' });
     } else { // 'up'

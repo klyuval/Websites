@@ -49,6 +49,29 @@
 }
 
 /* ---------------------------------------------------------------------------------------------------------------
+ * 2b. Scene hand-offs: the next sheet lifts in
+ * The page changes scene three times with a hard horizontal cut (ink work wall -> paper process, paper -> orange
+ * studio, orange studio -> ink contact). Only the studio had a rounded top (40px, 26px on phones). Now each of the
+ * three sheets has that same top, drawn as the previous scene's colour painted into its corners (a pseudo-element,
+ * so nothing moves in the layout or the ScrollTriggers). enhance.js eases the corner radius from a wide arch, as the
+ * sheet comes up from the bottom of the screen, to the resting 40px as it reaches the upper third: the sheet
+ * flattens as it lifts. Without JS or with reduced motion the corners simply rest at 40px/26px.
+ * ------------------------------------------------------------------------------------------------------------- */
+.proc { --ydx-c: var(--ink); }
+.studio { --ydx-c: var(--paper); border-radius: 0; } /* (its own 40px clip left a faint orange seam under the drawn corner) */
+.contact { --ydx-c: var(--orange); }
+.proc::before, .studio::before, .contact::before {
+  --ydx-k: var(--ydx-r, 40px);
+  content: ""; position: absolute; z-index: 3; inset: 0 0 auto; height: var(--ydx-k); pointer-events: none;
+  background:
+    radial-gradient(circle at 100% 100%, #0000 calc(var(--ydx-k) - .6px), var(--ydx-c) var(--ydx-k)) 0 0 / var(--ydx-k) var(--ydx-k) no-repeat,
+    radial-gradient(circle at 0 100%, #0000 calc(var(--ydx-k) - .6px), var(--ydx-c) var(--ydx-k)) 100% 0 / var(--ydx-k) var(--ydx-k) no-repeat;
+}
+@media (width <= 899px) {
+  .proc::before, .studio::before, .contact::before { --ydx-k: var(--ydx-r, 26px); }
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
  * 3. Design fixes
  * ------------------------------------------------------------------------------------------------------------- */
 
