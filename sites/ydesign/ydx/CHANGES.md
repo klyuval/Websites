@@ -108,9 +108,6 @@ its section on purpose). Storage access is wrapped in try/catch. The MutationObs
 The only "patch" is the synthetic `keydown` that triggers the loader's own speed-up.
 
 ### Remaining known limitations
-- 4a (process demo language): the only way to switch back is a click on the demo's own button, and the bundle also
-  treats that as "the visitor picked". After such a restore, step 3 stops demonstrating the switch for the rest of the
-  visit. Correct page language was judged more important.
 - If the bundle stalls *after* the build started, the 20s lift uncovers the page, but Lenis (stopped by the site
   during loading) can keep swallowing wheel scrolling. Keyboard and the scrollbar still work. This only happens if
   the site's own timeline dies mid-way.
@@ -120,3 +117,19 @@ The only "patch" is the synthetic `keydown` that triggers the loader's own speed
   are unset). It is readable and scrollable, but it is not a designed fallback.
 - Hidden tabs are emulated: headless Chromium always reports `visible`, so throttling was simulated with an init
   script.
+
+### Follow-up: process demo kept alive after a language restore
+The round 1 fix for the wrong-language preview (4a) clicked the demo's own language button. The site treats any click
+there as "the visitor picked" and stops its step 3 demo for good, so after a restore the demo never ran again. This
+was a regression introduced by ydx. The site's flag is internal, and the button click is its only language switch, so
+the flag cannot be reset. Instead, once ydx has had to restore, it runs the demo itself with the site's own rule:
+1.9s after step 3 becomes active it switches to the other language, and it switches back on any other step. This is
+keyed off the `data-step` attribute that the site sets on each step change. Until the first restore the site runs the
+demo alone, so nothing is doubled. A real (trusted) click by the visitor still stops both, and reduced motion is left
+alone. Verified with `t-lang3.cjs` in HE and EN, with and without ydx, on a fresh page per scenario:
+- Normal pass through: unchanged.
+- Step 3 switched, then a jump to #contact: the bug reproduces without ydx in both languages and is fixed with ydx.
+  Coming back afterwards, step 3 switches again and step 4 switches back.
+- Jump via the nav link while the switch is still pending: the bug reproduces without ydx in HE and is fixed with
+  ydx. The demo works afterwards.
+- The visitor picks a language: it sticks through step 4 and the jump.

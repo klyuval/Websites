@@ -37,7 +37,9 @@ lines marked `ydx` from the site's HTML here into the project's HTML entry (or l
 
 Each site's `ydx/CHANGES.md` has the full analysis, every change and every fix (round 1 = first design pass,
 round 2 = an independent review that audited round 1 frame by frame, on throttled network/CPU, for layout shift and by
-keyboard, then fixed and refined it).
+keyboard, then fixed and refined it; round 3 = a line-by-line code review with every suspected bug reproduced in a test,
+run under the live response headers and failure cases: JS off, missing or 8s-late files, background tabs, back/forward
+cache, double clicks, the hub iframe).
 
 | Site | Loading screen | Transitions | Notable fixes |
 | --- | --- | --- | --- |
