@@ -320,3 +320,76 @@ focused Playwright test first, then fixed, then retested. The tests are in the r
   English or French visitors see Hebrew.
 - **If the app hydrates only after the loader has gone,** the first view has no headline line-rise. It is
   restored on the next language switch.
+
+## Round 4
+
+A last look at the whole site, the way an awards jury would see it. I scrolled it section by section at 1440 and on
+an iPhone 13, in Hebrew, English and French, and recorded the motion as frame sequences.
+
+### What I judged
+
+- **It is close to done.** The loader, the table being set, the course stack, the language wipe, the handwriting
+  and the candles all belong to one tactile "table" direction, and none of it reads as noise. I removed nothing
+  from earlier rounds.
+- **The headline motion was inconsistent.** The hero, the courses, the quilt and the invitation set their headlines
+  line by line. The chef ("French soul. / Israeli heart. / Endlessly curious."), the hosting cloth ("Be guests. / In
+  your own home.") and the gallery's "A little precision. / A lot of heart." faded up as one block, which was the
+  site's own `[data-rise]`. In the middle of the page that read as a different, more generic hand.
+- **The easing was close but not tokenised.** The loader lift (`.62,0,.2,1`), the language wipe (`.7,0,.25,1`) and
+  the handwriting each carried their own literal curve.
+- **The end of the page was flat.** The footer had no moment of its own, although the loader opens with a ✳
+  garnish being placed.
+- **The booking form had no error state.** A required field left empty only got the browser's bubble, and the field
+  itself did not change.
+
+### Changed
+
+1. **One headline language** (`enhance.css` 4a). The chef, hosting and gallery headlines now rise line by line
+   through a mask, like the others. The rest of each block follows, and the gallery link fades up after the lines.
+   - The effect keys off the site's own `.is-in`, under `html.lay-ready.ydx-enter`.
+   - So with no JS, a missing or late `enhance.js`, a missing `enhance.css`, an app that never hydrates, or reduced
+     motion, the site's block rise (or nothing) applies exactly as before.
+   - Lines are never split, so Hebrew stays intact.
+2. **Motion tokens** (`:root` in `enhance.css`, mirrored as constants in `enhance.js`). There are four curves, one
+   for each kind of motion:
+   - `--ydx-ease` ("settle"): the same curve as the site's `--ease`.
+   - `--ydx-ease-cloth`: `.66,0,.22,1`, now shared by the loader lift and the language wipe.
+   - `--ydx-ease-pen`: the handwriting.
+   - `--ydx-ease-garnish`: `.3,1.4,.4,1`, the loader's ✳ overshoot.
+   The two covers now move with the same cloth curve. Their timings are unchanged.
+3. **End of the page** (`enhance.css` 4b, `enhance.js` part 3). When the footer first comes into view, its ✳ is
+   placed with the loader's garnish spin and overshoot, so the evening closes the way it opened.
+   - It plays once for each page mount. The footer is re-observed after a language switch.
+   - Nothing is hidden beforehand. Without JS or with reduced motion it simply sits there.
+4. **Booking form error state** (`enhance.css` 4c). `:user-invalid` turns the underline of a required field
+   pomegranate, so nothing is red before the guest tries to submit.
+
+### Tried and removed
+
+- **"Sewing" the stitched hem of each cloth.** As a cloth was laid, a conic mask on its dashed `::after`, driven by
+  an `@property` angle, ran the thread out from the top centre in both directions.
+  - It looked right, but a mask animation repaints every frame. In a trace of a full scroll at 1440 it raised
+    raster time from about 4–6s to about 14s.
+  - Giving the stitch its own layer while it ran did not help enough.
+  - The stitching is faint (about 30% alpha), so the gain was small for the cost. I removed it completely.
+
+### Regression results (after the changes)
+
+- **Round-3 `bugs.cjs`:** all PASS. That covers:
+  - doubleRun, kbFocus, rapid, frozen, hidden, css404wipe, preHydrate, writeAll 1440/390 and frozenWipe
+  - iframe: loader gone 813ms after paint, under 4x machine load
+  - bfcache and liftThrows
+  - churn: 0 mutations idle
+- **Round-3 `modes.cjs`:** every mode ends usable. That covers:
+  - normal, en and nojs
+  - js404, css404 and both404
+  - jsLate8, appLate8, appNever and appNeverEn
+- **`headers.cjs`:** PASS with the live headers, which are unchanged. `curl -sI` still shows no CSP and no XFO.
+- **`cssLate.cjs`:** usable.
+- **`ifr.cjs`:** the iframe loader is gone 669–731ms after navigation.
+- **New `r4modes.cjs`:** the new headline lines, the gallery link and the footer ✳ all end visible. It passes in
+  normal, mobile, reduced motion, nojs, js404, css404, jsLate8, appNever, fr and en, with no console errors.
+- **Language switch, then scroll:** the re-mounted headlines rise again and the new footer is flagged.
+- **`shoot.mjs` walk, desktop and mobile:** 0 log lines, with no errors and no failed requests.
+- **Paint trace of a full scroll:** within noise of round 3. Desktop raster is about 3.2–3.9s against 3.2s, and
+  mobile is 0.24s against 0.30s.
