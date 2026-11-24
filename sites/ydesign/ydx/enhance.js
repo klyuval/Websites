@@ -104,7 +104,7 @@
       // Phones: the site's close removes the live iframe and lifts a card with the screenshot back to the wall, which
       // cut hard from the live page (often a different crop) to the screenshot. The live site now crossfades into its
       // screenshot first (the site's own .is-live transition), then the site's close runs.
-      let pass = false, closing = false;
+      let pass = false, closing = false, anims = [], orig = null, img = null;
       const tileUnderShot = () => {
         // (geometry, not elementsFromPoint: the wall ignores the pointer while it is zoomed)
         const r = shot.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
@@ -116,6 +116,37 @@
         }
         return best;
       };
+      const clear = () => { anims.forEach((a) => a.cancel()); anims = []; closing = false; };
+      const done = () => {
+        try {
+          if (orig && img) img.setAttribute('src', orig);
+          pass = true;
+          closeBtn.click();
+        } finally {
+          pass = false;
+          if (!dlg.open) clear(); else dlg.addEventListener('close', clear, { once: true });
+          // never leave the dialog faded out and unclosable if the site's close did not go through
+          setTimeout(() => { if (closing) clear(); }, 2000);
+        }
+      };
+      const dissolve = () => {
+        // After prev/next the case shows another site than the tile it dived into: show that site's thumbnail on the
+        // tile while the shot dissolves (the site does the same swap itself once it takes over).
+        const tile = tileUnderShot();
+        img = tile && $('img', tile);
+        const on = $$('img', shot).find((i) => i.classList.contains('is-on'));
+        const id = on && /\/work\/([^/.]+)\.webp/.exec(on.getAttribute('src') || '');
+        if (img && id && tile.dataset.name !== name.textContent) { orig = img.getAttribute('src'); img.src = `/work/thumb/${id[1]}.webp`; }
+        const x = (rtl ? -1 : 1) * 70;
+        // (end keyframes only: each starts from whatever the element shows now, also mid-way through the site's open)
+        anims = [
+          info.animate([{ transform: `translateX(${x}px)`, opacity: 0 }],
+            { duration: 260, easing: 'cubic-bezier(.5, 0, .75, 0)', fill: 'forwards' }),
+          dlg.animate([{ backgroundColor: 'rgba(0, 0, 0, 0)' }], { duration: 300, delay: 40, easing: 'ease-in', fill: 'forwards' }),
+          shot.animate([{ opacity: 0 }], { duration: 280, delay: 90, easing: 'ease-in', fill: 'forwards' }),
+        ];
+        Promise.all(anims.map((a) => a.finished)).then(done, done);
+      };
       const softClose = (e) => {
         if (pass || reduce || !dlg.open) return;
         const dive = wall.classList.contains('is-diving');
@@ -124,42 +155,20 @@
         e.stopImmediatePropagation();
         if (closing) return;
         closing = true;
-        let anims = [], orig = null, img = null;
-        const clear = () => { anims.forEach((a) => a.cancel()); closing = false; };
-        const done = () => {
-          try {
-            if (orig) img.setAttribute('src', orig);
-            pass = true;
-            closeBtn.click();
-          } finally {
-            pass = false;
-            if (!dlg.open) clear(); else dlg.addEventListener('close', clear, { once: true });
-            // never leave the dialog faded out and unclosable if the site's close did not go through
-            setTimeout(() => { if (closing) clear(); }, 2000);
-          }
-        };
+        anims = []; orig = null; img = null;
         if (!dive) {
           shot.classList.remove('is-live');
           setTimeout(done, 280);
           return;
         }
-        // After prev/next the case shows another site than the tile it dived into: show that site's thumbnail on the
-        // tile while the shot dissolves (the site does the same swap itself once it takes over).
-        const tile = tileUnderShot();
-        img = tile && $('img', tile);
-        const on = $$('img', shot).find((i) => i.classList.contains('is-on'));
-        const id = on && /\/work\/([^/.]+)\.webp/.exec(on.getAttribute('src') || '');
-        if (img && id && tile.dataset.name !== name.textContent) { orig = img.getAttribute('src'); img.src = `/work/thumb/${id[1]}.webp`; }
-        const bg = getComputedStyle(dlg).backgroundColor;
-        const x = (rtl ? -1 : 1) * 70;
-        anims = [
-          info.animate([{ transform: 'none', opacity: 1 }, { transform: `translateX(${x}px)`, opacity: 0 }],
-            { duration: 260, easing: 'cubic-bezier(.5, 0, .75, 0)', fill: 'forwards' }),
-          dlg.animate([{ backgroundColor: bg }, { backgroundColor: 'rgba(0, 0, 0, 0)' }],
-            { duration: 300, delay: 40, easing: 'ease-in', fill: 'forwards' }),
-          shot.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 280, delay: 90, easing: 'ease-in', fill: 'forwards' }),
-        ];
-        Promise.all(anims.map((a) => a.finished)).then(done, done);
+        // Escape while the dive in is still running (the site keeps the dialog visibility:hidden until it lands): the
+        // site's own close then took its clip-path branch, the dive landed afterwards and left the zoomed wall
+        // (z-index 45) covering the page. Wait for the landing, then close the normal way.
+        let frames = 0;
+        const wait = () => {
+          if (dlg.style.visibility !== 'hidden' || frames++ > 90) dissolve(); else requestAnimationFrame(wait);
+        };
+        wait();
       };
       closeBtn.addEventListener('click', softClose, true);
       dlg.addEventListener('cancel', softClose, true);
