@@ -328,3 +328,120 @@ Scripts are in the round-3 scratch folder.
 - `index.html`: the inline loader CSS is gated on `html.ydx-b` and now holds the loader motion. The enhance.css
   `<link>` was removed (it is injected now), `enhance.js` is `defer` → `async`, and the `noscript` rule was
   updated.
+
+## Round 4
+
+This was a final creative-director pass. I walked the site scroll by scroll at 1440 and on an iPhone 13, in Hebrew
+and English, across all routes, with the live headers applied (`curl -sI` of the live site: the same strict CSP,
+XFO DENY, COOP and nosniff as in round 3). I used WebGL draw calls stubbed for timing checks and real drawing for
+looks. The site already carries a lot of motion: the 3D carousel and dial, GSAP section reveals, the marquee, the
+route curtain, the loader and the language shutter. So the bar was "few changes, each one clearly better".
+
+### What I judged
+
+- **Abrupt hand-offs (the main finding).** The home is a run of full-bleed colour floods: sand > ink > pink >
+  green > the sand footer. Each one met the next in a hard, static horizontal cut. It was the one place where
+  scrolling had no motion moment of its own.
+- **A real seam bug** found while studying those cuts. A 1px line of the page background (the model colour,
+  purple for XL) showed between ink > pink and green > footer, at every scroll position, on desktop and phone.
+- **Footer.**
+  - In Hebrew, the giant "TOMI" wordmark floated in the middle of the desktop footer, and sat on the left on phones,
+    while everything around it is right-aligned. This is a bug: `direction: ltr` on the Latin wordmark turned
+    `text-align: start` into *left*.
+  - It was also the only big Karantina display line on the site that does not rise in when it scrolls into view.
+- **Motion language.** The app speaks expo-out (GSAP `expo.out`, CSS `--ease-out: cubic-bezier(.22,1,.36,1)`).
+  The ydx layer already uses those curves for everything that enters, plus one ease-in for exits. No change was
+  needed. New work reuses the same tokens: the footer rise copies the app's title reveal exactly (60% / fade /
+  0.9 s expo-out).
+- **Dead ends.** `#/admin` (the 404) and a bad `#/order/<id>` show only a title and a line. The 404 is not
+  reachable from any link (unknown routes fall back to the shop). The order page has a breadcrumb back to the
+  account. Adding links would mean injecting content into app-rendered pages, so I left them.
+- **Noise check on earlier rounds.** I reviewed the ring cursor, magnetic buttons, header tuck and blur, curtain
+  rings and word mask, the shutter and the loader again. Each one either fixes something or is quiet and
+  on-motif, so nothing was removed. With the browser to itself, the shutter covers for about 1.1–1.2 s. In
+  round 3's parallel runs it measured 2.4 s, but that was CPU contention between three test browsers.
+- **Not ours:** while wheel-scrolling, headless screenshots sometimes show a band of the page background colour at
+  the top of the viewport. This is async-scroll checkerboarding while the main thread is busy with SwiftShader. It
+  is identical with enhance.css absent (35/60 vs 35/60 frames), so it was left alone.
+
+### What I changed
+
+1. **Section hand-offs: "ring dome" transitions (enhance.css, CSS only).**
+   - Each incoming home section (numbers, builder, deliver and the footer after deliver) now rises into the
+     previous one as a dome. The apex sits under that section's own ring centre (`--rx`), so it reads as the
+     stage's ripple motif. The dome flattens into a straight edge as the section climbs to about a third of the
+     viewport.
+   - How it is built: a `::after` / `::before` in the previous section's solid bottom colour covers the new
+     section's top corners, with an elliptical mask. It sits inside the section's top padding (56–150 px, always
+     less than the padding), so it never covers content. It has `pointer-events: none`.
+   - It is scroll-linked (`view-timeline` + `animation-timeline`), so it is exact in both directions and works
+     with Lenis. It animates `transform: scaleY` only, which runs on the compositor and keeps it smooth while
+     three.js holds the main thread.
+   - It only applies inside `@supports (animation-timeline: view())` and `prefers-reduced-motion:
+     no-preference`. Firefox, and Safari before 26, keep the plain cut.
+   - While a finder tile is hovered, the finder tints itself (`.finder.lit`). The sand dome on numbers then fades
+     out (`:has`, which is ignored where unsupported) rather than drawing against a tinted edge.
+   - The hero > finder cut is left as it is. The stage's bottom is a live, 3D-tinted gradient that a solid
+     overlay cannot match.
+2. **Seam fix (enhance.css).** Each home section paints a 1px `box-shadow` skirt in the colour of the section
+   above it. Measured across 12 scroll positions × 4 seams: the purple line was there before, at the builder and
+   footer seams in every position, and appears 0 times after.
+3. **Footer wordmark in RTL (enhance.css).** `html[dir=rtl] .foot-brand { text-align: right }`. In Hebrew it now
+   sits on the reading-start edge, mirroring the header logo, on desktop and phones. English is unchanged.
+4. **Footer wordmark rise (enhance.js §9).** The footer "TOMI" now rises in like every other display title. It
+   uses a paused WAAPI animation, played by an IntersectionObserver.
+   - Only a wordmark that is still below the fold is held. One that is already on screen, or on a hidden page,
+     is never touched, so it can't be left invisible in view.
+   - New footers from the app's re-renders (route change, language switch) are picked up through
+     MutationObservers on `.home` / `.pages`, debounced. Detached ones are cancelled and unobserved.
+   - It is off with reduced motion, without WAAPI and without IntersectionObserver.
+   - Verified on home, `#/compare` (held → played at the end) and `#/account` (held), and after a language switch.
+
+### Regression (round-3 suite, rerun from `…/scratchpad/tomi-store-r4/`, live headers applied)
+
+- **Commerce and functional flow** (`flow.cjs`), desktop he and en, mobile he and en, each run alone.
+  - Covered: add to cart, open the drawer, qty + (cart = 2), checkout, a language switch on checkout (cart kept,
+    still on checkout), switch back, mobile menu open and navigate, 8 routes, header hide/show, no overflow.
+  - **All OK.**
+  - Console: only the app's GSAP "target not found" warnings, the WASM CSP fallback and the stubbed 401s.
+- **Production scenarios** (`scen.cjs`): base, nojs, enhance.js 404, enhance.css 404, both 404, boot.js 404,
+  boot.js + bundle 404, all 404, enhance.js late 8 s, bundle late 8 s, bundle 404, reduced motion, mobile and the
+  age gate.
+  - Each one ends the same way as in round 3, with the page visible and usable.
+  - The two "boot.js and bundle dead" cases are the documented original-site behaviour.
+- **Focused repros** (`bugs.cjs`), all as in round 3:
+  - exit throws: the loader still leaves;
+  - css404 + language: no unstyled shutter, and the language still switches;
+  - enhance.js twice: 1 shutter, 1 cursor, 1 flip (the test's HTML replace was updated from `defer` to `async`,
+    so it really injects a second copy again);
+  - triple click / Enter on the language button;
+  - a frozen page resumes in 93 ms;
+  - hub iframe exit 0.58 s;
+  - the magnet resets on leave.
+- **Real background tab and bfcache** (plain Chromium under Xvfb with raw CDP, through the live-header proxy):
+  - The loader is gone while the tab is still hidden.
+  - A language click and then hiding the tab flips the language once, in the background.
+  - bfcache restore mid-shutter and mid-loader gives a clean page.
+- **Delay and timing**, unchanged from round 3:
+  - enhance.css or enhance.js delayed 8 s leaves first paint at about 0.3 s;
+  - a boot.js delay is the known limit;
+  - no WebGL: the loader exits at 5.8 s;
+  - never-ready: it exits at the 100 s cap;
+  - slow models wait for `ready` (25 s);
+  - progress is monotonic;
+  - with reduced motion the language switch is plain.
+- **`tools/shoot.mjs`**, desktop and mobile: only the SwiftShader "GPU stall" driver warnings. The walk sits on
+  the first-visit age gate, as it always has.
+- **Round-4 checks:**
+  - the domes draw and flatten in he and en, desktop and phone;
+  - none appear under reduced motion;
+  - they hide while the finder is lit;
+  - a hit test on a dome reaches the section beneath;
+  - no purple seams;
+  - no new console messages.
+
+### Files (round 4)
+
+- `ydx/enhance.css`: the round-4 block (section domes, seam skirts, RTL footer wordmark).
+- `ydx/enhance.js`: §9 footer wordmark rise, and the header comment.
+- No change to `index.html`, `boot.js` or any app file.
