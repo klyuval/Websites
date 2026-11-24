@@ -198,3 +198,125 @@ A second review of the first pass, done as a first-time visitor and as QA.
   knife at 844x390. Same reasoning as round 1.
 - **The handwriting write-on still reveals both lines of a wrapped hint at the same time.** I judged that
   acceptable for a two-line scribble.
+
+## Round 3
+
+A line-by-line review of the ydx layer and a production-hardening pass. Each suspected bug was reproduced with a
+focused Playwright test first, then fixed, then retested. The tests are in the round-3 scratch folder
+(`js/bugs.cjs`, `js/modes.cjs` and others).
+
+### Production conditions tested
+
+- **Live response headers.** `mychef.ydesign.workers.dev` sends no CSP, no `X-Frame-Options` and no other
+  restrictive header, only `cache-control: public, max-age=0, must-revalidate`, `report-to`, `nel`, and
+  `content-type: text/html` with no charset. The page already declares its charset in its first bytes.
+  - I replayed exactly these headers on the local HTML. Nothing was blocked and there were no console messages.
+- **Every load scenario now ends usable and visible.** For each one, the hero headline, header, copy and pieces
+  were checked every 50ms:
+  - JS disabled
+  - `enhance.js` returning 404, `enhance.css` returning 404, and both
+  - `enhance.js` delayed 8s, `enhance.css` delayed 8s
+  - the app's chunks delayed 8s, and the app's chunks blocked for good (in Hebrew and with English stored)
+  - the page frozen for 7s during load (`Page.setWebLifecycleState`)
+  - the page frozen in the middle of a language wipe
+  - the hub iframe
+  - 400kbps with 4x CPU
+  - live headers, reduced motion, and a repeat visit
+- **No new console errors** on the desktop and mobile scroll-walks, the language switches, or any of the
+  scenarios above. The only messages were the 404s and blocked requests that the tests caused on purpose.
+
+### Bugs found and fixed
+
+1. **A slow `enhance.js` made the hero blank and replay (enhance.js delayed 8s).**
+   - The loader's CSS bail had shown the page at about 4.4s. When the script arrived at 8s it set `ydx-on`, and the
+     already-visible headlines were clipped to nothing and rose again.
+   - Entrance styles now key off a new `html.ydx-enter`. The script only sets it when it arrives while the loader
+     still covers the page.
+   - Handwriting already in view on a late arrival is left as it is.
+   - The class is restored under the cover of the next language wipe.
+2. **The page was blank if the app never hydrated (bundle blocked or broken).**
+   - The site's own inline script sets `html.lay-ready` before React runs, which hides every table piece. Our
+     entrance rules also hid the headlines, copy and header, for good.
+   - Now, when the loader lifts and the app is not there, `ydx-enter` is dropped, so the text shows as the
+     cloth lifts.
+   - If the app is still missing 6s later, `lay-ready` is removed so the site's pieces show too.
+   - If the app hydrates later after all, its own effect adds `lay-ready` back and lays the table as usual.
+3. **A slow `enhance.css` held the whole first paint.**
+   - With the file delayed 8s, the screen stayed blank, with no loader, and hydration waited too.
+   - It is now `<link rel="preload" as="style" onload="this.rel='stylesheet'">`, so the inline loader paints at
+     once.
+   - If the CSS has not arrived when the cloth lifts, `ydx-enter` is dropped so late hide rules cannot land on
+     text that is already showing.
+   - Trade-off: with JS disabled, `enhance.css` (hit areas, layout fixes) does not load. The page is still complete.
+4. **`enhance.js` was `defer`, so a slow file delayed `DOMContentLoaded` until it arrived (8s in the test).**
+   - It is now `async` and waits for the DOM itself. The app's own scripts are async modules and were not delayed.
+   - The window `load` event still waits for it, as it does for any subresource.
+5. **A missing `enhance.js` kept the loader up for about 4.4s (404).** The script tag now has `onerror` that
+   removes `ydx-loading`, so the page shows at once.
+6. **Running `enhance.js` twice broke the language switch.** The two capture listeners swallowed each other's
+   click and the language never changed. The script now has a run-once guard.
+7. **A throw during the loader exit left the page invisible.**
+   - Reproduced by making `.animate()` throw on the stage. The loader's CSS bail had already been cancelled and
+     `html.ydx-loading` stayed set, which paused every entrance at opacity 0.
+   - The exit is now wrapped. On any error it finishes at once.
+8. **The language wipe could stay on screen.** Before, it relied on animation promises and two rAFs, which stall
+   in hidden or frozen tabs and could reject. Now:
+   - the language swap runs exactly once
+   - every step is guarded
+   - a 2.5s safety timer swaps and removes the cover in any case
+   - the button is looked up again at swap time
+9. **Keyboard focus was lost after a language switch.**
+   - The site re-mounts the page, so focus fell to `<body>`. This happens without ydx too.
+   - When the button had focus, focus now moves to the newly pressed language button.
+10. **Smaller fixes.**
+    - **Clicks before hydration:** a language click before the app hydrated played a wipe that changed nothing.
+      It is now passed straight through.
+    - **Without `enhance.css`,** the wipe was unstyled divs added to the bottom of the page. The script now detects
+      the stylesheet (`--ydx-css` on `:root`) and skips the wipe and the course sink when it is missing.
+11. **Robustness fixes found by review.**
+    - **Background tabs.** The loader's 40ms poll is throttled to 1/min in background tabs. It is now also
+      re-checked on `visibilitychange` and `pageshow`, and when the CSS bail's `animationend` fires.
+    - **Leak.** The visibility IntersectionObserver kept every page React had thrown away, one detached tree per
+      language switch. Disconnected sections are now unobserved.
+    - **Pseudo-element animations.** WAAPI `pseudoElement` is now feature-checked. Where it is unsupported,
+      Safari and Firefox ignore the option, and the course itself would have faded to 0.45 instead of its shade.
+    - **Hero depth.** The scroll effect no longer rewrites the same inline value on every scroll frame below the
+      hero.
+12. **The hub iframe loader ran past 800ms.**
+    - Measured 0.8–1.2s from first paint: hydration long tasks stalled the main-thread hem and shadow animation.
+    - In the iframe it now lifts with a transform only (compositor), with shorter timings (min 220, cap 260,
+      exit 400ms).
+    - Measured 0.70–0.83s after the change.
+13. **Dead code removed:** the `ydx-leaving` class (never styled) and `--ydx-swing` (never used).
+
+### Checked and fine
+
+- **Interception.** Only the language buttons are intercepted. ydx never touches links, forms, hash links or the
+  dialog, so modifier clicks, new tabs, downloads and `javascript:` links are not affected. The booking dialog
+  can't be over a language button.
+- **Double clicks.** Rapid clicks during a wipe (FR, then EN twice) end on one language with no stuck cover.
+- **No monkey-patches.** No history, Lenis or `startViewTransition` patches.
+- **No stuck locks.** No `inert`, `overflow` or `pointer-events` locks are left behind. The wipe and the loader
+  are the only covering layers.
+- **Storage.** All storage access is in try/catch.
+- **MutationObserver.** It only reacts to `childList`. Its own work only sets attributes, so there is no feedback
+  loop. There were 0 mutations in 3s idle.
+- **Handwriting.** All five handwriting targets are written in by the bottom of the page at 1440 and 390.
+- **Browser support** (reasoned from the code; only Chromium was available):
+  - `:has()` rules (candle glow, wine glass, quilt plate) are dropped as a whole where unsupported.
+  - The smooth FAQ is behind `@supports selector(::details-content)`.
+  - There are no view transitions, scroll-driven animations, `@starting-style` or `inert`.
+
+### Remaining known limitations
+
+- **bfcache is untested.** Playwright's Chromium never restored the page from bfcache, even with the live
+  headers. The preview server's `no-store` also prevents it. A restore re-runs the loader check on `pageshow`, and
+  the wipe has its safety timer.
+- **A real background tab is also untested.** It cannot be reproduced headless (pages always report `visible`),
+  so it was covered with the frozen-lifecycle tests.
+- **Slow 3G is mostly the site's own problem.** At 400kbps the app itself hydrates only after about 26s, because
+  images use up the bandwidth. The loader's CSS bail shows the page at about 4s, now with all text visible
+  (before, it was hidden until about 26s). Until the app hydrates, the site's own table pieces stay hidden, and
+  English or French visitors see Hebrew.
+- **If the app hydrates only after the loader has gone,** the first view has no headline line-rise. It is
+  restored on the next language switch.
