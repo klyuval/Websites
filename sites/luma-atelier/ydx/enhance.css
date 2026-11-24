@@ -65,13 +65,15 @@ ydx-iris.is-over .ydx-edge { stroke: rgba(238, 232, 216, .2); }
   div.route-shutter[data-active] .route-shutter-panel::before { animation: ydx-sweep .95s .08s cubic-bezier(.3, .6, .3, 1) both; }
   div.route-shutter[data-active] .route-shutter-panel:nth-child(2)::before { animation-delay: .16s; }
 }
+/* r2: the end state clipped at the box edge, which cut the overhanging last glyph ("ALEXSTUDI", "PRINTS & FRAME")
+   for the whole time the shutter was closed. The clip now runs past both edges. */
 @keyframes ydx-develop {
-  from { clip-path: inset(-20% 100% -20% 0); opacity: .3; transform: translateY(6px); }
-  to { clip-path: inset(-20% 0 -20% 0); opacity: 1; transform: none; }
+  from { clip-path: inset(-20% 100% -20% -10%); opacity: .3; transform: translateY(6px); }
+  to { clip-path: inset(-20% -10% -20% -10%); opacity: 1; transform: none; }
 }
 @keyframes ydx-develop-rtl {
-  from { clip-path: inset(-20% 0 -20% 100%); opacity: .3; transform: translateY(6px); }
-  to { clip-path: inset(-20% 0 -20% 0); opacity: 1; transform: none; }
+  from { clip-path: inset(-20% -10% -20% 100%); opacity: .3; transform: translateY(6px); }
+  to { clip-path: inset(-20% -10% -20% -10%); opacity: 1; transform: none; }
 }
 @keyframes ydx-sweep { to { transform: translateX(110%); } }
 /* continuation veil after a hard navigation never blocks input */
