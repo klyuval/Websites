@@ -60,10 +60,10 @@ html.ydx-vt .ydx-vt-flap { visibility: visible; }
     opacity: 0; scale: .4;
     transition: opacity .25s .72s, scale .45s cubic-bezier(.3, 1.5, .5, 1) .72s;
   }
-  html.ydx-js .desk-tang :is(h1, h2).display em.ydx-taped::before,
-  html.ydx-js .brand-phrase.desk-tang .display em.ydx-taped::before { clip-path: inset(0 0 0 0); }
-  html.ydx-js .desk-tang :is(h1, h2).display em.ydx-taped::after,
-  html.ydx-js .brand-phrase.desk-tang .display em.ydx-taped::after { opacity: 1; scale: 1; }
+  html.ydx-js .desk-tang :is(h1, h2).display em[data-ydx-taped]::before,
+  html.ydx-js .brand-phrase.desk-tang .display em[data-ydx-taped]::before { clip-path: inset(0 0 0 0); }
+  html.ydx-js .desk-tang :is(h1, h2).display em[data-ydx-taped]::after,
+  html.ydx-js .brand-phrase.desk-tang .display em[data-ydx-taped]::after { opacity: 1; scale: 1; }
 }
 
 /* ------------------------------------------------------------------ fallback reveals (no scroll-driven animations, e.g. Firefox)
@@ -80,7 +80,7 @@ html.ydx-vt .ydx-vt-flap { visibility: visible; }
   html.ydx-js.ydx-nosda :is(.flavor-grid, .journal-grid, .fr-track) > :nth-child(4n+2) { transition-delay: .08s; }
   html.ydx-js.ydx-nosda :is(.flavor-grid, .journal-grid, .fr-track) > :nth-child(4n+3) { transition-delay: .16s; }
   html.ydx-js.ydx-nosda :is(.flavor-grid, .journal-grid, .fr-track) > :nth-child(4n+4) { transition-delay: .24s; }
-  html.ydx-js.ydx-nosda :is(.manifesto h2, .section-heading h2, .twist-story__heading h2, .company-overlay h2, .faq-preview h2, .story-essay h2, .brand-phrase .display, .notes-heading h2, .fr-heading h2, .footer-top h2, .plate, .journal-article, .fr-flavor).ydx-in { opacity: 1; translate: 0 0; rotate: 0deg; }
+  html.ydx-js.ydx-nosda :is(.manifesto h2, .section-heading h2, .twist-story__heading h2, .company-overlay h2, .faq-preview h2, .story-essay h2, .brand-phrase .display, .notes-heading h2, .fr-heading h2, .footer-top h2, .plate, .journal-article, .fr-flavor)[data-ydx-in] { opacity: 1; translate: 0 0; rotate: 0deg; }
 }
 
 /* ------------------------------------------------------------------ micro-interactions */

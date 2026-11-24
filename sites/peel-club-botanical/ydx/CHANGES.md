@@ -39,7 +39,7 @@ the app's ready handshake.
   - It still waits for the app's ready signal, which fires once the canvas has rendered.
   - It stays up at least 1150 ms on the first visit and 250 ms on later visits in the same session
     (`sessionStorage`, in try/catch), with a quicker peel on those later visits.
-  - **Hard safety:** 4 s after the app has mounted, the cover leaves even if the 3D scene is not ready (the photo
+  - **Hard safety:** 4 s after navigation start (or at the app's mount, if that is later), the cover leaves even if the 3D scene is not ready (the photo
     fallback shows instead). Inside the hub iframe this is 0.8 s, with a 520 ms peel.
   - `prefers-reduced-motion` gets a 280 ms fade and a static drawing.
   - The 12 s recovery screen is unchanged. A short-height (landscape phone) layout was added.
@@ -115,7 +115,8 @@ the app's ready handshake.
   - the `#ydx-peel` wrapper with the SVG art around the existing `#peel-entry`;
   - in the inline boot script: the minimum and safety timing, the session and iframe flags, and the exit handed to
     `__ydxPeel`, with the original slide-up kept as a fallback;
-  - links to `ydx/enhance.css` (after the app CSS) and `ydx/enhance.js` (deferred, before the app module).
+  - links to `ydx/enhance.css` (after the app CSS, non-blocking since round 3) and `ydx/enhance.js` (`async` since
+    round 3; it was `defer`).
 - `ydx/enhance.css` and `ydx/enhance.js`: the enhancement layer.
 - The minified bundles are not modified.
 
@@ -190,3 +191,113 @@ plus 10x slow motion through `Animation.setPlaybackRate`) on desktop 1440×900 a
   also `inert`.
 - **Reduced motion:** the loader fades in 280 ms, and there is no intro, route peel, breeze or bag exit. No console
   errors appeared on any route at any width.
+
+## Round 3
+
+Code review of every line of the ydx layer (inline boot code in `index.html`, `enhance.js`, `enhance.css`), plus
+production-condition tests. Each suspected bug got a focused Playwright test before and after the fix. The scripts are in
+the round-3 scratch folder (`t-*.js`). Unless stated otherwise, the timing runs used `--disable-webgl`, because three.js
+under SwiftShader is one 11–16 s main-thread task.
+
+### Bugs found and fixed
+- **A slow or hung `enhance.js` held back the whole app.** `enhance.js` was `defer`. Deferred classic scripts and module
+  scripts run in document order, so the app module waited for the optional file.
+  - **Repro:** route `/ydx/enhance.js` with an 8 s delay. The app mounted at 8.2 s instead of 0.3 s.
+  - With a 15 s delay, the 12 s deadline showed the "The page couldn't finish loading" recovery screen to a
+    working site. A file that never answered would have kept the app from ever starting.
+  - **Fix:** `async`. `enhance.js` already copes with any order: it boots on `DOMContentLoaded`, and the loader falls
+    back to its own slide-up when `__ydxPeel` is not there yet.
+  - **After:** with the 8 s delay, the app mounts at 0.27 s and the cover leaves at 1.8 s. The layer then boots late
+    with no errors.
+- **`enhance.css` was render- and script-blocking.** It was a plain `<link rel=stylesheet>`, so the inline boot script
+  in `<body>` could not run until the file arrived. The app's own CSS avoids this with the `media="print"` swap.
+  - **Repro:** route `/ydx/enhance.css` with an 8 s delay. For 8 s there was a half-painted cover with no headline,
+    `#root` was not inert, `__peelEntry` did not exist, and the app mounted at 8.2 s.
+  - **Fix:** `enhance.css` now loads the same way as the app CSS (`media="print" onload="this.media='all'"`). The
+    cascade order is still document order, so it still overrides the app CSS.
+  - **After:** the delayed run behaves exactly like a normal one (cover gone at 2.2 s).
+- **A runtime error thrown from a `/ydx/` file showed the recovery screen.** The boot script's error listener only
+  ignored a *failed load* of a ydx script, not an exception thrown inside one.
+  - **Repro:** serve `throw new Error()` as `enhance.js`. "The page couldn't finish loading" showed for about 1 s,
+    until the app became ready.
+  - **Fix:** errors whose `filename` is under `/ydx/` are ignored.
+- **Overlapping route transitions lost the paper flap.** When a second navigation (a quick second click, or Back)
+  skipped the running view transition, the skipped transition's `finished` handler removed `html.ydx-vt` and the flap
+  while the next transition was already running. The new transition then peeled without its flap.
+  - **Repro:** click `/our-story`, then `/faq` 120 ms later. In the second transition, `html.ydx-vt` was false and
+    the flap was `visibility: hidden`.
+  - **Fix:** a generation counter, so only the latest transition cleans up and runs the intro.
+- **Running `enhance.js` twice broke every route transition.** Both copies wrapped `startViewTransition` and each
+  mounted its own `ydx-flap`.
+  - **Repro:** `addScriptTag('/ydx/enhance.js')` after load, then navigate. The console showed "Unexpected duplicate
+    view-transition-name: ydx-flap", and the transition was aborted with `InvalidStateError`.
+  - **Fix:** the layer is now idempotent (`window.__ydxBooted` guard).
+- **Reduced-motion loader exit had no timer backstop.** The peel path already had a `setTimeout` fallback for
+  background tabs, where animations do not advance; the 280 ms fade did not. It now has one (700 ms).
+
+### Hardening (latent issues, found by reading the code)
+- **Reveal state is now stored in `data-ydx-in` / `data-ydx-taped` attributes instead of classes.** These were
+  classes added to React-owned nodes. React rewrites the whole `className` when a node's class prop changes, and that
+  would leave a Firefox fallback-revealed plate stuck at `opacity: 0`. React never touches unknown attributes.
+- **Magnetic pills:**
+  - Release is bound to `pointerleave` on `<html>` rather than on `document`. Chromium happens to fire it on
+    `document`; `<html>` is the portable target. Verified that moving out of the window releases the pill.
+  - A pill that React replaced is dropped.
+  - The unused `ydx-mag` / `ydx-mag-on` classes are gone (no CSS used them).
+- **Dead code removed:** `lastIntro`.
+- **Comments corrected:** the safety timer runs from navigation start (or the app's mount, if that is later), not from
+  the mount. The inline comment and the round-1 notes above now say so.
+- **No-JS polish:** without JavaScript the cover showed "Preparing your first taste..." with typing dots forever, next
+  to the noscript note. A `<noscript><style>` now hides the loading note, so only the "Enable JavaScript" note shows.
+
+### Production-condition matrix (all end visible and usable)
+In every case below, the end state was checked: cover removed, `#root` not inert, no `overflow` lock, `#main`
+visible, no leftover ydx overlay nodes, and no console errors beyond the forced 404s and the injected test error.
+- **Live headers:** `curl -sI` shows no CSP or other security headers, only `cache-control: public, max-age=0,
+  must-revalidate`, so there is nothing that could block ydx.
+  - The `onload` CSS swap is an inline handler. It would need `'unsafe-inline'` (or a hash) under a future strict
+    CSP, but the app already depends on the same pattern for its own CSS.
+
+| Condition | Result |
+| --- | --- |
+| Normal load | cover gone at 2.2 s |
+| JS disabled | cover with the noscript note only |
+| `enhance.js` 404 | inline slide-up fallback, 1.8 s |
+| `enhance.css` 404 | 2.2 s |
+| Both 404 | 1.8 s |
+| `enhance.js` +8 s | 1.8 s, layer boots late |
+| `enhance.css` +8 s | 2.2 s |
+| App bundle +8 s | safety finish at mount, peel, gone at 9.3 s |
+| `enhance.js` throws | no recovery flash |
+| Reduced motion | 1.5 s fade |
+| Deep links `/faq` and `/sodas/blood-orange` | normal |
+| Hub iframe (cross-origin test page) | `ydx-quick`, cover gone about 0.95 s after the frame starts |
+| WebGL on (SwiftShader) | `ready` at 17.8 s (shader compile), peel, then a route transition, no ydx errors |
+
+- **Background tab:**
+  - *Frozen:* `Page.setWebLifecycleState` frozen for 6 s during load, then active.
+  - *Emulated hidden tab:* `visibilityState` hidden, rAF paused, timers aligned to 1 s, then shown at 8 s.
+  - Both ended with the cover gone through the timer backstops, and nothing was left at opacity 0 in view.
+- **Regression pass on desktop 1440 and iPhone 13:**
+  - Tape and the `?ydx-nosda` fallback reveals were checked: 14 elements revealed and no plate left hidden.
+  - Add-to-bag fizz and the bag drawer exit copy were checked. The copy is removed afterwards and focus still
+    returns to "Bag (1)", the same as without ydx.
+  - Every route was visited without console errors.
+- **Route-transition races after the fix:**
+  - On a double click, every transition keeps its flap.
+  - Back/forward in the middle of a transition leaves no stuck `ydx-vt` class and no stray flap.
+  - A second evaluation of `enhance.js` is a no-op.
+
+### Known limitations
+- **bfcache could not be exercised here.** Playwright's Chromium never restored the page from bfcache, even with the
+  live cache headers. From the code: a restore keeps the page exactly as it was left. The timers and animations
+  resume, and every exit path has a timer backstop. A transition interrupted by `pagehide` is skipped, and its
+  `finished` handler cleans up.
+- **IntersectionObservers do not prune targets that React removed.** A heap count after 18 route changes showed the
+  same number of detached elements with and without ydx (385 vs 385), so nothing measurable is retained by the layer.
+  It was left as is.
+- **Under SwiftShader the 4 s safety cannot fire during three.js shader compilation** (one long task), as noted in
+  round 2. This applies to this container only.
+- **With a slow `enhance.js`, the first load uses the plain slide-up exit instead of the peel, and the first view gets
+  no intro choreography.** This is by design: the page must never wait for the enhancement layer.
+

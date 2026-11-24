@@ -13,9 +13,15 @@
  *  8. fizz           bubbles rise out of "Add to sample bag"; the header bag count pops when it goes up
  *  9. breeze (r2)    leafy cut-outs sway once, settling, as they first scroll into view
  * 10. bag exit (r2)  the bag drawer slides back out instead of vanishing
+ *
+ * r3: loaded with `async` (index.html), so it may run before or after the app module and before <body> is parsed:
+ * nothing here may assume an order. It is also idempotent: a second evaluation is a no-op (a second startViewTransition
+ * wrapper would add a second `ydx-flap` and Chromium aborts transitions with duplicate view-transition-names).
  */
 (() => {
   'use strict';
+  if (window.__ydxBooted) return;
+  window.__ydxBooted = true;
   const html = document.documentElement;
   html.classList.add('ydx-js');
   const mqReduce = matchMedia('(prefers-reduced-motion: reduce)');
@@ -37,6 +43,8 @@
     if (reduced() || !wrap.animate || !inner) {
       const a = anim(wrap, [{ opacity: 1 }, { opacity: 0 }], { duration: 280, easing: 'ease-out', fill: 'forwards' });
       queueMicrotask(() => intro(0, true));
+      // r3: timer backstop as on the peel path (animations do not advance in background tabs)
+      setTimeout(done, 700);
       return a ? a.finished.then(done, done) : done();
     }
     // r2: the box geometry is static CSS in index.html (no layout change here, so the exit is not a layout shift).
@@ -87,13 +95,11 @@
     anim(el, [{ opacity: 0, translate: `0 ${dist}px` }, { opacity: 1, translate: '0 0' }], { duration: 700, delay, easing: EASE });
   }
 
-  let lastIntro = '';
   function intro(delay = 0, quick = false) {
     if (reduced()) return;
     const path = location.pathname;
     const main = document.getElementById('main');
     if (!main) return;
-    lastIntro = path;
     const k = quick ? 0.6 : 1;
     if (path === '/') {
       const hero = main.querySelector('.carousel-hero');
@@ -125,9 +131,11 @@
   // The app already wraps route changes in document.startViewTransition. We keep its call untouched and only
   // add a paper "flap" element (named ydx-flap, outside #root) during the update, so the CSS in enhance.css can
   // peel the old page off like a label and slide the flap along the peel line.
+  // r3: transitions can overlap (a second click, or Back, skips the running one). Only the latest transition may
+  // clean up, otherwise the skipped one's `finished` strips the class/flap from the transition that replaced it.
   if (document.startViewTransition && !reduced()) {
     const orig = document.startViewTransition.bind(document);
-    let flapEl = null;
+    let flapEl = null, gen = 0;
     const mountFlap = () => {
       if (!flapEl) { flapEl = document.createElement('i'); flapEl.className = 'ydx-vt-flap'; flapEl.setAttribute('aria-hidden', 'true'); }
       document.body.appendChild(flapEl);
@@ -140,9 +148,10 @@
       try {
         vt = (arg && typeof arg === 'object') ? orig(Object.assign({}, arg, { update: wrapped })) : orig(wrapped);
       } catch (e) { return orig(arg); }
+      const mine = ++gen;
       html.classList.add('ydx-vt');
-      vt.ready.then(() => intro(140, true), () => {});
-      vt.finished.finally(() => { html.classList.remove('ydx-vt'); unmountFlap(); }).catch(() => {});
+      vt.ready.then(() => { if (mine === gen) intro(140, true); }, () => {});
+      vt.finished.finally(() => { if (mine === gen) { html.classList.remove('ydx-vt'); unmountFlap(); } }).catch(() => {});
       return vt;
     };
   }
@@ -164,13 +173,15 @@
   function startObservers() {
     if (io) return;
     if (!('IntersectionObserver' in window)) { html.classList.add('ydx-tape-off'); html.classList.remove('ydx-nosda'); return; }
-    const once = (cls) => (entries, obs) => {
-      for (const e of entries) if (e.isIntersecting) { e.target.classList.add(cls); obs.unobserve(e.target); }
+    // r3: state goes in data-* attributes, not classes: React rewrites the whole `className` whenever a node's class
+    // prop changes (e.g. `plate ${compact}`), which would drop an added class and leave a revealed plate at opacity 0.
+    const once = (attr) => (entries, obs) => {
+      for (const e of entries) if (e.isIntersecting) { e.target.setAttribute(attr, ''); obs.unobserve(e.target); }
     };
     // tapes wait until most of the word is on screen
-    io = new IntersectionObserver(once('ydx-taped'), { rootMargin: '0px 0px -8% 0px', threshold: 0.4 });
+    io = new IntersectionObserver(once('data-ydx-taped'), { rootMargin: '0px 0px -8% 0px', threshold: 0.4 });
     // fallback reveals fire as soon as any part enters (tall headings may never reach a ratio threshold)
-    if (noSDA) ioReveal = new IntersectionObserver(once('ydx-in'), { rootMargin: '0px 0px -6% 0px', threshold: 0 });
+    if (noSDA) ioReveal = new IntersectionObserver(once('data-ydx-in'), { rootMargin: '0px 0px -6% 0px', threshold: 0 });
     scan();
   }
   // wait until the loader has started to leave, so the first tapes are laid where people can see them
@@ -200,8 +211,10 @@
   /* ---------------------------------------------------------------- 7. magnetic pills + arrows */
   const MAG = '.pill, .carousel-selector button:not(.carousel-current), .fr-controls button';
   let magEl = null;
+  const magOff = () => { if (magEl) { magEl.style.translate = ''; magEl = null; } };
   function magMove(e) {
     if (!magEl) return;
+    if (!magEl.isConnected) return void (magEl = null); // r3: React replaced it (route change)
     const r = magEl.getBoundingClientRect();
     const dx = (e.clientX - (r.left + r.width / 2)) / r.width, dy = (e.clientY - (r.top + r.height / 2)) / r.height;
     const m = Math.min(10, r.width * 0.06 + 4);
@@ -211,9 +224,8 @@
     if (reduced() || !fine.matches) return;
     const t = e.target.closest && e.target.closest(MAG);
     if (t === magEl) return;
-    if (magEl) { magEl.style.translate = ''; magEl.classList.remove('ydx-mag-on'); }
+    magOff();
     magEl = t && !t.disabled ? t : null;
-    if (magEl) magEl.classList.add('ydx-mag', 'ydx-mag-on');
   }
 
   /* ---------------------------------------------------------------- 8. fizz on add-to-bag */
@@ -333,7 +345,8 @@
     whenRevealed(queueTone);
     document.addEventListener('pointerover', magOver, { passive: true });
     document.addEventListener('pointermove', magMove, { passive: true });
-    document.addEventListener('pointerleave', () => { if (magEl) { magEl.style.translate = ''; magEl = null; } }, { passive: true });
+    // r3: pointerleave on <html> (not document) fires in every engine when the pointer leaves the window
+    html.addEventListener('pointerleave', magOff, { passive: true });
     document.addEventListener('click', (e) => {
       const btn = e.target.closest && e.target.closest('.purchase .pill');
       if (btn && !btn.disabled) fizz(btn);

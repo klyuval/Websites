@@ -12,6 +12,7 @@
     <!-- ydx: brand fonts preloaded so the loader headline paints in Fraunces, not Georgia -->
     <link rel="preload" href="/assets/fraunces-latin-full-italic-D2JnYqd-.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/assets/courier-prime-latin-400-normal-BbyBr73r.woff2" as="font" type="font/woff2" crossorigin>
+    <noscript><style data-ydx>#peel-loading-note{display:none!important}</style></noscript><!-- ydx r3: without JS, "Preparing your first taste..." would wait forever; only the noscript note shows -->
     <!-- ydx: botanical loader critical styles (the cover must paint before the app CSS arrives) -->
     <style data-ydx>
       @font-face{font-family:"Fraunces Variable";font-style:italic;font-display:swap;font-weight:100 900;src:url(/assets/fraunces-latin-full-italic-D2JnYqd-.woff2) format("woff2-variations");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
@@ -69,10 +70,10 @@
       @keyframes ydx-tape{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
       @keyframes ydx-dot{0%{opacity:.2}50%{opacity:1}}
     </style>
-    <script src="/ydx/enhance.js" defer></script><!-- ydx -->
+    <script src="/ydx/enhance.js" async></script><!-- ydx r3: async, not defer: a slow or hung enhance.js must never hold back the app module (deferred and module scripts run in order) -->
     <script type="module" crossorigin src="/assets/index-BNQk_vTS.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-Bru9Umfv.css" data-peel-style media="print" onload="this.media='all';this.dataset.loaded='true';window.__peelEntry&amp;&amp;window.__peelEntry.stylesReady()" onerror="this.dataset.failed='true';window.__peelEntry&amp;&amp;window.__peelEntry.recover('styles-error')">
-    <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx: enhancement layer, after the app CSS so it can override -->
+    <link rel="stylesheet" href="/ydx/enhance.css" media="print" onload="this.media='all'"><!-- ydx: enhancement layer, after the app CSS so it can override. r3: loaded like the app CSS (print, then all), so it is neither render- nor script-blocking and a slow file cannot hold back the loader or the boot script -->
   </head>
   <body>
     <div id="ydx-peel"><!-- ydx: peel wrapper (the cover peels away like a can label) --><div class="ydx-peel__inner">
@@ -192,11 +193,14 @@
         const bootError = (event) => {
           // ydx r2: a failed /ydx/ enhancement script is not an app failure (the page works without it)
           if (event.target?.tagName === "SCRIPT" && /\/ydx\//.test(event.target.src || "")) return;
+          // ydx r3: nor is a runtime error thrown from a /ydx/ file
+          if (/\/ydx\//.test(event.filename || "")) return;
           if (!appReady && (event.target?.tagName === "SCRIPT" || event.error)) entry.recover("app-error");
         };
         deadline = setTimeout(() => entry.finish("timeout"), 12000);
-        // ydx: hard safety. Once the app has mounted, never hold the cover longer than ~4s (0.8s inside the hub iframe),
-        // even if the 3D scene is still warming up (the photo fallback shows until it is ready).
+        // ydx: hard safety. Never hold the cover longer than ~4s after navigation start (0.8s inside the hub iframe), or
+        // than the app's mount if that comes later, even if the 3D scene is still warming up (the photo fallback shows
+        // until it is ready). Before the mount, finish() only records the request; appReady() then replays it.
         safety = setTimeout(() => entry.finish("safety"), framed ? 800 : 4000);
         window.addEventListener("error", bootError, true);
         root.inert = true;
