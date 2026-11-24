@@ -12,8 +12,8 @@
   --ydx-ease-pen: cubic-bezier(.45,.05,.35,1); --ydx-ease-garnish: cubic-bezier(.3,1.4,.4,1); }
 /* Round 4 motion tokens. Four curves, one per kind of thing, used everywhere:
    --ydx-ease          "settle": anything set down or rising into place (same curve as the site's own --ease)
-   --ydx-ease-cloth    "cloth": anything that covers or is drawn across (loader lift, language wipe, stitching;
-                       enhance.js uses the same values for the two WAAPI covers)
+   --ydx-ease-cloth    "cloth": anything that covers or is drawn across (the loader lift and the language wipe are
+                       WAAPI in enhance.js, which uses the same values; kept here as the reference)
    --ydx-ease-pen      "pen": handwriting being written in
    --ydx-ease-garnish  "garnish": the ✳ being placed, with a little overshoot (the loader's star, the footer's) */
 
@@ -21,8 +21,7 @@
    1. Hold every entrance while the loader (or the language wipe) is covering the page, so the table is set
       in front of the guest, not behind the cloth.                                                            */
 html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay],
-html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay] *,
-html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay]::after { animation-play-state: paused !important; }
+html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paused !important; }
 /* (Round 2: keyed to .ydx-on, which enhance.js sets, so if that script is slow or never arrives the table is still
    set behind the CSS-only loader bail instead of staying invisible.) */
 
@@ -258,28 +257,7 @@ html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay]::after { animation-play-state:
 /* ---------------------------------------------------------------------------------------------------------------
    Round 4 */
 
-/* 4a. The stitching is sewn as each cloth is laid. The dashed hem line of the hero, the courses, the hosting cloth and
-       the invitation (the site's own ::after) used to just be there; now, as the table is set, the thread runs out
-       from the top centre in both directions and meets at the bottom, the same moment as the pieces set down.
-       A conic mask on the ::after only, driven by a registered angle. Without @property the angle can't
-       interpolate and the line simply appears; without JS (no .ydx-enter) nothing is hidden. */
-@property --ydx-sew { syntax: '<angle>'; inherits: false; initial-value: 180deg; }
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes ydx-sew { from { --ydx-sew: 0deg; } to { --ydx-sew: 180deg; } }
-  html.lay-ready.ydx-enter [data-lay]:is(.hero, .course, .hosting, .invitation)::after {
-    -webkit-mask: conic-gradient(#000 0 var(--ydx-sew), #0000 0 calc(360deg - var(--ydx-sew)), #000 0);
-            mask: conic-gradient(#000 0 var(--ydx-sew), #0000 0 calc(360deg - var(--ydx-sew)), #000 0);
-  }
-  html.lay-ready.ydx-enter [data-lay]:is(.hero, .course, .hosting, .invitation):not(.is-laid)::after { --ydx-sew: 0deg; }
-  html.lay-ready.ydx-enter [data-lay].is-laid:is(.hero, .course, .hosting, .invitation)::after {
-    animation: ydx-sew 1.5s var(--ydx-ease-cloth) backwards .2s;
-  }
-  /* while it runs (enhance.js flags it), the stitching gets its own layer, so each frame repaints a dashed line on a
-     transparent layer instead of the whole cloth with its photos */
-  [data-ydx-sewing]::after { will-change: transform; }
-}
-
-/* 4b. One headline language. The hero, course, quilt and invitation headlines rise line by line, but the chef's,
+/* 4a. One headline language. The hero, course, quilt and invitation headlines rise line by line, but the chef's,
        the hosting cloth's and the gallery's "a little precision, a lot of heart" faded up as one block (the site's
        [data-rise]). They now rise line by line too, on the site's own .is-in, with the rest of the block following. */
 @media (prefers-reduced-motion: no-preference) {
@@ -297,14 +275,14 @@ html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay]::after { animation-play-state:
   html.lay-ready.ydx-enter .gallery__word[data-rise].is-in > a { animation: ydx-up .7s var(--ydx-ease) backwards .38s; }
 }
 
-/* 4c. End of the page: when the footer comes into view its ✳ is placed like the garnish at the start (the loader's
+/* 4b. End of the page: when the footer comes into view its ✳ is placed like the garnish at the start (the loader's
        star), so the evening closes the way it opened. Once per page (enhance.js flags .foot[data-ydx-in]). */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes ydx-garnish { from { opacity: 0; transform: rotate(-150deg) scale(.2); } }
   html.ydx-on .foot[data-ydx-in] .wordmark i { display: inline-block; animation: ydx-garnish .8s var(--ydx-ease-garnish) backwards .25s; }
 }
 
-/* 4d. Booking form error state. A required field left empty only got the browser's bubble; the underline now turns
+/* 4c. Booking form error state. A required field left empty only got the browser's bubble; the underline now turns
        pomegranate once the guest has interacted with it (:user-invalid, so nothing is red before they try). */
 .booking :is(input, textarea):user-invalid { border-bottom-color: var(--pom); box-shadow: 0 2px 0 var(--pom); }
 

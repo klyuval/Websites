@@ -22,8 +22,8 @@
     // enhance.css present? (it sets --ydx-css on :root). Without it the wipe would be unstyled divs in the flow.
     const hasCSS = () => getComputedStyle(doc).getPropertyValue('--ydx-css').trim() === '1';
     const cls = doc.classList;
-    // Round 4: the "cloth" curve, shared by every cover (loader lift, language wipe) and by the stitching in
-    // enhance.css (--ydx-ease-cloth). Kept here as a literal: the loader can lift before enhance.css has arrived.
+    // Round 4 motion tokens (see enhance.css :root): the "cloth" curve is shared by both covers (loader lift, language
+    // wipe), "settle" is the site's own --ease. Literals: the loader can lift before enhance.css has arrived.
     const CLOTH = 'cubic-bezier(.66,0,.22,1)', SETTLE = 'cubic-bezier(.2,.8,.2,1)';
     const loader = document.querySelector('.ydx-ld');
     // Round 3: did this script arrive late? If the loader has already gone (its CSS-only bail ran because this file
@@ -414,15 +414,6 @@
         });
         el.addEventListener('pointerleave', () => { tx = 0; ty = 0; id ||= requestAnimationFrame(step); });
       });
-    }
-
-    /* Round 4: the stitching is sewn on with a mask (enhance.css 4a), which repaints every frame; give it a layer of
-       its own only for the 1.5s it runs. */
-    if (!RM) {
-      addEventListener('animationstart', e => { if (e.animationName === 'ydx-sew') e.target.setAttribute('data-ydx-sewing', ''); }, true);
-      const unsew = e => { if (e.animationName === 'ydx-sew') e.target.removeAttribute('data-ydx-sewing'); };
-      addEventListener('animationend', unsew, true);
-      addEventListener('animationcancel', unsew, true);
     }
 
     /* Boot + re-scan when React re-renders (language switch re-mounts the whole page). */

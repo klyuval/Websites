@@ -228,6 +228,8 @@ html.ydx-motion .btn { transition: transform .16s var(--ease), box-shadow .16s v
     html.ydx-motion .servings::before { animation: ydx-melt linear both; animation-timeline: --ydx-sv; animation-range: entry 0% entry 70%; }
     html.ydx-motion .visit::before { animation: ydx-melt linear both; animation-timeline: --ydx-vi; animation-range: entry 0% entry 70%; }
     html.ydx-motion .site:not(.host-site) > footer::before { animation: ydx-melt linear both; animation-timeline: --ydx-ft; animation-range: entry 0% entry 70%; }
+    /* own layer: the stretch scales an already-rasterised strip instead of repainting the SVG each frame */
+    html.ydx-motion :is(.servings, .visit, .site:not(.host-site) > footer)::before { will-change: scale; }
   }
 }
 @keyframes ydx-melt { from { scale: 1 .18; } 60% { scale: 1 .82; } to { scale: 1 1; } }
