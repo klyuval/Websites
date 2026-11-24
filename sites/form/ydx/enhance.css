@@ -97,7 +97,9 @@ dialog.modal[open]::backdrop { animation: ydx-fade .22s ease both; }
 .club-page-library .exercise-catalog:empty::before { content: "המדף ריק"; max-width: 18ch; font: 900 clamp(26px, 3vw, 38px)/.95 var(--f-display); text-transform: uppercase; }
 .club-page-library .exercise-catalog:empty::after,
 .club-page-library .table-scroll:has(tbody:empty)::after { content: "אפשר לנסות חיפוש אחר או להוסיף תרגיל חדש."; max-width: 46ch; color: var(--ink-2); }
-.club-page-library .table-scroll:has(tbody:empty)::after { content: "לא נמצאו מרכיבים שמתאימים לחיפוש."; display: block; padding: 22px 10px; text-align: center; font-weight: 500; }
+.club-page-library .table-scroll:has(tbody:empty) { display: flex; flex-direction: column; }
+.club-page-library .table-scroll:has(tbody:empty) > :not(table) { order: 2; }
+.club-page-library .table-scroll:has(tbody:empty)::after { content: "לא נמצאו מרכיבים שמתאימים לחיפוש."; order: 1; display: block; max-width: none; padding: 26px 10px 8px; text-align: center; font-weight: 500; }
 html[lang="en"] .club-page-library .exercise-catalog:empty::before { content: "Nothing on the rack"; }
 html[lang="en"] .club-page-library .exercise-catalog:empty::after { content: "Try another search, or add a new movement."; }
 html[lang="en"] .club-page-library .table-scroll:has(tbody:empty)::after { content: "No ingredients match this search."; }
