@@ -12,6 +12,10 @@
    ========================================================================== */
 (() => {
   'use strict';
+  // run once, even if the script ends up on the page twice; the inline boot
+  // script in index.html also reads this flag to tell "enhance.js failed".
+  if (window.__ydxForm) return;
+  window.__ydxForm = true;
   const d = document, html = d.documentElement;
   const rootEl = d.getElementById('root');
   const RM = matchMedia('(prefers-reduced-motion: reduce)');
@@ -25,13 +29,17 @@
   const EASE_PAGE = 'cubic-bezier(.55,0,.1,1)';
   const t0 = window.__ydxT0 || 0;
   let busyUntil = 0; // a full-screen wipe is playing: skip smaller ones
+  // enhance.css sets --ydx-css; without it overlays would render unstyled
+  // (static, clickable, label text in the page flow), so skip them.
+  const cssOn = () => getComputedStyle(html).getPropertyValue('--ydx-css').trim() === '1';
 
   /* ---------- curtain wipe (shared by loader exit and transitions) ------- */
   // Slides `cur` (a curtain that is 100% + edge wide, edge on its inline-start
   // side) off-screen in reading direction; `stage` counter-drifts for depth.
-  function slideOff(cur, stage, width, duration, delay = 0, easing = EASE_WIPE) {
+  // The curtain is exactly overlay width + edge wide, so that is the distance.
+  function slideOff(cur, stage, duration, delay = 0, easing = EASE_WIPE) {
     const s = dirSign();
-    const dist = width + (parseFloat(getComputedStyle(cur.parentNode).getPropertyValue('--ew')) || 72);
+    const dist = cur.offsetWidth;
     const a = cur.animate([{ transform: 'translateX(0)' }, { transform: `translateX(${s * dist}px)` }],
       { duration, delay, easing, fill: 'forwards' });
     if (stage) stage.animate([{ transform: 'translateX(0)', opacity: 1 }, { transform: `translateX(${-s * dist * 0.72}px)`, opacity: 0.2 }],
@@ -47,14 +55,20 @@
     } catch (e) { /* decorative only */ }
   }
 
-  // Build an overlay over `rect` (viewport if null) and play it.
-  function wipe({ rect = null, area = null, label = '', duration = 520, z = 70 } = {}) {
-    if (reduced()) return Promise.resolve();
+  // Build an overlay over `rect` (the whole viewport if null) and play it.
+  // z: 45 sits under the app's mobile drawer (50) so a drawer closing over a
+  // view switch stays whole; 55 (full screen) covers it. Toasts and dialogs
+  // live in the top layer and stay above both.
+  function wipe({ rect = null, area = null, label = '', duration = 520, z = 45 } = {}) {
+    if (reduced() || !cssOn()) return Promise.resolve();
     const w = d.createElement('div');
     w.className = 'ydx-wipe';
     w.setAttribute('aria-hidden', 'true');
-    const r = rect || { left: 0, top: 0, width: innerWidth, height: innerHeight };
-    Object.assign(w.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', zIndex: z });
+    // full screen uses inset:0 (CSS) rather than innerWidth/innerHeight, which
+    // follow the visual viewport when pinch-zoomed
+    if (rect) Object.assign(w.style, { left: rect.left + 'px', top: rect.top + 'px', width: rect.width + 'px', height: rect.height + 'px' });
+    else w.style.inset = '0';
+    w.style.zIndex = z;
     if (area) { w.style.setProperty('--ew', '30px'); w.style.setProperty('--area', AREA[area] || AREA.red); }
     const edge = area
       ? `<div class="ydx-edge is-area"><i style="--c:${AREA[area] || AREA.red}"></i><i></i></div>`
@@ -64,7 +78,9 @@
     const cur = w.firstChild;
     bodyBackground(cur);
     d.body.appendChild(w);
-    return slideOff(cur, w.querySelector('.ydx-label'), r.width, duration, 0, area ? EASE_PAGE : EASE_WIPE).then(() => w.remove());
+    try {
+      return slideOff(cur, w.querySelector('.ydx-label'), duration, 0, area ? EASE_PAGE : EASE_WIPE).then(() => w.remove());
+    } catch (e) { w.remove(); return Promise.resolve(); }
   }
 
   /* ---------- boot loader ------------------------------------------------ */
@@ -78,41 +94,54 @@
     return 'app';
   };
 
+  // Hand the page back: everything that could leave it locked or hidden is
+  // undone first and synchronously, before any (optional) exit animation.
+  function release() {
+    html.classList.remove('ydx-loading');
+    if (rootEl) rootEl.inert = false;
+    loader.style.pointerEvents = 'none';
+  }
+
   function finishLoader() {
     if (loaderGone) return;
     loaderGone = true;
     try { sessionStorage.setItem('ydx-form-seen', '1'); } catch (e) { /* private mode */ }
     const done = () => { loader.remove(); };
-    loader.style.pointerEvents = 'none';
-    if (reduced()) {
-      html.classList.remove('ydx-loading');
-      if (rootEl) rootEl.inert = false;
-      loader.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).finished.then(done, done);
-      return;
-    }
-    const mode = loader.getAttribute('data-mode');
-    const quick = mode === 'repeat' || mode === 'frame';
-    const stage = loader.querySelector('.ydx-stage');
-    const cur = loader.querySelector('.ydx-cur');
-    const tStart = performance.now();
-    // the bar is lifted a touch (a clean pull) before the curtain goes; the
-    // lift runs on the compositor while we do the heavy work underneath
-    const lift = quick ? 0 : 150;
-    if (lift) stage.querySelector('.ydx-bar').animate([{ transform: 'none' }, { transform: 'translateY(-10px)' }], { duration: lift + 220, easing: EASE_OUT, fill: 'forwards' });
-    // Release the app's paused entrances and set up our choreography while the
-    // floor still covers everything, in two separate frames (each is a big
-    // style pass), and only then pull the curtain. Doing it after the curtain
-    // started let finished content show for a frame and then re-enter.
-    html.classList.remove('ydx-loading');
-    if (rootEl) rootEl.inert = false;
-    requestAnimationFrame(() => {
-      pageWindow = performance.now() + 500;
-      choreograph(true, quick ? 60 : 140);
+    release();
+    try {
+      if (reduced()) {
+        loader.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).finished.then(done, done);
+        return;
+      }
+      const mode = loader.getAttribute('data-mode');
+      const quick = mode === 'repeat' || mode === 'frame';
+      const stage = loader.querySelector('.ydx-stage');
+      const cur = loader.querySelector('.ydx-cur');
+      const tStart = performance.now();
+      // the bar is lifted a touch (a clean pull) before the curtain goes; the
+      // lift runs on the compositor while we do the heavy work underneath
+      const lift = quick ? 0 : 150;
+      if (lift) stage.querySelector('.ydx-bar').animate([{ transform: 'none' }, { transform: 'translateY(-10px)' }], { duration: lift + 220, easing: EASE_OUT, fill: 'forwards' });
+      // The app was released (paused entrances un-paused) above, while the
+      // floor still covers everything; our choreography is set up in the next
+      // frame and the curtain pulled in the one after (each is a big style
+      // pass). Doing it after the curtain started let finished content show
+      // for a frame and then re-enter. In a background tab these frames wait
+      // until the tab is shown; the inline script's backstop still removes
+      // the loader meanwhile.
       requestAnimationFrame(() => {
-        const wait = Math.max(0, lift - (performance.now() - tStart));
-        slideOff(cur, stage, innerWidth, mode === 'frame' ? 300 : quick ? 380 : 600, wait).then(done, done);
+        try {
+          pageWindow = performance.now() + 500;
+          choreograph(true, quick ? 60 : 140);
+        } catch (e) { /* decorative */ }
+        requestAnimationFrame(() => {
+          try {
+            const wait = Math.max(0, lift - (performance.now() - tStart));
+            slideOff(cur, stage, mode === 'frame' ? 300 : quick ? 380 : 600, wait).then(done, done);
+          } catch (e) { done(); }
+        });
       });
-    });
+    } catch (e) { done(); }
   }
 
   if (loader) {
@@ -121,26 +150,36 @@
     loader.addEventListener('wheel', stop, { passive: false });
     loader.addEventListener('touchmove', stop, { passive: false });
     const mode = loader.getAttribute('data-mode');
-    // first visit lets the bar finish loading (~1.1s of plates); repeat/iframe/reduced are brief
-    // first visit: the bar is loaded and locked at ~1.05s
+    // first visit: the bar is loaded and locked at ~1.05s; repeat/iframe/reduced are brief
     const minShow = reduced() ? 450 : mode === 'repeat' ? 260 : mode === 'frame' ? 260 : 1080;
     const hardStop = framed ? 420 : 3300; // + exit (~300 / ~750ms) keeps it under 0.8s / 4s
     // enhance.js owns the exit from here: drop the CSS fallback fade, which
-    // would otherwise fight the curtain on slow connections
-    if (performance.now() - t0 < 14500) loader.style.animation = 'none';
-    // keyboard focus must not land on the (covered) app while the bar loads
-    if (rootEl) rootEl.inert = true;
+    // would otherwise fight the curtain on slow connections. If that fade has
+    // already begun (this script arrived late), cancelling it would bring the
+    // loader back over a visible page, so let it finish and just clean up.
+    const ls = getComputedStyle(loader);
+    if (ls.visibility === 'hidden' || parseFloat(ls.opacity) < 1) {
+      loaderGone = true;
+      release();
+      setTimeout(() => loader.remove(), 400);
+    } else {
+      loader.style.animation = 'none';
+      // keyboard focus must not land on the (covered) app while the bar loads
+      if (rootEl) rootEl.inert = true;
+    }
     const fontsReady = Promise.race([d.fonts ? d.fonts.ready : Promise.resolve(), new Promise(r => setTimeout(r, 1500))]);
     let fontsOk = false; fontsReady.then(() => { fontsOk = true; });
     const tick = () => {
       if (loaderGone) return;
-      const el = performance.now() - t0;
-      const st = appState();
-      const ready = (st === 'signin' || st === 'app') && fontsOk && d.readyState !== 'loading';
-      // past the hard stop we still wait while #root is empty (bundle still
-      // downloading): revealing a blank floor is worse than the bar. 15s cap.
-      if ((ready && el >= minShow) || (el >= hardStop && st !== 'none') || el >= 15000) finishLoader();
-      else setTimeout(tick, 60);
+      try {
+        const el = performance.now() - t0;
+        const st = appState();
+        const ready = (st === 'signin' || st === 'app') && fontsOk && d.readyState !== 'loading';
+        // past the hard stop we still wait while #root is empty (bundle still
+        // downloading): revealing a blank floor is worse than the bar. 15s cap.
+        if ((ready && el >= minShow) || (el >= hardStop && st !== 'none') || el >= 15000) finishLoader();
+        else setTimeout(tick, 60);
+      } catch (e) { finishLoader(); }
     };
     tick();
   }
@@ -153,6 +192,7 @@
     '.client-hero', '.daily-fuel', '.score', '.session-score', '.progress-photo', '.coach-note', '.tip-box'].join(',');
   const COUNT = '.lead-number, .stat > strong, .score-number, .macro-card strong, .progress-stats strong';
   const seen = new WeakSet();
+  const pending = new Set(); // observed below-the-fold blocks (pruned on view changes)
   let io = null;
 
   function enter(el, delay) {
@@ -216,9 +256,13 @@
     if (!io) io = new IntersectionObserver(entries => entries.forEach(e => {
       if (!e.isIntersecting) return;
       io.unobserve(e.target);
+      pending.delete(e.target);
       e.target.removeAttribute('data-ydx-rv');
       enter(e.target, 0);
     }), { rootMargin: '0px 0px -8% 0px', threshold: 0.01 });
+    // blocks React unmounted before they were scrolled to: stop observing them
+    // (the observer would otherwise keep the detached trees alive)
+    if (page) pending.forEach(el => { if (!el.isConnected) { io.unobserve(el); pending.delete(el); } });
     const vh = innerHeight;
     // read phase: measure everything first (no layout thrash) ...
     const jobs = [];
@@ -236,7 +280,7 @@
     let i = 0;
     jobs.forEach(([el, nested, onScreen]) => {
       if (onScreen) { if (!nested) enter(el, base + Math.min(i++, 9) * 55); else countIn(el, base + 110); }
-      else if (!nested) { el.setAttribute('data-ydx-rv', 'pending'); io.observe(el); }
+      else if (!nested) { el.setAttribute('data-ydx-rv', 'pending'); pending.add(el); io.observe(el); }
     });
     drawChart(main);
   }
@@ -271,7 +315,7 @@
     if (loaderGone && lastState && st !== lastState && (st === 'app' || st === 'signin') && !framed) {
       // sign-in <-> studio, or the app's own boot screen handing over
       busyUntil = now + 700;
-      wipe({ duration: 680, z: 80 });
+      wipe({ duration: 680, z: 55 });
       if (st === 'app') { pageWindow = now + 700; setTimeout(() => choreograph(true), 40); }
     } else if (loaderGone && st === 'app' && lastKey && key && key !== lastKey) {
       const pageChanged = lastKey.split('|')[0] !== page;
@@ -288,7 +332,7 @@
     }
     if (html.dir !== lastDir) {
       // language switch: the floor names the language it is switching to
-      if (loaderGone && lastDir && now > busyUntil) { busyUntil = now + 600; wipe({ duration: 560, z: 80, label: html.dir === 'rtl' ? 'עברית' : 'English' }); }
+      if (loaderGone && lastDir && now > busyUntil) { busyUntil = now + 600; wipe({ duration: 560, z: 55, label: html.dir === 'rtl' ? 'עברית' : 'English' }); }
       lastDir = html.dir;
     }
     lastState = st; lastKey = key || lastKey;

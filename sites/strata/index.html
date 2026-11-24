@@ -24,10 +24,10 @@
       .yl-grid{position:absolute;inset:0;background:linear-gradient(rgba(244,239,226,.075) 1px,transparent 1px) 0 0/32px 32px,linear-gradient(90deg,rgba(244,239,226,.075) 1px,transparent 1px) 0 0/32px 32px,linear-gradient(rgba(244,239,226,.06) 1px,transparent 1px) 0 0/160px 160px,linear-gradient(90deg,rgba(244,239,226,.06) 1px,transparent 1px) 0 0/160px 160px;background-position:50% 50%;-webkit-mask:radial-gradient(ellipse 75% 70% at 50% 50%,#000 30%,transparent 100%);mask:radial-gradient(ellipse 75% 70% at 50% 50%,#000 30%,transparent 100%)}
       .yl-ui{position:absolute;inset:0;padding:18px clamp(16px,2.6vw,40px)}
       .yl-tl,.yl-tr{position:absolute;top:22px}
-      .yl-tl{left:clamp(16px,2.6vw,40px)}
-      .yl-tr{right:clamp(16px,2.6vw,40px);opacity:.6}
+      .yl-tl{left:clamp(16px,2.6vw,40px);left:max(clamp(16px,2.6vw,40px),env(safe-area-inset-left))}
+      .yl-tr{right:clamp(16px,2.6vw,40px);right:max(clamp(16px,2.6vw,40px),env(safe-area-inset-right));opacity:.6}
       .yl-tl b,.yl-count b{color:#c6f24e;font-weight:500}
-      .yl-stage{position:absolute;left:50%;top:50%;width:min(84vw,1000px,(100svh - 240px)*3.6);transform:translate(-50%,-56%)}
+      .yl-stage{position:absolute;left:50%;top:50%;width:min(84vw,1000px);width:min(84vw,1000px,(100svh - 240px)*3.6);transform:translate(-50%,-56%)}
       .yl-sel{position:absolute;inset:-14px -16px -10px;border:1px solid rgba(244,239,226,.35)}
       .yl-sel b{position:absolute;width:9px;height:9px;margin:-5px;background:#17151c;border:1.5px solid rgba(244,239,226,.7)}
       .yl-sel b:nth-child(2){left:100%}.yl-sel b:nth-child(3){top:100%}.yl-sel b:nth-child(4){left:100%;top:100%}
@@ -39,16 +39,20 @@
       .yl-car{position:absolute;left:0;top:0;width:100%;height:0;transform:translateX(6%)}
       .yl-rail{position:absolute;left:calc(var(--head)*-.2);bottom:calc(var(--head)*.47);width:220vw;height:calc(var(--head)*.15);background:linear-gradient(#33313b 0 22%,#1d1b23 22% 78%,#0e0d12 78%)}
       .yl-head{position:absolute;left:0;bottom:-2px;height:var(--head);width:auto;max-width:none;transform:translate(-33%)}
-      .yl-foot{position:absolute;left:clamp(16px,2.6vw,40px);right:clamp(16px,2.6vw,40px);bottom:30px;display:flex;justify-content:space-between;gap:12px}
+      .yl-foot{position:absolute;left:clamp(16px,2.6vw,40px);right:clamp(16px,2.6vw,40px);bottom:30px;left:max(clamp(16px,2.6vw,40px),env(safe-area-inset-left));right:max(clamp(16px,2.6vw,40px),env(safe-area-inset-right));bottom:calc(30px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;gap:12px}
       .yl-seam{position:absolute;left:0;right:0;bottom:0;display:grid}
       .yl-seam i{display:block;height:5px;transform:scaleX(0);transform-origin:0 50%}
       .yl-seam i:nth-child(1){background:#c6f24e}.yl-seam i:nth-child(2){background:#ff6a1a}.yl-seam i:nth-child(3){background:#4a2cf0}
       html.ydx-fail #ydx-loader{display:none}
       html.ydx-hold:not(.ydx-fail) .hero-word{transform:translate3d(0,150vh,0);opacity:0}
       html.ydx-hold:not(.ydx-fail) .hero-vase img{animation:none;opacity:0}
-      @media (max-width:560px){.yl-tr{display:none}.yl-stage{width:88vw}.yl-foot{bottom:26px;flex-direction:column}}
+      @media (max-width:560px){.yl-tr{display:none}.yl-stage{width:88vw}.yl-foot{bottom:26px;bottom:calc(26px + env(safe-area-inset-bottom,0px));flex-direction:column}}
     </style>
-    <script src="/ydx/enhance.js" defer onerror="document.documentElement.classList.add('ydx-fail')"></script><!-- ydx: if it fails to load, ydx-fail drops the loader and the hero hold at once -->
+    <!-- ydx: enhance.js is async, so the app bundle never waits for it. If it fails to load (404) or loads but
+         does not run (the host's SPA fallback serves index.html as a 200 for a missing file, a syntax error, a
+         blocked request), __ydxFail drops the loader and the hero hold at once. -->
+    <script data-ydx>window.__ydxFail=function(){var d=document.documentElement,l=document.getElementById('ydx-loader');d.classList.add('ydx-fail');d.classList.remove('ydx-hold','ydx-intro');l&&l.remove()}</script>
+    <script src="/ydx/enhance.js" async onerror="__ydxFail()" onload="window.__ydxLoader||__ydxFail()"></script>
     <script type="module" crossorigin src="/assets/index-CkiVEG1F.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-C1lfMyBM.css">
     <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
@@ -76,12 +80,16 @@
     <noscript><style>#ydx-loader{display:none}</style></noscript><!-- ydx -->
     <script data-ydx>
       // ydx: hold the hero (its own print + the intro, paused in its first frame) until the loader hands over.
-      // Failsafe if enhance.js never runs (a failed load is caught at once by its onerror; this covers a hang).
-      (function(){var d=document.documentElement,l=document.getElementById('ydx-loader');
+      // Failsafes (a failed or non-running enhance.js is caught at once by its onerror/onload):
+      // - the app has rendered but enhance.js has still not run 1.5s later: show the page without the layer;
+      // - whatever happens, the cover is gone 12s after it first painted (enhance.js's own ceiling is 9s).
+      (function(){var d=document.documentElement,l=document.getElementById('ydx-loader'),t0=window.__ydxT0=performance.now(),seen=0;
       // ydx: fade the silhouette in once its mask image has loaded (instead of popping in).
       try{var g=new Image();g.crossOrigin="anonymous";g.onload=g.onerror=function(){l&&l.classList.add('yl-g')};g.src='/img/w-strata-ghost.webp'}catch(e){l&&l.classList.add('yl-g')}
-      try{if(!location.hash||location.hash==='#top')d.classList.add('ydx-hold','ydx-intro')}catch(e){}
-      setTimeout(function(){if(window.__ydxLoader)return;l&&l.remove();d.classList.remove('ydx-hold','ydx-intro')},8000)})();
+      try{if(!d.classList.contains('ydx-fail')&&(!location.hash||location.hash==='#top'))d.classList.add('ydx-hold','ydx-intro')}catch(e){}
+      (function poll(){if(!l||!l.isConnected||l.classList.contains('is-out'))return;var t=performance.now();
+      if(!window.__ydxLoader&&d.querySelector('#root .site')){seen=seen||t;if(t-seen>1500)return __ydxFail()}
+      if(t-t0>12000)return __ydxFail();setTimeout(poll,250)})()})();
     </script>
     <div id="root"></div>
   </body>

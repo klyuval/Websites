@@ -9,6 +9,8 @@
    Everything here uses transform / opacity / one-shot clip-path and respects prefers-reduced-motion. */
 (() => {
   'use strict';
+  if (window.__ydxEnh) return;                             // loaded twice: the first copy already owns the page
+  window.__ydxEnh = true;
   const d = document, html = d.documentElement;
   const $ = (s, el = d) => el.querySelector(s);
   const $$ = (s, el = d) => [...el.querySelectorAll(s)];
@@ -19,13 +21,27 @@
   const OUT = 'cubic-bezier(.2,.8,.2,1)', INOUT = 'cubic-bezier(.7,0,.2,1)';
   const canAnimate = typeof Element.prototype.animate === 'function';
   const wait = ms => new Promise(r => setTimeout(r, ms));
+  /* enhance.css loaded? (the link sits before this script, so it has loaded or failed by now). Without it the shutter,
+     the progress bar and the torn-proof clones would land in the page flow unstyled, so they are skipped. */
+  const cssOK = getComputedStyle(html).getPropertyValue('--ydx-css').trim() === '1';
+  if (cssOK) html.classList.add('ydx-on');                 // hide-before-reveal states in enhance.css key on this, not on the inline ydx-js
+  if ('ffLenis' in window) html.classList.add('ydx-app');  // app.js ran: its .in classes will arrive, so marks may wait for them
 
   /* ================= 1. loader ================= */
   const loader = $('#ydx-loader');
   let heroPlayed = false;
-  clearTimeout(window.__ydxFS);                            // the inline failsafe only covers a missing enhance.js
-  if (loader && html.classList.contains('ydx-loading')) runLoader();
-  else { if (loader) loader.remove(); d.addEventListener('DOMContentLoaded', () => heroIntro(0), { once: true }); }
+  /* the inline failsafe covers a missing enhance.js; from here this script owns the loader, with its own last-resort
+     timer below in case anything in the exit throws */
+  clearTimeout(window.__ydxFS);
+  const unlock = () => { html.classList.remove('ydx-loading'); if (loader) loader.remove(); };
+  if (loader && (html.classList.contains('ydx-fail') || !html.classList.contains('ydx-loading'))) {
+    /* the inline failsafe is fading the sheet (ydx-fail) or has already lifted it (the sheet is still in the DOM but
+       ydx-loading is gone): the cover has been on screen, so no intro, which would hide the headline again */
+    heroPlayed = true;
+    setTimeout(unlock, 450);
+  } else if (loader) {
+    try { runLoader(); } catch (e) { unlock(); }
+  } else d.addEventListener('DOMContentLoaded', () => heroIntro(0), { once: true });
 
   function runLoader() {
     /* times are counted from the moment the sheet was painted (inline head script), not from navigation start,
@@ -70,17 +86,20 @@
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
-    setTimeout(() => leave(), Math.max(0, HARD + 200 - performance.now()));   // in case rAF is throttled
+    setTimeout(() => leave(), Math.max(0, HARD + 200 - performance.now()));   // rAF does not run in a background tab
+    setTimeout(unlock, Math.max(0, HARD + 1600 - performance.now()));         // last resort: the exit takes < 1s
 
     function leave() {
       if (gone) return; gone = true;
+      try { exit(); } catch (e) { unlock(); }              // whatever happens, the sheet never stays over the page
+    }
+    function exit() {
       p = 1; paint();
       try { sessionStorage.setItem('ydx-ff-seen', '1'); } catch (e) { /* storage blocked */ }
-      const done = () => { html.classList.remove('ydx-loading'); loader.remove(); };
-      if (!motion() || !canAnimate) {
+      if (!motion() || !canAnimate || !cssOK) {
         heroIntro(0);
-        if (canAnimate) loader.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' }).finished.then(done, done);
-        else done();
+        if (canAnimate) loader.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' }).finished.then(unlock, unlock);
+        else unlock();
         return;
       }
       const first = mode === 'first' && !late, frame = mode === 'frame';
@@ -106,7 +125,7 @@
       $$('.ydx-plates > i', loader).forEach((c, i) => c.animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(0,-101%,0)' }],
         { duration: dur, delay: sheetOut + lag + i * st, easing: INOUT, fill: 'forwards' }));
       heroIntro(sheetOut + lag + st + dur * 0.28);              // the cover starts printing while the plates are still passing
-      setTimeout(done, sheetOut + lag + st * 4 + dur + 40);
+      setTimeout(unlock, sheetOut + lag + st * 4 + dur + 40);
     }
   }
 
@@ -155,7 +174,7 @@
   const progress = d.createElement('i');                   // round 2: reading progress as the proof colour bar (enhance.css)
   progress.className = 'ydx-progress'; progress.setAttribute('aria-hidden', 'true');
   const ready = () => d.body.append(shutter, progress);
-  if (d.body) ready(); else d.addEventListener('DOMContentLoaded', ready, { once: true });
+  if (cssOK) { if (d.body) ready(); else d.addEventListener('DOMContentLoaded', ready, { once: true }); }
 
   /* flush: a transition lands a colour field exactly at the top. With the 70px scroll padding a strip of the previous
      field showed above it, so pink plates lifted onto a mint band. The floating header pills sit fine over the field. */
@@ -169,15 +188,33 @@
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const a = e.target.closest && e.target.closest('a[href^="#"]');
     if (!a || a.classList.contains('skip') || a.target) return;
-    const id = decodeURIComponent(a.hash.slice(1)), target = id && d.getElementById(id);
-    if (!target || busy || !motion() || !canAnimate || html.classList.contains('ydx-loading')) return;
+    let id = ''; try { id = decodeURIComponent(a.hash.slice(1)); } catch (err) { return; }   // a malformed %-escape: leave it to the browser
+    const target = id && d.getElementById(id);
+    if (!target) return;
+    /* a second activation while the plates are up (Enter held or pressed twice: the plates block pointer clicks) would
+       otherwise fall through to Lenis' glide and the native jump under the shutter */
+    if (busy) { e.preventDefault(); e.stopPropagation(); return; }
+    if (!cssOK || !motion() || !canAnimate || html.classList.contains('ydx-loading')) return;
     if (Math.abs(targetTop(target) - scrollY) < innerHeight * 1.2) return;   // a short glide reads better than a cut
     e.preventDefault(); e.stopPropagation();                                 // Lenis listens on window, after us
-    play(target);
+    play(target, a.hash);
   });
+  /* Back / Forward while the plates are closing: the jump and the history entry are dropped, the plates just lift */
+  let aborted = false;
+  addEventListener('popstate', () => { if (busy) aborted = true; });
 
-  async function play(target) {
-    busy = true;
+  /* the plates never stay up: if anything below throws, the shutter is released and the page jumps natively */
+  async function play(target, hash) {
+    busy = true; aborted = false;
+    try { await run(target, hash); } catch (e) {
+      try { target.scrollIntoView(); } catch (e2) { /* nothing more to do */ }
+    } finally {
+      shutter.classList.remove('on');
+      shutter.querySelectorAll('*').forEach(el => el.getAnimations && el.getAnimations().forEach(a => a.cancel()));
+      busy = false;
+    }
+  }
+  async function run(target, hash) {
     const cs = getComputedStyle(target.closest('[data-field]') || target);
     const field = cs.getPropertyValue('--field').trim() || 'var(--yellow)', on = cs.getPropertyValue('--on').trim() || 'var(--ink)';
     shutter.style.setProperty('--field', field); shutter.style.setProperty('--on', on);
@@ -204,12 +241,17 @@
     label.animate([{ opacity: 0, transform: 'translate3d(0,calc(-50% + 22px),0)' }, { opacity: 1, transform: 'translate3d(0,-50%,0)' }],
       { duration: 150, delay: COVER, easing: OUT, fill: 'forwards' });   // only once the plates have closed
     await wait(COVER + ST * 4 + 20);
-    /* jump while covered */
-    const top = targetTop(target, target.matches('.sec[data-field], #top')), lenis = window.ffLenis;
-    settle(target);                                            // the plates already showed this headline: no second entrance
-    if (lenis) lenis.scrollTo(top, { immediate: true, force: true }); else window.scrollTo({ top, behavior: 'instant' });
-    if (!target.hasAttribute('tabindex')) { target.setAttribute('tabindex', '-1'); target.setAttribute('data-ydx-ft', ''); }
-    try { target.focus({ preventScroll: true }); } catch (e) { /* old browser */ }
+    if (!aborted) {
+      /* jump while covered. The URL takes the hash, as a native anchor click would (a new history entry, or a
+         replacement for the same hash); it is pushed before the jump so the entry we leave keeps its own scroll position */
+      try { if (location.hash === hash) history.replaceState(history.state, '', hash); else history.pushState(null, '', hash); } catch (e) { /* sandboxed */ }
+      const top = targetTop(target, target.matches('.sec[data-field], #top')), lenis = window.ffLenis;
+      settle(target);                                          // the plates already showed this headline: no second entrance
+      if (lenis) lenis.scrollTo(top, { immediate: true, force: true });
+      else { try { window.scrollTo({ top, behavior: 'instant' }); } catch (e) { window.scrollTo(0, top); } }   // older engines reject 'instant'
+      if (!target.hasAttribute('tabindex')) { target.setAttribute('tabindex', '-1'); target.setAttribute('data-ydx-ft', ''); }
+      try { target.focus({ preventScroll: true }); } catch (e) { /* old browser */ }
+    }
     await wait(70);
     /* the label is gone before the plates open: on a plate of the same colour as the field it would otherwise
        cross-dissolve with the real headline underneath */
@@ -217,14 +259,12 @@
       { duration: 120, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' });
     const anims = cols.map((c, i) => c.animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(0,-101%,0)' }],
       { duration: REVEAL, delay: 85 + i * ST, easing: INOUT, fill: 'forwards' }));
-    await Promise.all(anims.map(a => a.finished.catch(() => {})));
-    shutter.classList.remove('on');
-    cols.concat(label).forEach(el => el.getAnimations().forEach(a => a.cancel()));
-    busy = false;
+    /* the plates' finish, or their planned end if the tab is hidden and animation promises are held back */
+    await Promise.race([Promise.all(anims.map(a => a.finished.catch(() => {}))), wait(85 + ST * 4 + REVEAL + 400)]);
   }
 
   /* ================= 3. reveals ================= */
-  if (!motion() || !canAnimate || !('IntersectionObserver' in window)) return finishStatic();
+  if (!cssOK || !motion() || !canAnimate || !('IntersectionObserver' in window)) return finishStatic();
 
   /* headline words: split into word masks (Latin display type; letters would be fine too, words read calmer) */
   const heads = $$('.sec h2.display, .ch-head h3');
@@ -290,6 +330,7 @@
   const io = new IntersectionObserver(entries => entries.forEach(en => {
     if (!en.isIntersecting) return;
     io.unobserve(en.target);
+    if (!motion()) { en.target.classList.remove('ydx-split-wait', 'ydx-rv-wait'); return; }   // reduced motion switched on meanwhile
     if (en.target.classList.contains('ydx-split-wait')) playHead(en.target); else playEl(en.target);
   }), { rootMargin: '0px 0px -8% 0px', threshold: 0 });
   heads.forEach(h => h.classList.contains('ydx-split-wait') && io.observe(h));

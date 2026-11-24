@@ -6,6 +6,10 @@
    and only with prefers-reduced-motion: no-preference.
    ========================================================================== */
 
+/* enhance.js checks this before appending its overlays (shutter, Z readout): if this file failed to
+   load they would otherwise show up unstyled at the end of the page. */
+:root { --ydx-css: 1; }
+
 /* ---------- 1. Design fixes (all viewports) ---------------------------- */
 
 /* Nav pills: brand 41.6px, links 44px, CTA 45px, menu 46px tall — align all to 46px. */

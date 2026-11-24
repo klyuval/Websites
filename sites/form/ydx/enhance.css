@@ -6,6 +6,9 @@
    prefers-reduced-motion: no-preference.
    ========================================================================== */
 
+/* Sentinel: enhance.js only builds transition overlays when this sheet loaded */
+:root { --ydx-css: 1; }
+
 /* Registered so the calorie / plate rings can animate their fill */
 @property --p { syntax: '<number>'; inherits: true; initial-value: 0; }
 
@@ -16,7 +19,7 @@ html.ydx-loading #root *::before,
 html.ydx-loading #root *::after { animation-play-state: paused !important; }
 
 /* ---------- transition overlays (created by enhance.js, outside #root) --- */
-.ydx-wipe { position: fixed; z-index: 70; overflow: hidden; pointer-events: none; contain: layout paint; }
+.ydx-wipe { position: fixed; z-index: 45; overflow: hidden; pointer-events: none; contain: layout paint; }
 .ydx-wipe .ydx-cur { position: absolute; inset-block: 0; inset-inline-end: 0; overflow: hidden; width: calc(100% + var(--ew, 72px)); background-color: #111; will-change: transform; }
 /* edge sits above the counter-drifting stage/label so the mark slips behind the plates, not over them */
 .ydx-wipe .ydx-edge { position: absolute; z-index: 1; inset-block: 0; inset-inline-start: 0; width: var(--ew, 72px); display: flex; gap: 4px; background: #111; }
@@ -53,8 +56,9 @@ html.ydx-loading #root *::after { animation-play-state: paused !important; }
 /* Overview, 1001–1120px: the app stacks the two dashboard columns at a
    1000px *viewport*, but the 232px sidebar leaves only ~740px of content, so
    "Your people" squeezed to wrapped names, 3-line goals and a sideways
-   scroll. Stack them until there is room. (round 2) */
-@media (1000px < width <= 1120px) { .dashboard-columns { grid-template-columns: minmax(0, 1fr); } }
+   scroll. Stack them until there is room. (round 2; min/max instead of
+   range syntax in round 3 so Safari < 16.4 gets it too) */
+@media (min-width: 1000.1px) and (max-width: 1120px) { .dashboard-columns { grid-template-columns: minmax(0, 1fr); } }
 
 /* Dialog backdrop snapped on while the sheet eased in */
 dialog.modal[open]::backdrop { animation: ydx-fade .22s ease both; }

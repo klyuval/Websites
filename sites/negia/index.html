@@ -4,7 +4,8 @@
   <link rel="stylesheet" crossorigin href="/assets/main-fOJvfYOR.css">
   <link rel="stylesheet" crossorigin href="/assets/style-Db6zBEtI.css">
 <!-- ydx: loader boot (sets mode before first paint) -->
-<script data-ydx>(function(d,w){var h=d.documentElement,m='full',s;h.classList.add('ydx-js','ydx-loading');try{s=w.sessionStorage;var n=+s.getItem('ydx-nav');s.removeItem('ydx-nav');if(n&&Date.now()-n<4000)m='nav';else if(s.getItem('ydx-seen'))m='short';s.setItem('ydx-seen','1')}catch(e){}if(m!=='nav'&&w.self!==w.top)m='frame';if(w.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)m='reduced';h.setAttribute('data-ydx-load',m);w.__ydxL={mode:m,t0:Date.now()};setTimeout(function(){h.classList.remove('ydx-loading');var l=d.getElementById('ydx-loader');if(l)l.remove()},5000)})(document,window)</script>
+<script data-ydx>(function(d,w){var h=d.documentElement,m='full',s;h.classList.add('ydx-js','ydx-loading');try{s=w.sessionStorage;var n=+s.getItem('ydx-nav');s.removeItem('ydx-nav');if(n&&Date.now()-n<4000)m='nav';else if(s.getItem('ydx-seen'))m='short';s.setItem('ydx-seen','1')}catch(e){}if(m!=='nav'&&w.self!==w.top)m='frame';if(w.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)m='reduced';h.setAttribute('data-ydx-load',m);w.__ydxL={mode:m,t0:Date.now()};var bye=function(hard){if(!hard&&w.__ydxE)return;var l=d.getElementById('ydx-loader');h.classList.remove('ydx-loading');if(!l)return;l.dataset.out='1';if(hard||d.hidden)return l.remove();l.classList.add('ydx-l-bye');setTimeout(function(){l.remove()},400)};setTimeout(bye,4000);setTimeout(function(){bye(1)},6500)})(document,window)</script>
+<!-- ydx: never trap the visitor: at 4s the loader fades out unless enhance.js is running (it may 404, or wait behind the app's module script), and at 6.5s it is removed whatever happened -->
 <style data-ydx>
 /* ydx loader: critical CSS (paints before the site's own styles finish) */
 .ydx-loader{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;background:#4a0d22;background:radial-gradient(120% 90% at 50% 46%,#5b1430 0,#4a0d22 58%,#3a0a1b 100%);color:#fde5e6;pointer-events:auto;contain:strict;--k:1;--sw:min(74vw,640px)}
@@ -24,11 +25,12 @@ html:not(.ydx-loading) .ydx-loader{pointer-events:none}
 @keyframes ydx-stamp{from{opacity:0;transform:rotate(-24deg) scale(1.9)}to{opacity:1;transform:rotate(-14deg) scale(1)}}
 @keyframes ydx-fade{from{opacity:0;transform:translateY(8px)}}
 .ydx-loader:not(.is-go) .ydx-l-stage>*{animation-play-state:paused}
+.ydx-loader.ydx-l-bye{opacity:0;transition:opacity .35s ease}
 .ydx-l-warm{position:absolute;left:0;top:0;width:2px;height:2px;background:#4a0d22;-webkit-mask:url(/ydx/smear-mask.webp) 0 0/2px 2px no-repeat;mask:url(/ydx/smear-mask.webp) 0 0/2px 2px no-repeat}
 @media (max-width:760px){.ydx-l-kiss{left:-1%;top:-30%}}
 /* slow network: the cut-outs did not arrive in time, so the wordmark writes itself alone, in tint */
 .is-lite .ydx-l-smear,.is-lite .ydx-l-track,.is-lite .ydx-l-kiss{display:none}.is-lite .ydx-l-word{color:#fde5e6}
-[data-ydx-load=frame] .ydx-loader{--k:.32}
+[data-ydx-load=frame] .ydx-loader{--k:.26}
 [data-ydx-load=short] .ydx-loader *,[data-ydx-load=reduced] .ydx-loader *{animation:none!important}
 [data-ydx-load=short] .ydx-l-stick,[data-ydx-load=reduced] .ydx-l-stick{opacity:0}
 [data-ydx-load=nav] .ydx-l-stage{display:none}

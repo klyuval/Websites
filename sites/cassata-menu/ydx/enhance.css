@@ -3,6 +3,9 @@
    Everything that moves sits behind html.ydx-motion (set by enhance.js only when
    prefers-reduced-motion is not "reduce"), so content is fully visible without JS. */
 
+/* enhance.js reads this to know the stylesheet loaded (it skips the cursor and sheet ghost otherwise). */
+:root { --ydx-css: 1; }
+
 /* ------------------------------------------------------------------ */
 /* 1. Design fixes                                                     */
 /* ------------------------------------------------------------------ */

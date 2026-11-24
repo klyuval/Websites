@@ -4,6 +4,8 @@
 (function () {
   'use strict';
   var d = document, html = d.documentElement, w = window;
+  if (w.__ydxE) return; // idempotent: a second copy of this file must not double every listener, observer and cursor
+  w.__ydxE = 1; // also tells the inline boot script that this layer owns the loader exit
   var reduce = w.matchMedia('(prefers-reduced-motion: reduce)');
   var fine = w.matchMedia('(hover: hover) and (pointer: fine)');
   var motionOK = function () { return !reduce.matches; };
@@ -19,6 +21,8 @@
 
   /* ------------------------------------------------------------------ helpers */
   function ss(fn) { try { return fn(w.sessionStorage); } catch (e) { return null; } }
+  // enhance.css sets --ydx-css:1; without it (404, blocked) the wipe, the cursor and the reveal states have no styles, so skip them
+  function cssOK() { try { return getComputedStyle(html).getPropertyValue('--ydx-css').trim() === '1'; } catch (e) { return false; } }
   function anim(el, kf, opt) { try { return el.animate(kf, opt); } catch (e) { return null; } }
   // size the smear mask must reach so its solid core covers the whole viewport from point (x,y)
   function coverWidth(x, y) {
@@ -42,13 +46,18 @@
   var L = w.__ydxL || { mode: 'full', t0: Date.now() };
   var loader = d.getElementById('ydx-loader');
   // minimum display, counted from the moment the choreography starts (L.go, set inline once its assets are ready)
-  var MIN = { full: 1400, short: 200, frame: 330, nav: 60, reduced: 300 }[L.mode] || 900;
+  var MIN = { full: 1400, short: 200, frame: 300, nav: 60, reduced: 300 }[L.mode] || 900;
   var released = false;
   function releaseHero() { if (!released) { released = true; html.classList.remove('ydx-loading'); } }
   function finishLoader() {
     if (!loader || loader.dataset.out) return;
     loader.dataset.out = '1';
-    var done = function () { releaseHero(); if (loader) loader.remove(); loader = null; html.classList.add('ydx-ready'); };
+    var done = function () { releaseHero(); if (loader) loader.remove(); loader = null; };
+    try { exitLoader(done); } catch (e) { done(); } // whatever goes wrong, the loader must not stay over the page
+  }
+  function exitLoader(done) {
+    // background tab: nobody sees the exit, and its animation would not advance (no frames) — just take the loader away
+    if (d.hidden) return done();
     // no mask yet (very slow network, safety timeout): a plain fade rather than a mask that would blank the loader
     if (L.mode === 'reduced' || !loader.animate || !maskOK) {
       releaseHero();
@@ -59,7 +68,7 @@
     var cx = innerWidth / 2, cy = innerHeight / 2;
     var w0 = L.mode === 'nav' ? 0 : (stage ? stage.getBoundingClientRect().width * 0.92 : 0);
     var w1 = coverWidth(cx, cy);
-    var dur = { frame: 300, nav: 520, short: 520 }[L.mode] || 760;
+    var dur = { frame: 260, nav: 520, short: 520 }[L.mode] || 760;
     // the swatch becomes a window: a smear-shaped hole opens in the burgundy and grows until the page is revealed
     loader.style[P.img] = 'url(' + MASK + '), linear-gradient(#000,#000)';
     loader.style[P.rep] = 'no-repeat';
@@ -76,43 +85,65 @@
       if (L.mode === 'frame' || L.mode === 'nav') return res(); // iframe preview / page transition: never wait for load
       if (d.readyState === 'complete') res(); else w.addEventListener('load', res, { once: true });
     });
-    var fonts = (d.fonts && d.fonts.ready) ? Promise.race([d.fonts.ready, new Promise(function (r) { setTimeout(r, 1200); })]) : Promise.resolve();
+    // the hub preview (frame) and the arrival cover (nav) are short by design: do not let a slow font hold them
+    var fontCap = { frame: 150, nav: 400 }[L.mode] || 1200;
+    var fonts = (d.fonts && d.fonts.ready) ? Promise.race([d.fonts.ready, new Promise(function (r) { setTimeout(r, fontCap); })]) : Promise.resolve();
     var minWait = new Promise(function (res) {
       (function chk() { if (L.go || !loader) setTimeout(res, Math.max(0, MIN - (Date.now() - (L.go || L.t0)))); else setTimeout(chk, 40); })();
     });
     // two frames after everything is ready, so the freshly applied mask is resolved before the hole starts to open
     Promise.all([ready, fonts, minWait, maskReady]).then(function () { requestAnimationFrame(function () { requestAnimationFrame(finishLoader); }); });
-    setTimeout(finishLoader, Math.max(0, 4000 - (Date.now() - L.t0))); // hard safety, counted from first paint: never trap the visitor
+    // hard safety, counted from first paint: never trap the visitor (the hub preview must be done in under 800ms)
+    setTimeout(finishLoader, Math.max(0, (L.mode === 'frame' ? 450 : 4000) - (Date.now() - L.t0)));
     // a keyboard visitor who starts tabbing skips the intro, so focus never lands on controls hidden behind the loader
     d.addEventListener('keydown', function (e) { if (/^(Tab|Enter|Escape| )$/.test(e.key)) finishLoader(); });
   } else releaseHero();
   // bfcache restore (style-tile page; the home bundle reloads itself on pageshow.persisted)
   w.addEventListener('pageshow', function (e) {
     if (!e.persisted) return;
+    endNav(); // a wipe frozen mid-way must not finish after the restore and navigate on its own
     d.querySelectorAll('.ydx-wipe').forEach(function (el) { el.remove(); });
     if (loader) { loader.remove(); loader = null; } releaseHero();
   });
 
   /* ------------------------------------------------------------------ 2. page transitions (multi-page: / <-> /style-tile.html) */
+  var nav = null; // the transition in flight: { els, anims, go, gone, timer }
+  // give the page back: cancel the wipe (cancel() never fires onfinish, so no navigation follows) and remove it
+  function endNav() {
+    if (!nav) return; var n = nav; nav = null; clearTimeout(n.timer);
+    n.anims.forEach(function (a) { try { a && a.cancel(); } catch (er) {} });
+    n.els.forEach(function (el) { el.remove(); });
+  }
   d.addEventListener('click', function (e) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     var a = e.target.closest && e.target.closest('a[href]');
-    if (!a || a.target && a.target !== '_self' || a.hasAttribute('download')) return;
+    if (!a || !(a instanceof HTMLAnchorElement) || a.target && a.target !== '_self' || a.hasAttribute('download')) return;
     var url; try { url = new URL(a.href, location.href); } catch (er) { return; }
     if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search)) return;
-    if (!motionOK()) { ss(function (s) { s.setItem('ydx-nav', String(Date.now())); }); return; }
+    // a second activation while the wipe runs (double click, Enter pressed twice) must not start a second transition
+    if (nav) { e.preventDefault(); return; }
+    if (!motionOK() || !cssOK()) { ss(function (s) { s.setItem('ydx-nav', String(Date.now())); }); return; }
     e.preventDefault();
     // two coats, like a lipstick stroke: a pigment lead in the active family, then the burgundy that the next page opens from
     // (the lead keeps the wipe visible on the burgundy footer, where a burgundy-only wipe disappeared)
     var mk = function (cls) { var el = d.createElement('div'); el.className = 'ydx-wipe ' + cls; el.setAttribute('aria-hidden', 'true'); el.dataset.tone = html.dataset.family || html.dataset.tone || 'rose'; d.body.appendChild(el); return el; };
-    var lead = mk('ydx-wipe-lead'), wipe = mk('ydx-wipe-deep'); wipe.id = 'ydx-wipe';
+    var lead = mk('ydx-wipe-lead'), wipe = mk('ydx-wipe-deep');
     var x = e.clientX || innerWidth / 2, y = e.clientY || innerHeight / 2, cw = coverWidth(x, y);
-    var go = function () { ss(function (s) { s.setItem('ydx-nav', String(Date.now())); }); location.href = url.href; };
-    anim(lead, maskFrames(x, y, 0, cw, false), { duration: 440, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
+    var n = nav = { els: [lead, wipe], anims: [], gone: false };
+    var go = n.go = function () {
+      if (nav !== n || n.gone) return; n.gone = true;
+      ss(function (s) { s.setItem('ydx-nav', String(Date.now())); }); location.href = url.href;
+    };
+    n.anims.push(anim(lead, maskFrames(x, y, 0, cw, false), { duration: 440, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' }));
     var an = anim(wipe, maskFrames(x, y, 0, cw, false), { duration: 420, delay: 110, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
-    if (an) an.onfinish = go; else go();
-    setTimeout(function () { if (wipe.isConnected) { wipe.remove(); lead.remove(); } }, 3500); // navigation cancelled → give the page back
+    n.anims.push(an);
+    if (an && !d.hidden) an.onfinish = go; else go();
+    n.timer = setTimeout(endNav, 3500); // navigation cancelled or stalled → give the page back
   });
+  // back/forward pressed mid-wipe (same-document history entry): the visitor changed their mind, so do not navigate
+  w.addEventListener('popstate', function () { if (nav && !nav.gone) endNav(); });
+  // tab hidden mid-wipe: its animation stops advancing, so go now instead of stalling until the tab is shown again
+  d.addEventListener('visibilitychange', function () { if (d.hidden && nav) nav.go(); });
 
   /* ------------------------------------------------------------------ 3. reveals (IntersectionObserver + WAAPI, never CSS transitions so the site's own transitions survive) */
   var REVEALS = [
@@ -182,7 +213,10 @@
     el.textContent = ''; el.appendChild(sr); el.appendChild(vis);
   }
   function setupReveals() {
-    if (!motionOK() || !('IntersectionObserver' in w)) return;
+    if (!motionOK() || !('IntersectionObserver' in w) || !cssOK()) return;
+    // this file arriving late (slow network: the inline fallback already took the loader away and the page is on screen):
+    // what is already in view or scrolled past stays put instead of blinking out and fading back in
+    var lEl = d.getElementById('ydx-loader'), late = !lEl || lEl.classList.contains('ydx-l-bye');
     var cb = function (ents, obs) {
       ents.forEach(function (en) { if (en.isIntersecting) { reveal(en.target); obs.unobserve(en.target); } });
     };
@@ -196,7 +230,8 @@
       list.forEach(function (el, k) {
         if (el.dataset.ydxR || el.closest('.hero, #mobile-menu')) return;
         el.dataset.ydxR = r[1];
-        if (r[2]) el.dataset.ydxI = String(Array.prototype.indexOf.call(el.parentElement.children, el) % 6);
+        if (r[2] && el.parentElement) el.dataset.ydxI = String(Array.prototype.indexOf.call(el.parentElement.children, el) % 6);
+        if (late && el.getBoundingClientRect().top < innerHeight) el.classList.add('ydx-in');
         io.observe(el);
       });
     });
@@ -211,6 +246,7 @@
     // Latin (Bodoni italic) taglines: letters are fine to split for Latin — never Hebrew
     d.querySelectorAll('.section-meta .latin, .material-copy > .latin:first-child, .material-index, .footer-bottom .latin, .stage-label').forEach(function (el) {
       if (el.closest('.hero') || el.dataset.ydxR) return;
+      if (late && el.getBoundingClientRect().top < innerHeight) return;
       splitChars(el); el.dataset.ydxR = 'chars'; io.observe(el);
     });
     w.addEventListener('beforeprint', function () { d.querySelectorAll('[data-ydx-r]').forEach(function (el) { el.classList.add('ydx-in'); }); });
@@ -251,7 +287,8 @@
     var hero = d.querySelector('.hero'); if (!hero || !motionOK()) return;
     var l1 = hero.querySelector('.hero-line'), l2 = hero.querySelector('.hero-line.last-line'),
       smear = hero.querySelector('.hero-smear'), note = hero.querySelector('.photo-note'), raf = 0, on = true;
-    var vis = new IntersectionObserver(function (e) { on = e[0].isIntersecting; }); vis.observe(hero);
+    // (repaint on re-entry too: a fast scroll back up can bring the hero in after the last scroll event)
+    var vis = new IntersectionObserver(function (e) { on = e[0].isIntersecting; if (on && !raf) raf = requestAnimationFrame(paint); }); vis.observe(hero);
     function paint() {
       raf = 0; if (!on) return;
       var p = Math.min(1, Math.max(0, scrollY / (hero.offsetHeight || innerHeight)));
@@ -266,7 +303,7 @@
 
   /* ------------------------------------------------------------------ 6. pointer: magnetic buttons + a swatch cursor (fine pointers only) */
   function setupPointer() {
-    if (!fine.matches || !motionOK()) return;
+    if (!fine.matches || !motionOK() || !cssOK()) return;
     // magnetic pull on pill buttons
     d.querySelectorAll('.button, .small-cta').forEach(function (b) {
       var tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
@@ -307,13 +344,22 @@
     d.addEventListener('pointerleave', function () { shown = false; dot.classList.remove('is-on'); });
     d.addEventListener('pointerdown', function () { dot.classList.add('is-down'); });
     d.addEventListener('pointerup', function () { dot.classList.remove('is-down'); });
+    d.addEventListener('pointercancel', function () { dot.classList.remove('is-down'); });
   }
 
   /* ------------------------------------------------------------------ boot */
   function boot() {
-    setupReveals(); setupReactive(); setupHeroScroll(); setupPointer();
-    // menu links get an index for the CSS stagger
-    d.querySelectorAll('#mobile-menu nav a').forEach(function (a, i) { a.style.setProperty('--ydx-i', i); });
+    // each part is optional polish: one that throws must not take the others (or the page) down with it
+    [setupReveals, setupReactive, setupHeroScroll, setupPointer, function () {
+      // menu links get an index for the CSS stagger
+      d.querySelectorAll('#mobile-menu nav a').forEach(function (a, i) { a.style.setProperty('--ydx-i', i); });
+    }].forEach(function (f) {
+      try { f(); } catch (e) {
+        if (w.console) console.warn('[ydx]', e);
+        // never leave anything parked in its hidden pre-reveal state
+        if (f === setupReveals) d.querySelectorAll('[data-ydx-r]').forEach(function (el) { el.classList.add('ydx-in'); });
+      }
+    });
   }
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', boot); else boot();
 })();

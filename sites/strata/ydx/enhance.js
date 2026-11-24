@@ -11,6 +11,9 @@
    ========================================================================== */
 (() => {
   'use strict';
+  // Idempotent: a second copy of this script (double include, injected again) must not wire everything twice.
+  if (window.__ydxLoader) return;
+  window.__ydxLoader = true;      // tells the inline failsafes (index.html) that the layer is running
   const d = document, html = d.documentElement;
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const FINE = matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -21,9 +24,21 @@
     set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* private mode */ } },
   };
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  // Web Animations drive the loader exit and the shutter. Without them (old Safari), those degrade to
+  // instant versions instead of throwing half way and leaving the page covered.
+  const WAAPI = typeof Element.prototype.animate === 'function';
+  // The inline failsafe already gave up on us (we arrived very late, or hung): the page is visible without
+  // the layer, so don't hide anything for reveals or replay an intro; only wire the interactions.
+  const LATE = html.classList.contains('ydx-fail');
+  if (!LATE) html.classList.add('ydx-js');   // hide-before-reveal styles only apply from here on
 
-  window.__ydxLoader = true;      // tells the inline failsafe that we took over
-  html.classList.add('ydx-js');   // hide-before-reveal styles only apply from here on
+  // Lenis (the site's smooth scroll) ignores native scroll events while its own smooth animation runs, so
+  // an instant jump made during a wheel glide or a pending Lenis scrollTo is undone a frame later. Lenis
+  // resets itself (stops the glide, re-syncs to the real position) on a middle-button pointerdown on
+  // window; a synthetic one is the only handle we have, since the instance is not exposed.
+  const stopLenis = () => { try { dispatchEvent(new MouseEvent('pointerdown', { button: 1 })); } catch (e) { /* ignore */ } };
+  // scrollTo(x, y) instead of { behavior: 'instant' }: the 'instant' keyword throws in older engines.
+  const jumpTo = (y) => { stopLenis(); scrollTo(0, y); };
 
   /* ------------------------------------------------------------------ */
   /* 1. Loader                                                           */
@@ -36,136 +51,162 @@
     // first frame under the loader (no "visible, then hidden, then animated" double entrance even when this
     // timer runs late on a busy main thread). Removing ydx-hold resumes them and brings the hero word back,
     // whose own IntersectionObserver then starts printing it.
-    if (intro && !RM) {
+    if (intro && !RM && !LATE) {
       html.classList.add('ydx-intro');
-      setTimeout(() => html.classList.remove('ydx-intro'), 2400);
+      // Counted from the first frame: in a background tab nothing animates until the visitor comes back,
+      // and a timer started now could end the intro half way through.
+      requestAnimationFrame(() => setTimeout(() => html.classList.remove('ydx-intro'), 2400));
     } else {
       html.classList.remove('ydx-intro');
     }
     html.classList.remove('ydx-hold');
   }
 
-  (function loader() {
+  function loader() {
     const L = d.getElementById('ydx-loader');
-    if (!L) { release(false); return; }
-    const LAYERS = 38;
-    const q = (s) => L.querySelector(s);
-    const ink = q('.yl-ink'), gantry = q('.yl-gantry'), car = q('.yl-car'), ui = q('.yl-ui'), grid = q('.yl-grid');
-    const status = q('.yl-status'), nums = L.querySelectorAll('.yl-count b');
-    const seam = [...L.querySelectorAll('.yl-seam i')], bands = [...L.querySelectorAll('.yl-bands i')];
-
-    const repeat = store.get('ydx-strata-seen') === '1';
-    const mode = RM ? 'reduced' : inFrame ? 'frame' : repeat ? 'repeat' : 'full';
-    // Times are measured from navigation start (performance.now()). This script only runs once the
-    // render-blocking CSS has arrived, which is also when the loader first paints (T0). On a fast line T0
-    // is ~0.3s and the base numbers apply. On a slow one T0 can be 4s+: the timings then count from T0, so
-    // the build still gets a short, real run instead of being cut off the moment it appears.
-    let T0 = performance.now();
-    try {   // the script can arrive after the first paint on a congested line: count from that paint
-      const fp = performance.getEntriesByName('first-paint')[0];
-      if (fp) T0 = Math.min(T0, fp.startTime);
-    } catch (e) { /* no paint timing */ }
-    const MIN = Math.max({ full: 1150, repeat: 260, frame: 240, reduced: 300 }[mode],
-      T0 + { full: 700, repeat: 200, frame: 200, reduced: 250 }[mode]);
-    const HARD = Math.max({ full: 4000, repeat: 900, frame: 420, reduced: 3000 }[mode],
-      T0 + { full: 2600, repeat: 700, frame: 400, reduced: 2000 }[mode]);
-    // Past HARD, the cover only stays while the app has not rendered at all (an empty page is all it
-    // would reveal), and never beyond CEIL: at most ~4.2s after it first appeared.
-    const CEIL = mode === 'frame' ? HARD : Math.max(HARD, T0 + 4200);
-    let ready = d.readyState === 'complete';
-    addEventListener('load', () => { ready = true; }, { once: true });
-
-    let layer = -1, done = false, sweep = null;
-    const words = ['Slicing ideas', 'Printing layer by layer', 'Ready to hold'];
-    function setLayer(n) {
-      if (n === layer) return;
-      layer = n;
-      const r = (1 - n / LAYERS) * 100;
-      ink.style.clipPath = `inset(${r}% 0 0 0)`;
-      gantry.style.transform = `translate3d(0,${r}%,0)`;
-      nums[0].textContent = String(n).padStart(2, '0');
-      nums[1].textContent = (n * 0.2).toFixed(1);
-      seam.forEach((s, i) => { s.style.transform = `scaleX(${clamp(n / LAYERS * 1.1 - i * 0.05, 0, 1)})`; });
-      status.textContent = words[n < 3 ? 0 : n < LAYERS ? 1 : 2];
-    }
-
-    if (mode === 'full' || mode === 'frame') {
-      setLayer(0);
-      sweep = car.animate(
-        [{ transform: 'translateX(4%)' }, { transform: 'translateX(94%)' }],
-        { duration: mode === 'frame' ? 300 : 560, direction: 'alternate', iterations: Infinity, easing: 'cubic-bezier(.45,0,.55,1)' }
-      );
-    } else {
-      setLayer(LAYERS);
-      car.style.transform = 'translateX(96%)';
-    }
-
-    // A keyboard visitor who presses a key (Tab to the skip link, say) while the build is still running
-    // should not tab around behind the cover: hurry the build to its end as soon as the app has rendered.
-    let hurry = false;
-    const onKey = () => { hurry = true; };
-    addEventListener('keydown', onKey, { once: true });
-    const appUp = () => !!d.querySelector('#root .site');
-
-    function tick() {
-      if (done) return;
-      const t = performance.now();
-      const up = appUp();
-      if (t >= HARD && (up || t >= CEIL)) { finish(); return; }
-      // Never wait for slow images past HARD - 700ms; never finish the build over an unrendered app.
-      const ok = (ready || t >= HARD - 700 || (hurry && up)) && (up || t >= CEIL);
-      let target = hurry ? LAYERS : Math.floor(LAYERS * Math.min(1, (t - T0) / Math.max(200, MIN - T0)));
-      if (!ok) target = Math.min(target, LAYERS - 6);
-      const next = Math.min(target, layer + (ok ? (hurry ? 5 : 2) : 1));
-      if (next > layer) setLayer(next);
-      if (layer >= LAYERS && ok && (hurry || t >= MIN)) { finish(); return; }
-      requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-    // rAF can be throttled in background tabs: a timer backstop with the same rules.
-    (function backstop() {
-      const t = performance.now();
-      if (done) return;
-      if (t >= CEIL || (t >= HARD && appUp())) { finish(); return; }
-      setTimeout(backstop, Math.max(100, Math.min(HARD, CEIL) - t + 150));
-    })();
-
-    function cleanup() { L.remove(); }
-    function finish() {
-      if (done) return;
+    if (!L || LATE) { if (L) L.remove(); release(false); return; }
+    let done = false, sweep = null;
+    // Last resort for anything that throws below: never leave the page covered or the hero held.
+    function kill() {
       done = true;
-      removeEventListener('keydown', onKey);
-      store.set('ydx-strata-seen', '1');
-      if (sweep) sweep.cancel();
-      car.style.transform = 'translateX(96%)';
-      setLayer(LAYERS);
-      const atTop = scrollY < innerHeight * 0.5;
-
-      // Reduced motion: a plain fade. Hub iframe preview running late (slow first paint): a short fade
-      // too, so the whole thing stays under ~800ms.
-      if (mode === 'reduced' || (mode === 'frame' && performance.now() > 520)) {
-        release(mode !== 'reduced' && atTop);
-        L.classList.add('is-out');
-        L.animate([{ opacity: 1 }, { opacity: 0 }], { duration: mode === 'reduced' ? 260 : 180, fill: 'forwards' }).finished.then(cleanup, cleanup);
-        return;
-      }
-      const hold = hurry ? 0 : mode === 'full' ? 170 : mode === 'repeat' ? 30 : 0;
-      const quick = mode !== 'full' || hurry;   // a keypress during the build gets the short exit
-      const dur = quick ? 220 : 320, stag = quick ? 9 : 20, lead = quick ? 60 : 130;
-      setTimeout(() => {
-        L.classList.add('is-out');
-        ui.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translate3d(0,-14px,0)' }],
-          { duration: lead + 40, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' });
-        grid.animate([{ opacity: 1 }, { opacity: 0 }], { duration: lead + 40, fill: 'forwards' });
-        // Layers retract right, bottom layer first: the build plate empties, the hero shows through.
-        const anims = bands.map((b, i) => b.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], {
-          duration: dur, delay: lead + (bands.length - 1 - i) * stag, easing: 'cubic-bezier(.7,0,.2,1)', fill: 'forwards',
-        }));
-        setTimeout(() => release(atTop), lead);
-        Promise.all(anims.map((a) => a.finished)).then(cleanup, cleanup);
-      }, hold);
+      try { if (sweep) sweep.cancel(); } catch (e) { /* ignore */ }
+      L.remove();
+      release(false);
     }
-  })();
+    try { run(); } catch (e) { kill(); }
+
+    function run() {
+      const LAYERS = 38;
+      const q = (s) => L.querySelector(s);
+      const ink = q('.yl-ink'), gantry = q('.yl-gantry'), car = q('.yl-car'), ui = q('.yl-ui'), grid = q('.yl-grid');
+      const status = q('.yl-status'), nums = L.querySelectorAll('.yl-count b');
+      const seam = [...L.querySelectorAll('.yl-seam i')], bands = [...L.querySelectorAll('.yl-bands i')];
+
+      const repeat = store.get('ydx-strata-seen') === '1';
+      const mode = RM ? 'reduced' : inFrame ? 'frame' : repeat ? 'repeat' : 'full';
+      // Times are measured from navigation start (performance.now()), counted from T0: the moment the loader
+      // first painted. On a fast line T0 is ~0.3s and the base numbers apply. On a slow one T0 can be 4s+,
+      // so the build still gets a short, real run instead of being cut off the moment it appears.
+      // T0 = the earliest of now, the first paint and the inline script's mark (index.html, set as the
+      // loader is parsed; it stands in where there is no paint timing, e.g. Safari).
+      let T0 = performance.now();
+      if (typeof window.__ydxT0 === 'number') T0 = Math.min(T0, window.__ydxT0);
+      try {
+        const fp = performance.getEntriesByName('first-paint')[0];
+        if (fp) T0 = Math.min(T0, fp.startTime);
+      } catch (e) { /* no paint timing */ }
+      const MIN = Math.max({ full: 1150, repeat: 260, frame: 240, reduced: 300 }[mode],
+        T0 + { full: 700, repeat: 200, frame: 200, reduced: 250 }[mode]);
+      const HARD = Math.max({ full: 4000, repeat: 900, frame: 420, reduced: 3000 }[mode],
+        T0 + { full: 2600, repeat: 700, frame: 400, reduced: 2000 }[mode]);
+      // Past HARD, the cover only stays while the app has not rendered at all (an empty page is all it
+      // would reveal: a slow or stalled bundle), and never beyond CEIL, 9s after it first appeared. The hub
+      // preview never waits.
+      const CEIL = mode === 'frame' ? HARD : Math.max(HARD, T0 + 9000);
+      let ready = d.readyState === 'complete';
+      addEventListener('load', () => { ready = true; }, { once: true });
+
+      let layer = -1;
+      const words = ['Slicing ideas', 'Printing layer by layer', 'Ready to hold'];
+      function setLayer(n) {
+        if (n === layer) return;
+        layer = n;
+        const r = (1 - n / LAYERS) * 100;
+        ink.style.clipPath = `inset(${r}% 0 0 0)`;
+        gantry.style.transform = `translate3d(0,${r}%,0)`;
+        nums[0].textContent = String(n).padStart(2, '0');
+        nums[1].textContent = (n * 0.2).toFixed(1);
+        seam.forEach((s, i) => { s.style.transform = `scaleX(${clamp(n / LAYERS * 1.1 - i * 0.05, 0, 1)})`; });
+        status.textContent = words[n < 3 ? 0 : n < LAYERS ? 1 : 2];
+      }
+
+      if ((mode === 'full' || mode === 'frame') && WAAPI) {
+        setLayer(0);
+        sweep = car.animate(
+          [{ transform: 'translateX(4%)' }, { transform: 'translateX(94%)' }],
+          { duration: mode === 'frame' ? 300 : 560, direction: 'alternate', iterations: Infinity, easing: 'cubic-bezier(.45,0,.55,1)' }
+        );
+      } else {
+        setLayer(LAYERS);
+        car.style.transform = 'translateX(96%)';
+      }
+
+      // A keyboard visitor who presses a key (Tab to the skip link, say) while the build is still running
+      // should not tab around behind the cover: hurry the build to its end as soon as the app has rendered.
+      let hurry = false;
+      const onKey = () => { hurry = true; };
+      addEventListener('keydown', onKey, { once: true });
+      const appUp = () => !!d.querySelector('#root .site');
+
+      function tick() {
+        if (done) return;
+        try {
+          const t = performance.now();
+          const up = appUp();
+          if (t >= HARD && (up || t >= CEIL)) { finish(); return; }
+          // Never wait for slow images past HARD - 700ms; never finish the build over an unrendered app.
+          const ok = (ready || t >= HARD - 700 || (hurry && up)) && (up || t >= CEIL);
+          let target = hurry ? LAYERS : Math.floor(LAYERS * Math.min(1, (t - T0) / Math.max(200, MIN - T0)));
+          if (!ok) target = Math.min(target, LAYERS - 6);
+          const next = Math.min(target, layer + (ok ? (hurry ? 5 : 2) : 1));
+          if (next > layer) setLayer(next);
+          if (layer >= LAYERS && ok && (hurry || t >= MIN)) { finish(); return; }
+        } catch (e) { kill(); return; }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+      // rAF does not run in background tabs: a timer backstop with the same rules.
+      (function backstop() {
+        if (done) return;
+        const t = performance.now();
+        if (t >= CEIL || (t >= HARD && appUp())) { try { finish(); } catch (e) { kill(); } return; }
+        setTimeout(backstop, Math.max(100, Math.min(HARD, CEIL) - t + 150));
+      })();
+
+      function cleanup() { L.remove(); }
+      function finish() {
+        if (done) return;
+        done = true;
+        removeEventListener('keydown', onKey);
+        store.set('ydx-strata-seen', '1');
+        if (sweep) sweep.cancel();
+        car.style.transform = 'translateX(96%)';
+        setLayer(LAYERS);
+        const atTop = scrollY < innerHeight * 0.5;
+        if (!WAAPI) { cleanup(); release(mode !== 'reduced' && atTop); return; }
+
+        // Reduced motion: a plain fade. Hub iframe preview running late (slow first paint): a short fade
+        // too, so the whole thing stays under ~800ms.
+        if (mode === 'reduced' || (mode === 'frame' && performance.now() > 520)) {
+          release(mode !== 'reduced' && atTop);
+          L.classList.add('is-out');
+          L.animate([{ opacity: 1 }, { opacity: 0 }], { duration: mode === 'reduced' ? 260 : 180, fill: 'forwards' }).finished.then(cleanup, cleanup);
+          setTimeout(cleanup, 2000);   // backstop if the animation never settles
+          return;
+        }
+        const hold = hurry ? 0 : mode === 'full' ? 170 : mode === 'repeat' ? 30 : 0;
+        const quick = mode !== 'full' || hurry;   // a keypress during the build gets the short exit
+        const dur = quick ? 220 : 320, stag = quick ? 9 : 20, lead = quick ? 60 : 130;
+        setTimeout(() => {
+          try {
+            L.classList.add('is-out');
+            ui.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translate3d(0,-14px,0)' }],
+              { duration: lead + 40, easing: 'cubic-bezier(.5,0,.75,0)', fill: 'forwards' });
+            grid.animate([{ opacity: 1 }, { opacity: 0 }], { duration: lead + 40, fill: 'forwards' });
+            // Layers retract right, bottom layer first: the build plate empties, the hero shows through.
+            const anims = bands.map((b, i) => b.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }], {
+              duration: dur, delay: lead + (bands.length - 1 - i) * stag, easing: 'cubic-bezier(.7,0,.2,1)', fill: 'forwards',
+            }));
+            setTimeout(() => release(atTop), lead);
+            Promise.all(anims.map((a) => a.finished)).then(cleanup, cleanup);
+            // Backstop if the animations never settle. (In a background tab nothing animates; this removes the
+            // cover while hidden, so the visitor comes back to the page rather than to a frozen exit.)
+            setTimeout(cleanup, 2000);
+          } catch (e) { kill(); }
+        }, hold);
+      }
+    }
+  }
 
   /* ------------------------------------------------------------------ */
   /* 2. Wait for React to render the app, then wire everything up        */
@@ -180,28 +221,38 @@
     mo.observe(root, { childList: true, subtree: true });
   }
 
-  whenApp((root) => {
-    fixDeepLink();
-    setupReveals(root);
-    setupCaptionFit();
-    setupShutter();
-    setupMenuClose();
-    setupTicket();
-    if (!RM) {
-      setupScrollFx();
-      if (FINE) setupMagnetic();
-    }
-  });
+  // enhance.css applied? (It is render-blocking, so it has loaded or failed by the time the app renders.)
+  // Without it the overlays this script appends to <body> would show up unstyled at the end of the page.
+  const cssOK = () => getComputedStyle(html).getPropertyValue('--ydx-css').trim() === '1';
 
+  // Each setup runs on its own: one that throws must not take the others down with it.
+  const safe = (fn, ...args) => { try { fn(...args); } catch (e) { /* this enhancement is skipped */ } };
+
+  function boot() {
+    loader();
+    whenApp((root) => {
+      const css = cssOK();
+      safe(fixDeepLink);
+      if (!LATE && css) safe(setupReveals, root);
+      safe(setupCaptionFit);
+      if (css && WAAPI) safe(setupShutter);
+      safe(setupMenuClose);
+      if (WAAPI) safe(setupTicket);
+      if (!RM && css) {
+        safe(setupScrollFx);
+        if (FINE) safe(setupMagnetic);
+      }
+    });
+  }
   /* Deep links (/#materials) never scrolled on the live site: the browser looks for the
      fragment before React has rendered it. Jump there while the loader still covers the page. */
   function fixDeepLink() {
     let el = null;
     try { el = location.hash.length > 1 && location.hash !== '#top' ? d.querySelector(location.hash) : null; } catch (e) { el = null; }
-    if (!el) return;
+    if (!el || (LATE && scrollY > 8)) return;   // arrived late: only if the visitor has not moved yet
     const go = () => {
       const y = Math.round(el.getBoundingClientRect().top + scrollY - 72);
-      if (Math.abs(scrollY - y) > 4) scrollTo({ top: y, behavior: 'instant' });
+      if (Math.abs(scrollY - y) > 4) jumpTo(y);
     };
     const start = scrollY;
     requestAnimationFrame(go);
@@ -332,34 +383,56 @@
 
     function play(y, hash, key, focusEl) {
       busy = true;
-      const n = bands.length, dur = 210, st = 14;
-      const [s, b] = NAMES[key] || ['', ''];
-      small.textContent = s; big.textContent = b;
-      sh.classList.add('on');
-      bands.forEach((el) => { el.style.transformOrigin = '0 50%'; });
-      const cover = bands.map((el, i) => el.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }],
-        { duration: dur, delay: (n - 1 - i) * st, easing: 'cubic-bezier(.7,0,.3,1)', fill: 'forwards' }));
-      const lab = label.animate([{ opacity: 0, transform: 'translate(-50%,-30%)' }, { opacity: 1, transform: 'translate(-50%,-50%)' }],
-        { duration: 180, delay: 170, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'forwards' });
-      Promise.all(cover.map((a) => a.finished)).then(() => {
-        scrollTo({ top: y, behavior: 'instant' });
-        if (hash) { try { history.pushState(null, '', hash); } catch (e) { /* ignore */ } }
-        if (focusEl) {
-          if (!focusEl.hasAttribute('tabindex')) focusEl.setAttribute('tabindex', '-1');
-          focusEl.focus({ preventScroll: true });
-        }
-        setTimeout(() => {
-          label.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: 'forwards' });
-          bands.forEach((el) => { el.style.transformOrigin = '100% 50%'; });
-          const out = bands.map((el, i) => el.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }],
-            { duration: dur + 30, delay: (n - 1 - i) * st, easing: 'cubic-bezier(.7,0,.2,1)', fill: 'forwards' }));
-          Promise.all(out.map((a) => a.finished)).then(() => {
-            cover.concat(out, [lab]).forEach((a) => a.cancel());
-            sh.classList.remove('on');
-            busy = false;
-          });
-        }, 40);
-      });
+      const n = bands.length, dur = 210, st = 14, anims = [];
+      let jumped = false, over = false;
+      // The jump and the clean-up each run exactly once, whatever happens: animations finishing, being
+      // cancelled from outside (their promises reject), a step throwing, or the 2s safety timer (a tab
+      // hidden mid-transition, an engine whose animations never settle). The page is never left covered.
+      const jump = () => {
+        if (jumped) return;
+        jumped = true;
+        try {
+          jumpTo(y);
+          if (hash) history.pushState(null, '', hash);
+          if (focusEl) {
+            if (!focusEl.hasAttribute('tabindex')) focusEl.setAttribute('tabindex', '-1');
+            focusEl.focus({ preventScroll: true });
+          }
+        } catch (e) { /* the jump itself has happened */ }
+      };
+      const end = () => {
+        if (over) return;
+        over = true;
+        clearTimeout(safety);
+        jump();
+        anims.forEach((a) => { try { a.cancel(); } catch (e) { /* ignore */ } });
+        sh.classList.remove('on');
+        busy = false;
+      };
+      const safety = setTimeout(end, 2000);
+      try {
+        const [s, b] = NAMES[key] || ['', ''];
+        small.textContent = s; big.textContent = b;
+        sh.classList.add('on');
+        bands.forEach((el) => { el.style.transformOrigin = '0 50%'; });
+        const cover = bands.map((el, i) => el.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }],
+          { duration: dur, delay: (n - 1 - i) * st, easing: 'cubic-bezier(.7,0,.3,1)', fill: 'forwards' }));
+        anims.push(...cover, label.animate([{ opacity: 0, transform: 'translate(-50%,-30%)' }, { opacity: 1, transform: 'translate(-50%,-50%)' }],
+          { duration: 180, delay: 170, easing: 'cubic-bezier(.23,1,.32,1)', fill: 'forwards' }));
+        Promise.all(cover.map((a) => a.finished)).then(() => {
+          jump();
+          setTimeout(() => {
+            try {
+              anims.push(label.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 120, fill: 'forwards' }));
+              bands.forEach((el) => { el.style.transformOrigin = '100% 50%'; });
+              const out = bands.map((el, i) => el.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(0)' }],
+                { duration: dur + 30, delay: (n - 1 - i) * st, easing: 'cubic-bezier(.7,0,.2,1)', fill: 'forwards' }));
+              anims.push(...out);
+              Promise.all(out.map((a) => a.finished)).then(end, end);
+            } catch (e) { end(); }
+          }, 40);
+        }, end);
+      } catch (e) { end(); }
     }
 
     const plain = (e) => !(e.button || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
@@ -368,9 +441,13 @@
     // "#top" links (brand, footer word, back to top) call Lenis from a React handler; catch them first.
     addEventListener('click', (e) => {
       const a = e.target.closest && e.target.closest('a[href="#top"]');
-      if (!a || !plain(e) || busy || !far(0)) return;
+      if (!a || !plain(e)) return;
+      // During a transition, swallow it: React's handler would start a Lenis glide to the top that
+      // overrides the jump the shutter is about to make (keyboard Enter, a second programmatic click).
+      if (!busy && !far(0)) return;
       e.preventDefault();
       e.stopPropagation();
+      if (busy) return;
       play(0, null, 'top', null);
     }, true);
 
@@ -410,10 +487,15 @@
       if (nav.hasAttribute('data-ydx-closing')) return;
       nav.setAttribute('data-ydx-closing', '');
       setTimeout(() => {
-        pass = true;
-        btn.click();                       // let React close it for real
-        pass = false;
-        nav.removeAttribute('data-ydx-closing');
+        // Only if it is still open: Escape or a menu link may have closed it meanwhile, and clicking the
+        // button then would open it again.
+        try {
+          pass = true;
+          if (btn.isConnected && nav.classList.contains('open')) btn.click();   // let React close it for real
+        } finally {
+          pass = false;
+          nav.removeAttribute('data-ydx-closing');
+        }
       }, 250);
     }, true);
   }
@@ -524,10 +606,10 @@
       // Ticker: scroll velocity speeds it up, scrolling back reverses it.
       const track = $('.ticker-track');
       if (track) {
-        if (!tickerAnim || !tickerAnim.effect || tickerAnim.effect.target !== track) tickerAnim = track.getAnimations()[0] || null;
+        if (!tickerAnim || !tickerAnim.effect || tickerAnim.effect.target !== track) tickerAnim = (track.getAnimations && track.getAnimations()[0]) || null;
         const target = clamp(1 + vel * 0.09, -3, 5);
         rate += (target - rate) * 0.14;
-        if (tickerAnim && Math.abs(tickerAnim.playbackRate - rate) > 0.01) tickerAnim.updatePlaybackRate(rate);
+        if (tickerAnim && tickerAnim.updatePlaybackRate && Math.abs(tickerAnim.playbackRate - rate) > 0.01) tickerAnim.updatePlaybackRate(rate);
       }
       if (Math.abs(vel) > 0.05 || Math.abs(rate - 1) > 0.01) raf = requestAnimationFrame(frame);
     }
@@ -555,4 +637,15 @@
     }, { passive: true });
     d.addEventListener('pointerleave', () => { if (cur) { reset(cur); cur = null; } });
   }
+
+  /* ------------------------------------------------------------------ */
+  /* Boot (last, so every declaration above is initialised)              */
+  /* ------------------------------------------------------------------ */
+  // This script is async: it can run while the HTML is still being parsed (from cache), before the loader
+  // and #root exist. 'interactive' comes at the end of parsing, before the app bundle runs, so the loader
+  // still animates while the bundle downloads.
+  if (d.readyState === 'loading') {
+    const go = () => { if (d.readyState === 'loading') return; d.removeEventListener('readystatechange', go); boot(); };
+    d.addEventListener('readystatechange', go);
+  } else boot();
 })();

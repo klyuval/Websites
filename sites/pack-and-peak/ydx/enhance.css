@@ -108,13 +108,15 @@ html.ydx-motion .terrain-caption[data-ydx-in] { animation: ydx-rise .8s cubic-be
 /* packing table: kit lands item by item, the pack settles in */
 html.ydx-motion .kit-grid:not([data-ydx-in]) .pack-object { opacity: 0; }
 html.ydx-motion .kit-grid[data-ydx-in] .pack-object { animation: ydx-kit .8s cubic-bezier(.2,.8,.2,1) both; }
-.kit-grid .pack-object:nth-child(2) { animation-delay: 60ms !important; }
-.kit-grid .pack-object:nth-child(3) { animation-delay: 120ms !important; }
-.kit-grid .pack-object:nth-child(4) { animation-delay: 180ms !important; }
-.kit-grid .pack-object:nth-child(5) { animation-delay: 240ms !important; }
-.kit-grid .pack-object:nth-child(6) { animation-delay: 300ms !important; }
-.kit-grid .pack-object:nth-child(7) { animation-delay: 360ms !important; }
-.kit-grid .pack-object:nth-child(8) { animation-delay: 420ms !important; }
+/* stagger: same selector + :nth-child so it out-ranks the shorthand above (it used to be a global !important that
+   also delayed any other animation on the kit buttons) */
+html.ydx-motion .kit-grid[data-ydx-in] .pack-object:nth-child(2) { animation-delay: 60ms; }
+html.ydx-motion .kit-grid[data-ydx-in] .pack-object:nth-child(3) { animation-delay: 120ms; }
+html.ydx-motion .kit-grid[data-ydx-in] .pack-object:nth-child(4) { animation-delay: 180ms; }
+html.ydx-motion .kit-grid[data-ydx-in] .pack-object:nth-child(5) { animation-delay: 240ms; }
+html.ydx-motion .kit-grid[data-ydx-in] .pack-object:nth-child(6) { animation-delay: 300ms; }
+html.ydx-motion .kit-grid[data-ydx-in] .pack-object:nth-child(7) { animation-delay: 360ms; }
+html.ydx-motion .kit-grid[data-ydx-in] .pack-object:nth-child(8) { animation-delay: 420ms; }
 html.ydx-motion .pack-core:not([data-ydx-in]) { opacity: 0; }
 html.ydx-motion .pack-core[data-ydx-in] { animation: ydx-pack 1s cubic-bezier(.2,.8,.2,1) .15s both; }
 html.ydx-motion .pack-foot:not([data-ydx-in]) { opacity: 0; }
@@ -273,7 +275,8 @@ html.ydx-reticle-on .terrain-chapter, html.ydx-reticle-on .terrain-chapter .reli
 #ydx-shutter .ydx-s-b { color: var(--s-bg, var(--sky)); background-color: var(--s-bg, var(--sky)); background-image: url(/img/topo-ink.webp); background-size: cover; background-position: 50%; display: grid; place-content: center; justify-items: center; gap: 18px; }
 #ydx-shutter .ydx-s-b.is-paper { background-image: url(/img/topo-sienna.webp); }
 #ydx-shutter .ydx-s-pin { width: 74px; height: 74px; border-radius: 50%; border: 5px solid #fff; background: var(--vermilion); color: var(--cream); display: grid; place-items: center; font-family: var(--slab); font-size: 1.45rem; line-height: 1; }
-#ydx-shutter .ydx-s-name { font-family: var(--slab); font-size: clamp(2rem, 5vw, 4.4rem); line-height: 1; letter-spacing: -.01em; color: var(--s-fg, var(--ink)); }
+#ydx-shutter .ydx-s-name { font-family: var(--slab); font-size: clamp(2rem, 5vw, 4.4rem); line-height: 1; letter-spacing: -.01em; color: var(--s-fg, var(--ink)); margin-top: -8px; }
+#ydx-shutter .ydx-s-eye { font-family: var(--text); font-size: .76rem; font-weight: 800; letter-spacing: .17em; text-transform: uppercase; color: var(--s-fg, var(--ink)); margin-top: 4px; }
 
 /* ---------- 6. Keyframes ---------- */
 @keyframes ydx-rise { from { opacity: 0; translate: 0 26px; } }
@@ -300,5 +303,13 @@ html.ydx-reticle-on .terrain-chapter, html.ydx-reticle-on .terrain-chapter .reli
 @media (prefers-reduced-motion: reduce) {
   #ydx-alt { transition: opacity .2s; translate: none; }
 }
-#ydx-shutter .ydx-s-eye { font-family: var(--text); font-size: .76rem; font-weight: 800; letter-spacing: .17em; text-transform: uppercase; color: var(--s-fg, var(--ink)); margin-top: 4px; }
-#ydx-shutter .ydx-s-name { margin-top: -8px; }
+
+/* ---------- 7. Print ---------- */
+/* Round 3: content below the fold that had not been scrolled into view printed blank (still in its hidden reveal
+   state), and the fixed overlays would repeat on every printed page. */
+@media print {
+  #ydx-alt, #ydx-tip, #ydx-reticle, #ydx-shutter, #ydx-loader { display: none !important; }
+  html.ydx-motion :is(.chapter > .pin, .chapter-heading h2 em, .summit h2 em, .board-note, .signpost .post, .board-face, .board-cut,
+    .atlas-note, .terrain-readout, .sheet-arrow, .terrain-caption, .kit-grid .pack-object, .pack-core, .pack-foot,
+    .summit-actions > *, .summit-footer > *) { opacity: 1 !important; scale: none !important; clip-path: none !important; animation: none !important; }
+}

@@ -11,11 +11,16 @@
  *   4. Pointer: autofocus brackets that lock onto links and buttons (fine pointers only).
  *   5. Small things: footer wordmark "develops" into view, mobile-menu current page.
  * Round 2: first-screen hand-off (hero type rises as the opening clears), retimed loader, SPA record cleanup.
+ * Round 3 (hardening): idempotent, every rAF wait has a timer fallback (background tabs), one release() path that
+ * uncovers the page whatever throws or stalls, no overlays without enhance.css.
  * Nothing here inserts into React-rendered nodes: overlays are custom elements appended to <body>, app nodes only get
  * data-ydx-* attributes. Everything is skipped or reduced to fades under prefers-reduced-motion.
  */
 (() => {
   'use strict';
+  // r3: a second copy (re-injected by a host page, extension or hub) would install every listener and patch twice
+  if (window.__ydxEnhance) return;
+  window.__ydxEnhance = true;
   const d = document, html = d.documentElement;
   const RM = matchMedia('(prefers-reduced-motion: reduce)');
   const FINE = matchMedia('(hover: hover) and (pointer: fine)');
@@ -28,7 +33,9 @@
   };
   const raf = (fn) => requestAnimationFrame(fn);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const frames = (n = 2) => new Promise((r) => { const s = () => (--n <= 0 ? r() : raf(s)); raf(s); });
+  // r3: rAF never fires in a background tab (and is throttled in offscreen iframes), so waits on frames also end on a
+  // timer; otherwise a page loaded in a background tab stayed covered until it was brought to the front.
+  const frames = (n = 2) => new Promise((r) => { setTimeout(r, n * 50 + 150); const s = () => (--n <= 0 ? r() : raf(s)); raf(s); });
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   /* cubic-bezier(x1,y1,x2,y2) as a function of t (Newton + bisection on x) */
   function bezier(x1, y1, x2, y2) {
@@ -101,15 +108,23 @@
     return { root, draw, size: () => [W, H], remove: () => root.remove() };
   }
 
-  /* run p from a to b over ms; onFrame gets (p). Resolves at the end. */
+  /* fn(easedProgress, linearProgress) on every frame for ms. Resolves at the end; rejects if fn throws (r3: a throw
+     inside a rAF callback used to leave the promise pending forever, so the caller's cleanup never ran). If frames
+     stop (background tab), a timer draws the last frame. */
   function tween(ms, fn, easing = ease.inOut) {
-    return new Promise((res) => {
+    return new Promise((res, rej) => {
       const s = performance.now();
+      let over = false;
       const step = (now) => {
-        const t = clamp((now - s) / ms, 0, 1);
-        fn(easing(t), t);
-        if (t < 1) raf(step); else res();
+        if (over) return;
+        try {
+          const t = clamp((now - s) / ms, 0, 1);
+          fn(easing(t), t);
+          if (t < 1) { raf(step); return; }
+        } catch (e) { over = true; clearTimeout(dog); rej(e); return; }
+        over = true; clearTimeout(dog); res();
       };
+      const dog = setTimeout(() => step(s + ms), ms + 400);
       raf(step);
     });
   }
@@ -121,6 +136,24 @@
   const isDone = (a) => !a || a.classList.contains('arrival-complete');
   const MODE = has('ydx-cont') ? 'cont' : has('ydx-frame') ? 'frame' : has('ydx-quick') ? 'repeat' : 'first';
   const clipOK = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('clip-path', 'path(evenodd, "M0 0H1V1Z")');
+  // r3: enhance.css sets --ydx-css. Without it (404, blocked) the iris, meter, shield and AF brackets would land
+  // unstyled in the page flow, so the layer leaves the site's own arrival alone and skips its overlays.
+  // (The stylesheet is linked before this deferred script, so it has loaded or failed by the time this runs.)
+  const CSSOK = getComputedStyle(html).getPropertyValue('--ydx-css').trim() !== '';
+
+  /* r3: the single way out of the loader. Whatever throws or stalls, this leaves the page uncovered, unlocked and
+     visible: hold classes off, our overlays gone, the arrival unclipped and hidden, timers and listeners dropped. */
+  const loose = { nudge: 0, meter: null, onKey: null, ended: false };
+  function release() {
+    loose.ended = true;
+    clearInterval(loose.nudge);
+    if (loose.onKey) removeEventListener('keydown', loose.onKey);
+    if (loose.meter) loose.meter.kill();
+    cls.remove('ydx-hold', 'ydx-lens', 'ydx-quick', 'ydx-cont', 'ydx-iris-run', 'ydx-fade');
+    d.querySelectorAll('ydx-iris.is-over,ydx-veil,ydx-meter,ydx-shield').forEach((n) => n.remove());
+    const a = arrival();
+    if (a) { a.style.clipPath = ''; cls.add('ydx-arrival-off'); }
+  }
 
   /* Light meter: replaces the "+" register mark under the wordmark while the proof develops. */
   function makeMeter(a) {
@@ -171,7 +204,7 @@
     let ang = -span / 2 - 6, vel = 0, target = -span / 2, alive = true, settled = false, lastShown = '';
     const exposure = () => parseFloat(a.style.getPropertyValue('--exposure')) || 0.08;
     const tick = () => {
-      if (!alive) return;
+      if (!alive || !m.isConnected) return;
       const e = clamp(exposure(), 0, 1);
       // exposure 1 => needle on f/8 (centre of the scale): "correct exposure"
       target = -span / 2 + (span / 2) * clamp((e - 0.08) / 0.92, 0, 1) + (e < 1 ? Math.sin(performance.now() / 90) * 0.8 : 0);
@@ -185,9 +218,11 @@
       raf(tick);
     };
     raf(tick);
+    const kill = () => { alive = false; m.remove(); reg.removeAttribute('data-ydx-meter'); removeEventListener('resize', place); };
     return {
       settled: () => settled,
-      hide() { m.classList.add('is-out'); setTimeout(() => { alive = false; m.remove(); reg.removeAttribute('data-ydx-meter'); removeEventListener('resize', place); }, 400); },
+      hide() { m.classList.add('is-out'); setTimeout(kill, 400); },
+      kill,
     };
     function describeArc(r, a0, a1) {
       const p = (deg) => { const t = (deg * Math.PI) / 180; return (Math.sin(t) * r).toFixed(2) + ' ' + (-Math.cos(t) * r).toFixed(2); };
@@ -201,7 +236,10 @@
     iris = iris || makeIris(true);
     cls.add('ydx-iris-run');
     const rot0 = 0.35;
-    const clip = (hole) => { const [W, H] = iris.size(); a.style.clipPath = `path(evenodd, "M0 0H${W}V${H}H0Z ${hole}")`; };
+    const clip = (hole) => {
+      if (loose.ended) throw new Error('ydx: released'); // the watchdog already uncovered the page: stop drawing
+      const [W, H] = iris.size(); a.style.clipPath = `path(evenodd, "M0 0H${W}V${H}H0Z ${hole}")`;
+    };
     clip(iris.draw(0, rot0));
     await frames(1);
     cls.remove('ydx-hold', 'ydx-lens');
@@ -224,6 +262,9 @@
   const TYPE_EASE = 'cubic-bezier(.16,1,.3,1)';
   function arrive(delay = 0) {
     if (RM.matches || !d.body.animate) return;
+    try { arriveNow(delay); } catch (e) { /* decorative: never let it break the loader or navigation */ }
+  }
+  function arriveNow(delay) {
     const H = innerHeight;
     const inView = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.bottom > 0 && r.top < H * 0.92; };
     const h1 = [...d.querySelectorAll('main h1')].find(inView);
@@ -256,7 +297,9 @@
     // r2: the inline bootstrap gave up waiting for this file (very slow network): the site's own arrival is already
     // running (or done) natively. Taking it over now would bring a finished arrival back over the page.
     if (window.__ydxGaveUp) { cls.remove('ydx-quick', 'ydx-cont'); d.querySelectorAll('ydx-veil').forEach((v) => v.remove()); return; }
-    if (MODE === 'cont') return runContinuation(a);
+    if (MODE === 'cont') return runContinuation(a); // needs only the inline CSS and the site's own shutter styles
+    // r3: no enhance.css: hand the arrival back to the site (its own develop + wipe) instead of unstyled overlays.
+    if (!CSSOK) { cls.remove('ydx-hold', 'ydx-quick', 'ydx-lens'); return; }
     const reduce = RM.matches || !clipOK;
     const quick = MODE !== 'first';
     // Hold the arrival on screen (even once React marks it complete) until the iris opens it.
@@ -266,12 +309,12 @@
       const mo = new MutationObserver(() => { if (isDone(a)) { mo.disconnect(); res(); } });
       mo.observe(a, { attributes: true, attributeFilter: ['class'] });
     });
-    const meter = !quick && !reduce ? makeMeter(a) : null;
+    const meter = loose.meter = !quick && !reduce ? makeMeter(a) : null;
     // Repeat visits / hub iframe: a closed lens instead of the full proof, opened as soon as React is listening.
-    let lens = null, nudge = 0;
+    let lens = null;
     const kick = () => { if (!isDone(a)) window.dispatchEvent(new Event('studio:navigation')); };
     if (quick) {
-      kick(); nudge = setInterval(kick, 60);
+      kick(); loose.nudge = setInterval(kick, 60);
       if (!reduce) { lens = makeIris(true); lens.draw(0, 0.35); cls.add('ydx-lens'); }
     }
     // r2: count from when the loader was first painted, not from navigation start. On a slow network the first paint
@@ -281,10 +324,12 @@
     const t0 = fcp ? Math.min(fcp, performance.now()) : performance.now();
     const minShow = MODE === 'frame' ? 200 : quick ? 320 : Math.max(1100, t0 + 750);
     const safety = MODE === 'frame' ? 300 : quick ? Math.max(1200, t0 + 900) : Math.max(4000, t0 + 3200);
+    // r3: last-resort watchdog. Every wait below is bounded, so this only fires if something unforeseen hangs.
+    setTimeout(() => { if (!loose.ended) release(); }, Math.max(minShow, safety) - performance.now() + 4000);
     // Safety: never trap the visitor. Ask the arrival to finish; if React never answers, open it anyway.
     const timeout = wait(Math.max(0, safety - performance.now())).then(() => { kick(); return wait(MODE === 'frame' ? 0 : 250); });
     await Promise.race([done, timeout]);
-    clearInterval(nudge);
+    clearInterval(loose.nudge);
     mark('arrival-done');
     // Once React has marked the arrival complete it is inert, so clicks would fall through to the hidden page.
     // While we still hold it on screen, a transparent shield catches them and opens the iris right away instead.
@@ -293,7 +338,8 @@
     const shield = d.createElement('ydx-shield');
     shield.setAttribute('aria-hidden', 'true');
     shield.addEventListener('pointerdown', (e) => { e.preventDefault(); skip(); });
-    const onKey = (e) => { if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ' || e.key === 'Tab') skip(); }; // r2: Tab too (focus was moving behind the held proof)
+    shield.addEventListener('wheel', skip, { passive: true }); // r3: scrolling means "let me in" too
+    const onKey = loose.onKey = (e) => { if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ' || e.key === 'Tab') skip(); }; // r2: Tab too (focus was moving behind the held proof)
     d.body.appendChild(shield);
     addEventListener('keydown', onKey);
     const left = minShow - performance.now();
@@ -308,14 +354,16 @@
     }
     shield.remove();
     removeEventListener('keydown', onKey);
+    if (loose.ended) return;
     mark('open');
     if (reduce) {
       cls.add('ydx-fade');
       cls.remove('ydx-hold', 'ydx-quick');
-      setTimeout(() => { cls.add('ydx-arrival-off'); cls.remove('ydx-fade'); }, 400);
+      setTimeout(() => { cls.add('ydx-arrival-off'); cls.remove('ydx-fade'); loose.ended = true; }, 400);
       return;
     }
     await irisOut(a, MODE === 'frame' ? 380 : quick ? 560 : 800, lens);
+    loose.ended = true;
     mark('end');
   }
 
@@ -323,30 +371,33 @@
   async function runContinuation(a) {
     const veil = d.querySelector('ydx-veil');
     const kick = () => { if (!isDone(a)) window.dispatchEvent(new Event('studio:navigation')); };
-    const nudge = setInterval(kick, 50);
+    loose.nudge = setInterval(kick, 50);
     kick();
+    setTimeout(() => { if (!loose.ended) release(); }, 9000); // r3: last-resort watchdog (all waits below are capped)
     const done = new Promise((res) => {
       if (isDone(a)) return res();
       const mo = new MutationObserver(() => { if (isDone(a)) { mo.disconnect(); res(); } });
       mo.observe(a, { attributes: true, attributeFilter: ['class'] });
     });
     await Promise.race([done, wait(2200)]);
-    clearInterval(nudge);
+    clearInterval(loose.nudge);
     await Promise.race([d.fonts ? d.fonts.ready : Promise.resolve(), wait(900)]);
     await frames(2); // let the locale re-render (he/ru, RTL) land behind the shutter
     // r2: the pictures in the first screen popped in right after the shutter opened. Give them a short chance to
     // decode behind the closed shutter (capped; images that are slow just fade in as before).
     await Promise.race([firstScreenImages(), wait(650)]);
-    if (!veil) { cls.remove('ydx-cont'); return; }
+    if (!veil) { cls.remove('ydx-cont'); loose.ended = true; return; }
     const panels = veil.querySelectorAll('.route-shutter-panel');
     const anims = [...panels].map((p, i) => p.animate(
       [{ transform: 'translate3d(0,0,0)' }, { transform: `translate3d(0,${i ? 101 : -101}%,0)` }],
       { duration: 620, easing: 'cubic-bezier(.65,0,.15,1)', fill: 'forwards' }));
     arrive(170);
-    await Promise.all(anims.map((x) => x.finished.catch(() => {})));
+    // r3: capped: animations do not advance in a background tab
+    await Promise.race([Promise.all(anims.map((x) => x.finished.catch(() => {}))), wait(620 + 500)]);
     veil.remove();
     cls.add('ydx-arrival-off');
     cls.remove('ydx-cont');
+    loose.ended = true;
   }
 
   function firstScreenImages() {
@@ -417,15 +468,23 @@
       e.preventDefault(); e.stopImmediatePropagation();
       if (busy) return;
       busy = true;
-      const iris = makeIris(false);
-      const rot0 = 0.2;
-      // r2: 300 + 460ms of full blackout felt heavy for a language toggle; tightened to 250 + 400ms
-      await tween(250, (p) => iris.draw(1 - p, rot0 + p * 0.5), ease.in);
-      bypass = true; btn.click(); bypass = false;
-      await frames(3);
-      await tween(400, (p) => iris.draw(p, rot0 + 0.5 - p * 0.5), ease.out);
-      iris.remove();
-      busy = false;
+      let iris = null, switched = false;
+      const apply = () => { switched = true; bypass = true; try { btn.click(); } finally { bypass = false; } };
+      // r3: whatever happens, the language still changes and the opaque plate (z 10003) never stays up
+      try {
+        iris = makeIris(false);
+        const rot0 = 0.2;
+        // r2: 300 + 460ms of full blackout felt heavy for a language toggle; tightened to 250 + 400ms
+        await tween(250, (p) => iris.draw(1 - p, rot0 + p * 0.5), ease.in);
+        apply();
+        await frames(3);
+        await tween(400, (p) => iris.draw(p, rot0 + 0.5 - p * 0.5), ease.out);
+      } catch (err) {
+        if (!switched) apply();
+      } finally {
+        if (iris) iris.remove();
+        busy = false;
+      }
     }, true);
   }
 
@@ -515,14 +574,15 @@
   function boot() {
     window.__ydxBooted = true;
     mark('boot');
-    runLoader().catch(() => { cls.remove('ydx-hold', 'ydx-lens', 'ydx-quick', 'ydx-cont', 'ydx-iris-run'); d.querySelectorAll('ydx-iris,ydx-veil,ydx-meter').forEach((n) => n.remove()); });
-    watchRoutes();
-    watchLanguage();
-    cursor();
-    scan();
+    runLoader().catch(release);
+    // r3: features are independent: one failing must not take the others (or the loader) down with it
+    const safe = (fn) => { try { fn(); } catch (e) { /* skip this feature */ } };
+    safe(watchRoutes);
+    if (CSSOK) { safe(watchLanguage); safe(cursor); }
+    safe(scan);
     let pend = 0;
-    new MutationObserver(() => { if (!pend) pend = setTimeout(() => { pend = 0; scan(); }, 120); })
-      .observe(d.body, { childList: true, subtree: true });
+    safe(() => new MutationObserver(() => { if (!pend) pend = setTimeout(() => { pend = 0; safe(scan); }, 120); })
+      .observe(d.body, { childList: true, subtree: true }));
   }
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', boot, { once: true }); else boot();
 })();

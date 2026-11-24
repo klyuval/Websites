@@ -1,7 +1,10 @@
 /* Form & Field: ydx enhancement layer.
    Follows the site's own performance rules (styles.css header): only transform / opacity / one-shot clip-path move,
-   no blend modes or filters, every hidden-before-reveal state lives under html.ydx-js and prefers-reduced-motion.
+   no blend modes or filters, every hidden-before-reveal state lives under html.ydx-on and prefers-reduced-motion.
    The loader's critical CSS is inline in index.html (<style data-ydx>). */
+
+/* enhance.js reads this to know the stylesheet arrived; without it the script leaves the page as it is */
+:root{--ydx-css:1}
 
 /* ---------- design fixes (all viewports) ---------- */
 
@@ -40,23 +43,24 @@ span.ydx-w.ydx-w{display:inline-block;white-space:nowrap}
 span.ydx-wi.ydx-wi{display:inline-block}
 .ydx-split-run .ydx-w{clip-path:inset(-.35em -.6em -.25em -.6em)}
 
-@media (prefers-reduced-motion:no-preference){
+@media screen and (prefers-reduced-motion:no-preference){   /* screen: a page printed before it was scrolled must not print blank */
   /* hidden until enhance.js plays them (only ever set by script) */
   .ydx-rv-wait{opacity:0}
   .ydx-split-wait .ydx-wi{transform:translate3d(0,135%,0)}
   .ydx-split-wait .ydx-w{clip-path:inset(-.35em -.6em -.25em -.6em)}
 
-  /* printer's marks register as their section arrives (.in is set once by app.js) */
-  .ydx-js .sec .crops i{transition:opacity .5s,scale .7s var(--ease)}
-  .ydx-js .sec:not(.in) .crops i{opacity:0;scale:1.9}
-  .ydx-js .kicker .rule{transform-origin:0 50%;transition:transform 1.1s .15s cubic-bezier(.7,0,.2,1)}
-  .ydx-js .sec:not(.in) .kicker .rule{transform:scaleX(0)}
-  .ydx-js .sec .reg{transition:rotate 1.2s .2s var(--ease)}
-  .ydx-js .sec:not(.in) .reg{rotate:-180deg}
-  .ydx-js .foot-row{transition:border-color .9s .3s}
-  .ydx-js .sec:not(.in) .foot-row{border-top-color:transparent}
+  /* printer's marks register as their section arrives (.in is set once by app.js; html.ydx-app says app.js ran,
+     html.ydx-on that enhance.js ran, so nothing waits on a script that never came) */
+  .ydx-on .sec .crops i{transition:opacity .5s,scale .7s var(--ease)}
+  .ydx-app .sec:not(.in) .crops i{opacity:0;scale:1.9}
+  .ydx-on .kicker .rule{transform-origin:0 50%;transition:transform 1.1s .15s cubic-bezier(.7,0,.2,1)}
+  .ydx-app .sec:not(.in) .kicker .rule{transform:scaleX(0)}
+  .ydx-on .sec .reg{transition:rotate 1.2s .2s var(--ease)}
+  .ydx-app .sec:not(.in) .reg{rotate:-180deg}
+  .ydx-on .foot-row{transition:border-color .9s .3s}
+  .ydx-app .sec:not(.in) .foot-row{border-top-color:transparent}
   /* the strike-through waits for the words it crosses out */
-  .ydx-js .strike path{transition-delay:.85s}
+  .ydx-on .strike path{transition-delay:.85s}
 
   /* mobile menu: the sheet unrolls, its lines are set one by one */
   #mobile-nav:not([hidden]) a{animation:ydx-menu-a .5s cubic-bezier(.2,.8,.2,1) both}
@@ -67,10 +71,10 @@ span.ydx-wi.ydx-wi{display:inline-block}
   .menu-toggle[aria-expanded=true] span{rotate:180deg}
 
   /* footer colour bars print in */
-  .ydx-js .site-footer .bars b{transition:transform .5s var(--ease);transform-origin:50% 100%}
-  .ydx-js .site-footer:not(.ydx-in) .bars b{transform:scaleY(0)}
-  .ydx-js .site-footer .bars b:nth-child(2){transition-delay:.06s}.ydx-js .site-footer .bars b:nth-child(3){transition-delay:.12s}
-  .ydx-js .site-footer .bars b:nth-child(4){transition-delay:.18s}.ydx-js .site-footer .bars b:nth-child(5){transition-delay:.24s}
+  .ydx-on .site-footer .bars b{transition:transform .5s var(--ease);transform-origin:50% 100%}
+  .ydx-on .site-footer:not(.ydx-in) .bars b{transform:scaleY(0)}
+  .ydx-on .site-footer .bars b:nth-child(2){transition-delay:.06s}.ydx-on .site-footer .bars b:nth-child(3){transition-delay:.12s}
+  .ydx-on .site-footer .bars b:nth-child(4){transition-delay:.18s}.ydx-on .site-footer .bars b:nth-child(5){transition-delay:.24s}
   /* the ribbon's asterisks turn like the brand star while the ribbon runs */
   .ribbon.on .ribbon-track i{display:inline-block;animation:ydx-turn 7s linear infinite}
   @keyframes ydx-turn{to{rotate:360deg}}
@@ -157,3 +161,7 @@ span.ydx-wi.ydx-wi{display:inline-block}
   @starting-style{#mobile-nav:not([hidden]){clip-path:inset(0 0 100% 0 round 22px);translate:0 -8px}}
   #mobile-nav[hidden]{clip-path:inset(0 0 100% 0 round 22px);translate:0 -8px;transition-duration:.24s;transition-timing-function:cubic-bezier(.5,0,.75,0)}
 }
+
+/* ---------- round 3: print ----------
+   The fixed overlays printed over page one (the hidden-before-reveal states above are screen only). */
+@media print{.ydx-loader,.ydx-shutter,.ydx-progress{display:none !important}}

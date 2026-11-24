@@ -9,6 +9,9 @@
 (() => {
   'use strict';
   const d = document, h = d.documentElement, w = window;
+  // Boot once, even if the tag is duplicated or the file gets injected a second time.
+  if (w.__ydxBooted) return;
+  w.__ydxBooted = true;
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const FINE = matchMedia('(hover: hover) and (pointer: fine)').matches;
   const EASE = 'cubic-bezier(.2,.8,.2,1)';          // the site's --ease
@@ -19,6 +22,10 @@
   const anim = (el, kf, o) => { if (!el || !el.animate) return null; try { return el.animate(kf, o); } catch (e) { return null; } };
   const ss = (() => { try { return w.sessionStorage; } catch (e) { return null; } })();
   const isEn = () => !!$('.site.english');
+  // enhance.css sets --ydx-css on :root. A deferred script runs only after the stylesheets before
+  // it have loaded or failed, so this is reliable. Without the CSS, the cursor and the sheet ghost
+  // would render as unstyled nodes, so they are skipped.
+  const CSSOK = getComputedStyle(h).getPropertyValue('--ydx-css').trim() === '1';
 
   if (!RM) h.classList.add('ydx-motion');
 
@@ -26,12 +33,16 @@
   /* 1. Loader: wait for the real menu, then lift the drip curtain      */
   /* ---------------------------------------------------------------- */
   const L = w.__ydxLoader || null;
-  w.__ydxTook = true; // tells the inline failsafe that this script is in charge
   const loader = L && L.el && L.el.isConnected ? L.el : null;
   const inner = loader && $('.ydx-l__in', loader);
   const drip = loader && $('.ydx-l__drip', loader);
   const OFF = 'translate3d(0,calc(-100% - 320px),0)'; // fully above the viewport, drips included
-  let lifted = !loader;
+  // If the inline failsafe already faded the loader out (this file arrived very late), don't
+  // lift it again or replay the entrance on a page the visitor is already reading.
+  let lifted = !loader || !!L.failsafe;
+  let pageLive = !loader; // true a moment after the curtain has gone (see register())
+  let leaving = false, goT = 0, safeT = 0; // page-transition state (section 3)
+  let flush = null; // reveals held while the curtain was down (section 4)
 
   // Minimum on-screen time per mode: first visit lets the three scoops land; repeat visits,
   // page-to-page arrivals and the hub's iframe preview are much shorter.
@@ -61,51 +72,71 @@
     })();
   });
 
+  // After the curtain is gone (or was never there): release held reveals; a moment later the
+  // page counts as "live", so cards React mounts on screen are left to framer's own enter.
+  function settle() {
+    try { if (flush) flush(); } catch (e) {}
+    setTimeout(() => { pageLive = true; }, 400);
+  }
+
   function lift() {
     if (lifted) return;
     lifted = true;
+    if (L) L.done = true; // the inline failsafe stands down
     h.classList.remove('ydx-loading');
-    loader.style.pointerEvents = 'none';
-    const mode = L.mode;
-    if (mode === 'rm' || RM) {
-      const a = anim(loader, [{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: 'ease', fill: 'forwards' });
-      const end = () => park();
-      a ? a.finished.then(end, end) : end();
-      return;
-    }
-    const dur = mode === 'frame' ? 420 : mode === 'nav' ? 640 : mode === 'repeat' ? 620 : 780;
-    // the stack squashes, then everything is pulled up; the drips stretch as the curtain rises
-    anim(inner, [{ translate: '0 0', scale: '1 1', opacity: 1 }, { translate: '0 6px', scale: '1.04 .94', opacity: 1, offset: .25 }, { translate: '0 -70px', scale: '.96 1.04', opacity: 0 }],
-      { duration: dur * .55, easing: 'cubic-bezier(.5,0,.7,.2)', fill: 'forwards' });
-    anim(drip, [{ transform: 'scaleY(1)' }, { transform: 'scaleY(1.9)' }], { duration: dur, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
-    const a = anim(loader, [{ transform: 'translate3d(0,0,0)' }, { transform: OFF }], { duration: dur, delay: 70, easing: INOUT, fill: 'forwards' });
-    entrance(mode === 'frame' ? 0 : 160);
-    if (w.__ydxFlush) w.__ydxFlush();
-    const end = () => park();
-    a ? a.finished.then(end, end) : end();
+    try {
+      if (leaving) return; // a link was activated under the curtain (keyboard): it is already pouring
+      loader.style.pointerEvents = 'none';
+      const mode = L.mode;
+      if (mode === 'rm' || RM) {
+        const a = anim(loader, [{ opacity: 1 }, { opacity: 0 }], { duration: 260, easing: 'ease', fill: 'forwards' });
+        a ? a.finished.then(park, park) : park();
+        return;
+      }
+      const dur = mode === 'frame' ? 420 : mode === 'nav' ? 640 : mode === 'repeat' ? 620 : 780;
+      // the stack squashes, then everything is pulled up; the drips stretch as the curtain rises
+      anim(inner, [{ translate: '0 0', scale: '1 1', opacity: 1 }, { translate: '0 6px', scale: '1.04 .94', opacity: 1, offset: .25 }, { translate: '0 -70px', scale: '.96 1.04', opacity: 0 }],
+        { duration: dur * .55, easing: 'cubic-bezier(.5,0,.7,.2)', fill: 'forwards' });
+      anim(drip, [{ transform: 'scaleY(1)' }, { transform: 'scaleY(1.9)' }], { duration: dur, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+      const a = anim(loader, [{ transform: 'translate3d(0,0,0)' }, { transform: OFF }], { duration: dur, delay: 70, easing: INOUT, fill: 'forwards' });
+      a ? a.finished.then(park, park) : park();
+      try { entrance(mode === 'frame' ? 0 : 160); } catch (e) {}
+    } catch (e) { park(); } // never leave the page covered
+    finally { settle(); }
   }
 
   // Keep the curtain in <body> (hidden) so page transitions can drop it again.
   function park() {
-    if (!loader) return;
-    loader.getAnimations({ subtree: true }).forEach(a => a.cancel());
+    if (!loader || leaving) return;
+    try { loader.getAnimations({ subtree: true }).forEach(a => a.cancel()); } catch (e) {}
     loader.hidden = true;
     loader.style.display = 'none';
+    loader.style.pointerEvents = 'none';
+    loader.style.opacity = ''; loader.style.transition = ''; // left behind by the inline failsafe
     loader.style.transform = OFF;
   }
 
-  if (loader) {
+  if (loader && !lifted) {
     const min = MIN[L.mode] != null ? MIN[L.mode] : 900;
     const since = () => performance.now() - L.t0;
     const waitMin = new Promise(r => setTimeout(r, Math.max(0, min - since())));
     Promise.all([whenLoad, whenFonts, whenData, waitMin]).then(lift);
     setTimeout(lift, Math.max(0, HARD - since())); // never trap anyone
+  } else if (loader) { // the failsafe is fading it: tidy up once it has gone
+    settle(); setTimeout(park, 420);
   }
+  w.__ydxTook = true; // tells the inline failsafe that this script is running and has armed its timers
 
-  // Back/forward cache: a page restored mid-transition must not stay covered.
+  // Back/forward cache: a page restored mid-load or mid-transition must not stay covered, and
+  // must not keep a stale "leaving" state that would skip the next transition.
   w.addEventListener('pageshow', e => {
-    if (!e.persisted || !loader) return;
-    lifted = true; h.classList.remove('ydx-loading'); park();
+    if (!e.persisted) return;
+    clearTimeout(goT); clearTimeout(safeT); goT = safeT = 0;
+    leaving = false;
+    h.classList.remove('ydx-loading');
+    if (!loader) return;
+    if (!lifted) { lifted = true; if (L) L.done = true; settle(); }
+    park();
   });
 
   /* ---------------------------------------------------------------- */
@@ -137,35 +168,64 @@
   /* ---------------------------------------------------------------- */
   /* 3. Page transitions: the drip curtain pours down, then lifts       */
   /* ---------------------------------------------------------------- */
-  let leaving = false;
   function cover(href) {
-    if (!loader || leaving) { location.href = href; return; }
+    if (leaving) return; // already pouring: one navigation per transition (a second Enter, a double tap)
+    if (!loader) { location.href = href; return; }
     leaving = true;
-    const go = () => { try { ss && ss.setItem('ydx-nav', String(Date.now())); } catch (e) {} location.href = href; };
-    loader.getAnimations({ subtree: true }).forEach(a => a.cancel());
-    loader.setAttribute('data-mode', 'nav');
-    loader.setAttribute('data-lang', isEn() ? 'en' : 'he');
-    const hand = $('.ydx-l__hand', loader);
-    if (hand) hand.textContent = isEn() ? 'Checking the counter…' : 'רגע, בודקים מה יש…';
-    loader.hidden = false;
-    loader.style.display = '';
-    loader.style.pointerEvents = 'auto';
-    const dur = 520;
-    anim(drip, [{ transform: 'scaleY(1.7)' }, { transform: 'scaleY(1)' }], { duration: dur + 160, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'forwards' });
-    anim(inner, [{ translate: '0 -60px', opacity: 0 }, { translate: '0 0', opacity: 1 }], { duration: 340, delay: dur - 200, easing: EASE, fill: 'both' });
-    const a = anim(loader, [{ transform: OFF }, { transform: 'translate3d(0,0,0)' }], { duration: dur, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
-    // Start the request just before the curtain lands: the old page keeps painting (and the
-    // curtain keeps falling) until the next document commits, so the network wait overlaps the
-    // pour instead of following it. The next page opens already covered.
-    setTimeout(go, a ? dur - 110 : 0);
+    clearTimeout(safeT);
+    const go = () => {
+      goT = 0; w.removeEventListener('beforeunload', yieldNav);
+      try { ss && ss.setItem('ydx-nav', String(Date.now())); } catch (e) {}
+      location.href = href;
+    };
+    try {
+      if (!loader.isConnected) d.body.appendChild(loader);
+      loader.getAnimations({ subtree: true }).forEach(a => a.cancel());
+      loader.setAttribute('data-mode', 'nav');
+      loader.setAttribute('data-lang', isEn() ? 'en' : 'he');
+      loader.hidden = false;
+      loader.style.display = '';
+      loader.style.opacity = ''; loader.style.transition = '';
+      loader.style.pointerEvents = 'auto';
+      const dur = 520;
+      anim(drip, [{ transform: 'scaleY(1.7)' }, { transform: 'scaleY(1)' }], { duration: dur + 160, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'forwards' });
+      anim(inner, [{ translate: '0 -60px', opacity: 0 }, { translate: '0 0', opacity: 1 }], { duration: 340, delay: dur - 200, easing: EASE, fill: 'both' });
+      const a = anim(loader, [{ transform: OFF }, { transform: 'translate3d(0,0,0)' }], { duration: dur, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
+      // Start the request just before the curtain lands: the old page keeps painting (and the
+      // curtain keeps falling) until the next document commits, so the network wait overlaps the
+      // pour instead of following it. The next page opens already covered.
+      goT = setTimeout(go, a ? dur - 110 : 0);
+      w.addEventListener('beforeunload', yieldNav);
+    } catch (e) { leaving = false; park(); location.href = href; return; }
+    // The navigation may never commit (Stop/Esc, a 204 or download response, a cancelled
+    // "leave site?" prompt): don't leave the old page covered and unclickable.
+    safeT = setTimeout(uncover, 4500);
   }
+  // The visitor started their own navigation (Back, a typed URL) during the pour: theirs wins.
+  function yieldNav() {
+    w.removeEventListener('beforeunload', yieldNav);
+    if (goT) { clearTimeout(goT); goT = 0; }
+  }
+  function uncover() {
+    safeT = 0;
+    if (!leaving) return;
+    yieldNav();
+    leaving = false;
+    try { ss && ss.removeItem('ydx-nav'); } catch (e) {}
+    loader.style.pointerEvents = 'none';
+    const a = anim(loader, [{ transform: 'translate3d(0,0,0)' }, { transform: OFF }], { duration: 560, easing: INOUT, fill: 'forwards' });
+    a ? a.finished.then(park, park) : park();
+  }
+  w.addEventListener('pagehide', () => { clearTimeout(safeT); safeT = 0; });
+  // Same-document Back during the pour (popstate): stay, lift the curtain again.
+  w.addEventListener('popstate', () => { if (leaving && goT) uncover(); });
 
   d.addEventListener('click', e => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const a = e.target.closest && e.target.closest('a[href]');
-    if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return;
+    if (!a || typeof a.href !== 'string' || (a.target && a.target !== '_self') || a.hasAttribute('download')) return; // (SVG <a> has an object href)
     let u; try { u = new URL(a.href, location.href); } catch (err) { return; }
-    if (u.origin !== location.origin) return;
+    if (u.origin !== location.origin) return; // also javascript:, mailto:, tel:
     const samePage = u.pathname.replace(/\/$/, '') === location.pathname.replace(/\/$/, '') && u.search === location.search;
     if (samePage && u.hash) return; // in-page anchor: the site's Lenis already glides there
     if (RM || /\.(xml|txt|jpe?g|png|webp|svg|pdf)$/i.test(u.pathname)) return;
@@ -207,7 +267,7 @@
   const sheetEl = () => d.querySelector('body > .sheet[role=dialog]');
   const remember = e => {
     if (sheetEl()) { // a close is likely: freeze what is on screen right now
-      if (RM || e.type === 'keydown' && e.key !== 'Escape') return;
+      if (RM || !CSSOK || e.type === 'keydown' && e.key !== 'Escape') return;
       const sh = sheetEl(), ov = d.querySelector('body > .dialog-overlay');
       snap = { t: performance.now(), sh: sh.cloneNode(true), ov: ov && ov.cloneNode(true), r: sh.getBoundingClientRect() };
       return;
@@ -260,7 +320,7 @@
   /* 4. Scroll reveals (cards drop in like scoops, prices get stamped)  */
   /* ---------------------------------------------------------------- */
   const held = [];
-  w.__ydxFlush = () => { held.splice(0).forEach((el, i) => reveal(el, i + 2)); };
+  flush = () => { held.splice(0).forEach((el, i) => reveal(el, i + 2)); };
   const supportsTimeline = w.CSS && CSS.supports && CSS.supports('animation-timeline: view()');
   const io = new IntersectionObserver(entries => {
     const hits = entries.filter(e => e.isIntersecting);
@@ -327,15 +387,15 @@
   }
 
   // In-view toggles: hours highlighter, visit headline swirl "churning" (paused off-screen).
-  let churn = null;
+  let churn = null, churnEl = null;
   const live = new IntersectionObserver(entries => entries.forEach(e => {
     const el = e.target;
     if (el.classList.contains('hours')) { if (e.isIntersecting) { el.classList.add('ydx-on'); live.unobserve(el); } return; }
     if (el.classList.contains('visit__h')) {
-      if (!churn) churn = anim(el, [
+      if (churnEl !== el) { if (churn) churn.cancel(); churnEl = el; churn = anim(el, [
         { backgroundSize: '112% auto', backgroundPosition: '20% 35%' },
         { backgroundSize: '140% auto', backgroundPosition: '80% 65%' }],
-        { duration: 18000, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' });
+        { duration: 18000, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' }); }
       if (churn) e.isIntersecting ? churn.play() : churn.pause();
     }
   }), { threshold: 0.2 });
@@ -401,7 +461,7 @@
   /* 6. Scoop cursor (fine pointers): a red dot that turns into a ✳      */
   /*    sticker over anything that opens a flavour                       */
   /* ---------------------------------------------------------------- */
-  if (FINE && w.self === w.top) {
+  if (FINE && w.self === w.top && CSSOK) {
     const c = d.createElement('div');
     c.className = 'ydx-cursor';
     c.setAttribute('aria-hidden', 'true');
@@ -434,7 +494,6 @@
   /* ---------------------------------------------------------------- */
   /* 7. Scan the app (and re-scan when React re-renders)                */
   /* ---------------------------------------------------------------- */
-  let pageLive = false; // becomes true once the curtain has gone
   function scan() {
     $$('.grid .card').forEach(el => register(el, 'card', !pageLive));
     $$('.grid .tile-note').forEach(el => register(el, 'note', !pageLive));
@@ -444,6 +503,7 @@
     $$('.menu__filters, .menu__foot, .footer-row').forEach(el => register(el, 'up', true));
     if (!supportsTimeline) $$('.reveal').forEach(el => register(el, 'up', true));
     markToday();
+    if (churnEl && !churnEl.isConnected) { if (churn) churn.cancel(); churn = churnEl = null; } // React replaced it
     watchLive($('.hours'));
     watchLive($('.visit__h'));
     $$('.btn').forEach(magnet);
@@ -455,8 +515,6 @@
   const mo = new MutationObserver(() => { if (!sRaf) sRaf = requestAnimationFrame(() => { sRaf = 0; scan(); }); });
   mo.observe(d.body, { childList: true, subtree: true, characterData: true });
   scan();
-  const goLive = () => { pageLive = true; };
-  if (!loader) goLive(); else Promise.all([whenLoad]).then(() => setTimeout(goLive, Math.max(0, (MIN[L.mode] || 0) + 400 - (performance.now() - L.t0))));
 
   function onReadyStatic() { /* reduced motion: only the static niceties */
     const run = () => { try { markToday(); } catch (e) {} };

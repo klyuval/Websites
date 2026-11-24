@@ -3,10 +3,12 @@
    The site already: lays table pieces down when a section enters ([data-lay].is-laid), fades [data-rise] blocks up,
    moves the hero pieces with the pointer, smooth-scrolls with Lenis and stacks the four courses as sticky cloths.
    Everything here complements that and keys off the same classes, so nothing is animated twice.
-   Hide-before-reveal styles only apply under html.lay-ready (set by the site when motion is allowed) + html.ydx-on
-   (set by /ydx/enhance.js), so the page is complete without either script. */
+   Hide-before-reveal styles only apply under html.lay-ready (set by the site when motion is allowed) + html.ydx-enter
+   (set by /ydx/enhance.js when it arrives while the loader still covers the page, and removed again if the app has
+   not hydrated by the time the loader goes), so the page is complete without either script. */
 
-:root { --ydx-ease: cubic-bezier(.2,.8,.2,1); --ydx-swing: cubic-bezier(.76,0,.24,1); }
+/* --ydx-css tells enhance.js this file loaded (without it, the language wipe is skipped rather than unstyled). */
+:root { --ydx-css: 1; --ydx-ease: cubic-bezier(.2,.8,.2,1); }
 
 /* ---------------------------------------------------------------------------------------------------------------
    1. Hold every entrance while the loader (or the language wipe) is covering the page, so the table is set
@@ -31,10 +33,10 @@ html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paus
   @keyframes ydx-write-rtl { from { clip-path: inset(-25% -6% -25% 100%); } to { clip-path: inset(-25% -6% -25% -6%); } }
 
   /* headline lines */
-  html.lay-ready.ydx-on [data-lay]:not(.is-laid) :is(.hero h1, .course h2, .invitation h2, .quilt__title) > * {
+  html.lay-ready.ydx-enter [data-lay]:not(.is-laid) :is(.hero h1, .course h2, .invitation h2, .quilt__title) > * {
     clip-path: inset(0 0 100% 0);
   }
-  html.lay-ready.ydx-on [data-lay].is-laid :is(.hero h1, .course h2, .invitation h2, .quilt__title) > * {
+  html.lay-ready.ydx-enter [data-lay].is-laid :is(.hero h1, .course h2, .invitation h2, .quilt__title) > * {
     animation: ydx-line .95s var(--ydx-ease) backwards;
     animation-delay: calc(var(--ydx-l, 0) * 110ms + var(--ydx-base, 120ms));
   }
@@ -43,23 +45,23 @@ html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paus
   .quilt { --ydx-base: 60ms; }
 
   /* copy that follows the headline */
-  html.lay-ready.ydx-on [data-lay]:not(.is-laid) :is(
+  html.lay-ready.ydx-enter [data-lay]:not(.is-laid) :is(
       .hero__copy > .tag, .hero__copy > p, .hero__copy > .hero__actions, .hero__tabs a, .top,
       .course__top, .course__copy > p, .course__detail, .course__foot, .course__turn,
       .invitation__copy > .tag, .invitation__copy > p, .invitation__copy > .hero__actions, .invitation__closing,
       .quilt__head > .tag, .strip__name) { opacity: 0; }
 
-  html.lay-ready.ydx-on [data-lay].is-laid :is(.hero__copy > p, .course__copy > p, .invitation__copy > p) { animation: ydx-up .8s var(--ydx-ease) backwards .42s; }
-  html.lay-ready.ydx-on [data-lay].is-laid :is(.course__detail) { animation: ydx-up .8s var(--ydx-ease) backwards .5s; }
-  html.lay-ready.ydx-on [data-lay].is-laid :is(.hero__actions, .course__foot) { animation: ydx-up .8s var(--ydx-ease) backwards .56s; }
-  html.lay-ready.ydx-on [data-lay].is-laid :is(.hero__copy > .tag, .course__top .tag, .invitation__copy > .tag, .quilt__head > .tag) { animation: ydx-stamp .6s var(--ydx-ease) backwards .05s; }
-  html.lay-ready.ydx-on [data-lay].is-laid .course__top { animation: ydx-up .7s var(--ydx-ease) backwards; }
-  html.lay-ready.ydx-on [data-lay].is-laid .course__turn { animation: ydx-up .7s var(--ydx-ease) backwards .7s; }
-  html.lay-ready.ydx-on [data-lay].is-laid .top { animation: ydx-down .8s var(--ydx-ease) backwards .1s; }
-  html.lay-ready.ydx-on [data-lay].is-laid .hero__tabs a { animation: ydx-up .7s var(--ydx-ease) backwards; animation-delay: calc(.62s + var(--ydx-t, 0) * 70ms); }
+  html.lay-ready.ydx-enter [data-lay].is-laid :is(.hero__copy > p, .course__copy > p, .invitation__copy > p) { animation: ydx-up .8s var(--ydx-ease) backwards .42s; }
+  html.lay-ready.ydx-enter [data-lay].is-laid :is(.course__detail) { animation: ydx-up .8s var(--ydx-ease) backwards .5s; }
+  html.lay-ready.ydx-enter [data-lay].is-laid :is(.hero__actions, .course__foot) { animation: ydx-up .8s var(--ydx-ease) backwards .56s; }
+  html.lay-ready.ydx-enter [data-lay].is-laid :is(.hero__copy > .tag, .course__top .tag, .invitation__copy > .tag, .quilt__head > .tag) { animation: ydx-stamp .6s var(--ydx-ease) backwards .05s; }
+  html.lay-ready.ydx-enter [data-lay].is-laid .course__top { animation: ydx-up .7s var(--ydx-ease) backwards; }
+  html.lay-ready.ydx-enter [data-lay].is-laid .course__turn { animation: ydx-up .7s var(--ydx-ease) backwards .7s; }
+  html.lay-ready.ydx-enter [data-lay].is-laid .top { animation: ydx-down .8s var(--ydx-ease) backwards .1s; }
+  html.lay-ready.ydx-enter [data-lay].is-laid .hero__tabs a { animation: ydx-up .7s var(--ydx-ease) backwards; animation-delay: calc(.62s + var(--ydx-t, 0) * 70ms); }
   .hero__tabs a:nth-child(2) { --ydx-t: 1; } .hero__tabs a:nth-child(3) { --ydx-t: 2; } .hero__tabs a:nth-child(4) { --ydx-t: 3; }
-  html.lay-ready.ydx-on [data-lay].is-laid .invitation__closing { animation: ydx-up .8s var(--ydx-ease) backwards .7s; }
-  html.lay-ready.ydx-on [data-lay].is-laid .strip__name { animation: ydx-up .7s var(--ydx-ease) backwards; animation-delay: calc(.35s + var(--n, 0) * 80ms); }
+  html.lay-ready.ydx-enter [data-lay].is-laid .invitation__closing { animation: ydx-up .8s var(--ydx-ease) backwards .7s; }
+  html.lay-ready.ydx-enter [data-lay].is-laid .strip__name { animation: ydx-up .7s var(--ydx-ease) backwards; animation-delay: calc(.35s + var(--n, 0) * 80ms); }
 
   /* handwriting writes itself in, in its own reading direction (signature, scribbles, the quilt hint) */
   html.lay-ready.ydx-on [data-ydx-write]:not([data-ydx-in]) { clip-path: inset(0 100% 0 0); }

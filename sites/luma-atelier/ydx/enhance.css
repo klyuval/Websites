@@ -2,13 +2,18 @@
    Palette taken from the site: ground #14180f / #171b12, paper #eee8d8 / #d8d2bc, proof gold #b8a67d / #8d805f,
    cream ink #eeeadd. Type: Optical (display), Atelier Sans (body). */
 
+/* r3: enhance.js checks this to know the stylesheet arrived; without it, it creates no overlays */
+:root { --ydx-css: 1; }
+
 /* ---------------------------------------------------------------------------------------------------------------
    1. Loader: hold / iris / fade states around the site's own arrival (StudioArrival)
    ------------------------------------------------------------------------------------------------------------- */
 html.ydx-hold .studio-arrival,
 html.ydx-iris-run .studio-arrival { visibility: visible !important; transition: none !important; }
 html.ydx-hold .studio-arrival.arrival-complete { clip-path: inset(0) !important; }
-html.ydx-arrival-off .studio-arrival { visibility: hidden !important; }
+/* r3: no transition: the site's 1s `visibility` transition kept an arrival React never completed (app bundle failed
+   or late) fully visible for a second after the iris had opened it */
+html.ydx-arrival-off .studio-arrival { visibility: hidden !important; transition: none !important; }
 html.ydx-fade .studio-arrival {
   visibility: visible !important; clip-path: inset(0) !important; opacity: 0;
   transition: opacity .35s ease !important;
@@ -19,7 +24,7 @@ html.ydx-fade .studio-arrival {
 ydx-meter {
   position: fixed; z-index: 10001; left: 50%; top: 60%;
   width: 132px; transform: translate(-50%, -50%);
-  pointer-events: none; text-align: center; color: #8d805f;
+  pointer-events: none; text-align: center; color: #8d805f; direction: ltr; /* a dial reads left to right in he too */
   animation: ydx-meter-in .6s .1s cubic-bezier(.2, .8, .2, 1) both;
   transition: opacity .3s ease, transform .4s cubic-bezier(.2, .8, .2, 1);
 }
@@ -148,8 +153,9 @@ ydx-af.is-fire i { animation: ydx-af-fire .32s cubic-bezier(.2, .8, .2, 1); }
 
 /* ---------------------------------------------------------------------------------------------------------------
    5. Footer wordmark develops into view, like the arrival proof
+   (r3: not in forced-colors mode, where the background is dropped and transparent text would vanish)
    ------------------------------------------------------------------------------------------------------------- */
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
   html.ydx-js .site-footer .footer-top .brand[data-ydx-watch] {
     background: linear-gradient(90deg, currentColor 0 40%, rgba(236, 233, 223, .13) 60% 100%) 100% 0 / 250% 100% no-repeat;
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;

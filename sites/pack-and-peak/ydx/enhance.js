@@ -1,6 +1,6 @@
 /* ==========================================================================
    Pack & Peak — ydx design + motion layer (vanilla, no dependencies)
-   - Loader: see the inline script in index.html (readable source notes in CHANGES.md).
+   - Loader: driven by the inline <script data-ydx> in index.html (readable source: ydx/loader-inline.src.js).
    - Chapter-jump transition (dock / CTA jumps of 2+ chapters).
    - Scroll reveals, counters, magnetic buttons, map reticle, altimeter pill.
    The page is a React app hydrated on `document`: we never add/remove/reorder
@@ -9,6 +9,8 @@
    ========================================================================== */
 (function () {
   'use strict';
+  if (window.__ydxEnhance) return;                     // idempotent: a second copy of this file must not double everything
+  window.__ydxEnhance = 1;
   var html = document.documentElement;
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var fine = matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -20,11 +22,13 @@
   var easeOut = function (t) { return 1 - Math.pow(1 - t, 3); };
   var fmt = function (n) { return Math.round(n).toLocaleString('en-US'); };
   var SUMMIT = 2380, TRAILHEAD = 1520;               // fictional Dolomite ridgeline (860 m gain)
-
-  if (!reduce) html.classList.add('ydx-motion');
+  var lastInput = 0;                                 // time of the user's latest wheel / touch / key / pointer press
+  ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach(function (t) {
+    addEventListener(t, function () { lastInput = performance.now(); }, { passive: true, capture: true });
+  });
 
   /* ------------------------------------------------------------------ *
-   * 1. Loader: driven by the inline <script data-ydx> at the top of <head>
+   * 1. Loader: driven by the inline <script data-ydx> in <head>
    *    (so it is alive from the first paint, even before this file arrives).
    *    It dispatches `ydx:ready` and sets window.__ydxDone when it is gone.
    * ------------------------------------------------------------------ */
@@ -37,31 +41,46 @@
     '.atlas-note', '.terrain-readout', '.sheet-arrow', '.terrain-caption', '.kit-grid', '.pack-core',
     '.pack-foot', '.summit-actions', '.summit-footer'
   ].join(',');
-  // Elements clipped to nothing (write-in accents) never intersect, so they are observed through a parent.
+  // Elements hidden as zero-size boxes do not intersect reliably, so they are observed through a parent:
+  // write-in accents are clipped to nothing, and pins are scale(0) points (round 3: pin 04 sits exactly on the
+  // overflow:clip edge of #summit and never stamped on phones or tall desktops).
   function proxyOf(el) {
     if (el.matches('h2 em')) return el.closest('h2');
     if (el.classList.contains('board-note')) return el.closest('.board');
+    if (el.classList.contains('pin')) return el.parentElement;
     return el;
   }
-  var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) {
+  function onIn(es, obs) {
     es.forEach(function (e) {
       if (!e.isIntersecting) return;
-      io.unobserve(e.target);
+      obs.unobserve(e.target);
       e.target.__ydxDone = true;
       (e.target.__ydxFor || [e.target]).forEach(function (el) {
         el.setAttribute('data-ydx-in', '');
         if (el.classList.contains('terrain-readout')) readoutIn(el, false);
       });
     });
-  }, { rootMargin: '0px 0px -12% 0px', threshold: .08 }) : null;
+  }
+  var hasIO = 'IntersectionObserver' in window;
+  var io = hasIO ? new IntersectionObserver(onIn, { rootMargin: '0px 0px -12% 0px', threshold: .08 }) : null;
+  // The footer ends the page: scrolled to the bottom it fills only the last ~100px of the viewport, which lie inside
+  // the -12% margin above, so it never intersected (round 3: the desktop footer stayed invisible). Watch it unshrunk.
+  var ioEnd = hasIO ? new IntersectionObserver(onIn, { threshold: .2 }) : null;
+  // Reveals hide content until it scrolls in. If this file runs after the loader has already uncovered the page
+  // (enhance.js very late) and a reveal target is on screen, hiding it now would make visible content blink out
+  // and replay, so the reveals are skipped and everything simply stays visible.
+  function onScreen(el) { var r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight && r.width > 0; }
+  var late = html.classList.contains('ydx-in') && $$(REVEAL).some(onScreen);
+  var motion = !reduce && !late && hasIO;
+  if (motion) html.classList.add('ydx-motion');
   function scanReveals() {
     $$(REVEAL).forEach(function (el) {
       if (el.__ydxSeen) return;
       el.__ydxSeen = true;
-      if (!io || reduce) { el.setAttribute('data-ydx-in', ''); return; }
+      if (!motion) { el.setAttribute('data-ydx-in', ''); return; }
       var px = proxyOf(el) || el;
       if (px.__ydxDone) { el.setAttribute('data-ydx-in', ''); return; }
-      if (!px.__ydxFor) { px.__ydxFor = []; io.observe(px); }
+      if (!px.__ydxFor) { px.__ydxFor = []; (px.matches('.summit-footer') ? ioEnd : io).observe(px); }
       px.__ydxFor.push(el);
     });
   }
@@ -235,7 +254,12 @@
       if (!pend) { pend = true; raf(draw); }
     }, { passive: true });
     sec.addEventListener('pointerleave', off);
-    addEventListener('scroll', function () { if (r.classList.contains('is-on')) off(); }, { passive: true });
+    // Scrolling, a key press (e.g. opening the packing list from the keyboard) or leaving the window hides it until
+    // the mouse moves again, so a frozen crosshair never lingers under the dialog or after switching windows.
+    function offIfOn() { if (r.classList.contains('is-on')) off(); }
+    addEventListener('scroll', offIfOn, { passive: true });
+    addEventListener('keydown', offIfOn, { passive: true });
+    addEventListener('blur', offIfOn);
   }
 
   /* ------------------------------------------------------------------ *
@@ -270,9 +294,26 @@
       if (btn.matches('.terrain-readout .pill')) return 3;
       return -1;
     }
-    function play(to) {
+    var landT = 0, started = 0, asked = 0, dest = 0;
+    // Without Lenis (touch / no smooth wheel) the app's native smooth scroll can outlast the cover: land it while
+    // covered. Only the latest destination is landed, and not if the user has touched / wheeled since asking for it
+    // (round 3: a stale timer used to snap to an earlier destination after a quick second tap).
+    function land() {
+      landT = 0;
+      if (html.classList.contains('lenis') || lastInput > asked) return;
+      var el = document.getElementById(CH[dest].id);
+      if (!el) return;
+      var top = dest === 0 ? 0 : el.getBoundingClientRect().top + scrollY;
+      try { scrollTo({ top: top, behavior: 'instant' }); } catch (e) { scrollTo(0, top); }
+    }
+    function stop() {
+      clearTimeout(landT); landT = 0;
+      anims.forEach(function (a) { a.cancel(); }); anims = [];
+      s.classList.remove('is-on');
+    }
+    function covering() { return s.classList.contains('is-on') && performance.now() - started < 430; }
+    function label(to) {
       var c = CH[to];
-      anims.forEach(function (a) { a.cancel(); });
       B.style.setProperty('--s-bg', c.bg); B.style.setProperty('--s-fg', c.fg);
       B.classList.toggle('is-paper', !!c.paper);
       A.style.background = A.style.color = c.red ? 'var(--ink)' : '';
@@ -283,6 +324,17 @@
       $('.ydx-s-name', s).textContent = c.name;
       // Warm the destination's lazy images while it is covered, so nothing pops in as the strata lift.
       $$('#' + c.id + ' img[loading=lazy]').forEach(function (im) { if (!im.complete) { var pre = new Image(); pre.src = im.currentSrc || im.src; } });
+    }
+    function play(to) {
+      var now = performance.now();
+      dest = to; asked = now;
+      clearTimeout(landT);
+      label(to);
+      // Another jump while the strata still cover the page (first ~430 ms): follow the new destination without
+      // restarting the sweep. Later, while it is lifting, the sweep starts over.
+      if (covering()) { landT = setTimeout(land, Math.max(0, started + 300 - now)); return; }
+      anims.forEach(function (a) { a.cancel(); });
+      started = now;
       s.classList.add('is-on');
       var e = 'cubic-bezier(.7,0,.3,1)';
       // A (accent) leads in and leaves last; B (destination field) arrives second and leaves first.
@@ -291,12 +343,7 @@
         B.animate([{ translate: '0 115%' }, { translate: '0 115%', offset: .06, easing: e }, { translate: '0 0', offset: .4 }, { translate: '0 0', offset: .6, easing: e }, { translate: '0 -115%', offset: .92 }, { translate: '0 -115%' }], { duration: 720, fill: 'both' }),
         $('.ydx-s-pin', s).animate([{ scale: 0, rotate: '-30deg' }, { scale: 0, rotate: '-30deg', offset: .26, easing: 'cubic-bezier(.3,1.6,.5,1)' }, { scale: 1, rotate: '0deg', offset: .46 }, { scale: 1, rotate: '0deg' }], { duration: 720 })
       ];
-      // Without Lenis (touch / no smooth wheel) the app's native smooth scroll can outlast the cover: land it while covered.
-      setTimeout(function () {
-        if (html.classList.contains('lenis')) return;
-        var el = document.getElementById(c.id);
-        if (el) scrollTo({ top: to === 0 ? 0 : el.getBoundingClientRect().top + scrollY, behavior: 'instant' });
-      }, 300);
+      landT = setTimeout(land, 300);
       anims[1].onfinish = function () { s.classList.remove('is-on'); };
     }
     document.addEventListener('click', function (e) {
@@ -304,9 +351,13 @@
       var btn = e.target.closest && e.target.closest('button');
       if (!btn) return;
       var cur = current(), to = target(btn, cur);
-      if (to < 0 || Math.abs(to - cur) < 2) return;
+      if (to < 0) return;
+      // a short jump normally keeps the plain smooth scroll, but while covered it must retarget the cover
+      if (Math.abs(to - cur) < 2 && !covering()) return;
       play(to);
     }, true);
+    // Leaving the page (bfcache) mid-sweep: do not keep the cover in the cached snapshot.
+    addEventListener('pagehide', stop);
   }
 
   /* ------------------------------------------------------------------ *
@@ -321,7 +372,9 @@
       var t0 = performance.now(), redone = false;
       (function check() {
         var el = performance.now() - t0;
-        if (el > 2200 || redone) return;
+        // the user scrolling / pressing keys in the meantime means they went elsewhere: never yank them back
+        // (round 3: wheeling up right after choosing a trail used to be pulled back down to the map)
+        if (el > 2200 || redone || lastInput > t0) return;
         if (el > 320 && !html.classList.contains('lenis-smooth')) {
           var terr = document.getElementById('terrain'), btn = $$('.chapter-nav button')[2];
           if (terr && btn && Math.abs(terr.getBoundingClientRect().top) > 24) { redone = true; btn.click(); }
