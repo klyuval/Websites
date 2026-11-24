@@ -7,11 +7,16 @@
  *    connection the loader's controller (caption, progress, safety exit) only started once the bundle had arrived.
  *
  * Parts: 1. flags + loader colour (before first paint)  2. loader controller (starts as soon as the markup is parsed)
+ *
+ * Round 3: `ydx-b` (set here and only here) is what shows the brand loader and hides the app's own counter, so if
+ * this file fails to load the page falls back to the app's original loader instead of an uncontrolled cover. The
+ * exit can no longer throw before the loader is hidden, a page that becomes ready in a background tab is uncovered
+ * at once (rAF and animations do not run there), and a last cap covers an app that reaches 100% but never `ready`.
  */
 (function () {
   'use strict';
   var d = document.documentElement, c = d.classList;
-  c.add('ydx-js', 'ydx-load');
+  c.add('ydx-b', 'ydx-js', 'ydx-load');
   try { if (sessionStorage.getItem('ydx-tomi-seen')) c.add('ydx-repeat'); } catch (e) {}
   try { if (window.self !== window.top) c.add('ydx-frame'); } catch (e) { c.add('ydx-frame'); }
 
@@ -60,13 +65,18 @@
     var ring = L.querySelector('.r'), lv = L.querySelector('.ydx-lv'), surf = L.querySelector('.ydx-surf'),
       topE = L.querySelector('.ydx-top'), num = L.querySelector('.ydx-count b'), cap = L.querySelector('.ydx-cap'),
       mark = L.querySelector('.ydx-mark');
-    var src = document.querySelector('.loader-n');
+    var src = document.querySelector('.loader-n'), sr = L.querySelector('.ydx-sr');
     if (cap) cap.textContent = en ? 'TOMI · Loading' : 'TOMI · טוען';
+    if (sr) sr.textContent = en ? 'TOMI · Loading' : 'TOMI · טוען';
     var t0 = performance.now(), real = 0, target = 0, shown = 0, readyAt = 0, exiting = false, finished = false, fontOk = false;
 
     function read() {
       var v = parseFloat(src && src.textContent) || 0;
-      if (v > real) real = Math.min(100, v);
+      if (v > real) {
+        real = Math.min(100, v);
+        // the app's own decode cap is 15 s after 100%; if `ready` still has not come 20 s later the app broke
+        if (real >= 100) setTimeout(function () { if (!readyAt) exit(); }, 20000);
+      }
     }
     if (src) new MutationObserver(read).observe(src, { childList: true, characterData: true, subtree: true });
 
@@ -112,6 +122,9 @@
     function onReady() {
       if (readyAt) return;
       readyAt = performance.now();
+      // ready while the tab is in the background: nobody sees the exit, and rAF/animations are paused there, so
+      // the user would come back to a loader that only then starts leaving. Uncover at once.
+      if (document.hidden) { exiting = true; finish(); return; }
       var wait = MIN - readyAt; // performance.now() counts from navigation start
       // Start the exit from a rendered frame, never from inside the app's long `ready` task: an animation created
       // during a long task gets its start time on the main thread long before the compositor actually begins it,
@@ -127,31 +140,34 @@
     addEventListener('load', function () {
       setTimeout(function () { if (!readyAt && real === 0) exit(); }, 4000);
     });
+    // the tab goes to the background while the exit is pending or running: finish now (see onReady)
+    document.addEventListener('visibilitychange', function () { if (document.hidden && (readyAt || exiting)) { exiting = true; finish(); } });
 
     function exit() {
       if (exiting) return;
       exiting = true;
       L.style.pointerEvents = 'none'; // the page is usable the moment the exit starts
-      try { sessionStorage.setItem('ydx-tomi-seen', '1'); } catch (e) {}
-      if (reduced || !L.animate) {
-        var f = L.animate ? L.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, fill: 'forwards' }) : null;
-        if (f) f.onfinish = finish; else finish();
-        setTimeout(finish, 600);
-        return;
-      }
-      var D = frame || repeat ? 520 : 760;
-      // the mark swells into the ring and fades, the numerals rise away, then the panel lifts like the curtain
-      mark.animate([{ transform: 'none', opacity: 1 }, { transform: 'scale(1.12)', opacity: 0 }],
-        { duration: D * 0.5, easing: EASE_IN, fill: 'forwards' });
-      L.querySelectorAll('.ydx-count,.ydx-cap').forEach(function (el, i) {
-        el.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateY(-14px)', opacity: 0 }],
-          { duration: D * 0.4, delay: i * 40, easing: EASE_IN, fill: 'forwards' });
-      });
-      var lift = L.animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(0,-100%,0)' }],
-        { duration: D, delay: D * 0.16, easing: EASE_LIFT, fill: 'forwards' });
-      // hide one frame pair after the main thread thinks the lift is done (it holds at -100% until then anyway)
-      lift.onfinish = function () { requestAnimationFrame(function () { requestAnimationFrame(finish); }); };
-      setTimeout(finish, D * 2.2); // in case the tab is hidden and animations are throttled
+      if (document.hidden) return finish();
+      var D = reduced || !L.animate ? 240 : frame || repeat ? 520 : 760;
+      setTimeout(finish, D * 2.2); // armed first: hidden tab, throttled animations, or a throw below
+      try {
+        if (D === 240) {
+          if (!L.animate) return finish();
+          L.animate([{ opacity: 1 }, { opacity: 0 }], { duration: D, fill: 'forwards' }).onfinish = finish;
+          return;
+        }
+        // the mark swells into the ring and fades, the numerals rise away, then the panel lifts like the curtain
+        mark.animate([{ transform: 'none', opacity: 1 }, { transform: 'scale(1.12)', opacity: 0 }],
+          { duration: D * 0.5, easing: EASE_IN, fill: 'forwards' });
+        L.querySelectorAll('.ydx-count,.ydx-cap').forEach(function (el, i) {
+          el.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateY(-14px)', opacity: 0 }],
+            { duration: D * 0.4, delay: i * 40, easing: EASE_IN, fill: 'forwards' });
+        });
+        var lift = L.animate([{ transform: 'translate3d(0,0,0)' }, { transform: 'translate3d(0,-100%,0)' }],
+          { duration: D, delay: D * 0.16, easing: EASE_LIFT, fill: 'forwards' });
+        // hide one frame pair after the main thread thinks the lift is done (it holds at -100% until then anyway)
+        lift.onfinish = function () { requestAnimationFrame(function () { requestAnimationFrame(finish); }); };
+      } catch (e) { finish(); }
     }
     function finish() {
       if (finished) return;
@@ -160,6 +176,7 @@
       L.setAttribute('aria-hidden', 'true');
       c.remove('ydx-load');
       c.add('ydx-loaded');
+      try { sessionStorage.setItem('ydx-tomi-seen', '1'); } catch (e) {}
     }
   }
 

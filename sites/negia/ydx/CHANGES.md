@@ -176,3 +176,106 @@ A second review of pass 1, looking at it as a first-time visitor would. Scratch 
 - **The style-tile CLS of 0.0012.** It is a pre-existing font swap.
 - **The 1–2.5s desktop timings in these recordings.** They are inflated by software rendering in this container. On the
   mobile profile the first visit takes about 2.2s from first paint to the page being interactive.
+
+## Round 3
+
+A line-by-line review of the ydx layer before it ships to the live site, plus tests under production conditions. Each
+suspected bug got a Playwright test that reproduced it before the fix and passed after it. The tests are in
+`scratchpad/negia-r3/t/`: `races.cjs`, `nav.cjs`, `nav2.cjs`, `hidden.cjs`, `frame.cjs`, `xo.cjs`, `frametime.cjs`,
+`bottom.cjs`, `rotate.cjs` and `details.cjs`.
+
+### Bugs found and fixed
+
+1. **The loader outstayed its 4s cap when enhance.js could not run.** With `enhance.js` returning 404, or delayed 8s,
+   or with the app bundle delayed 8s, the loader stayed up for 5s and then vanished in a hard cut. The app bundle case
+   matters because the deferred `enhance.js` has to wait behind the app's module script, so its own 4s safety never got
+   a chance to run. (`races.cjs js404|jsslow|appslow`: before, about 5.2s and a cut; after, a 0.35s fade starting at
+   about 4.1s.)
+   - The inline boot script now owns the fallback. At 4s it fades the loader out, unless `enhance.js` is running and
+     has claimed the exit (`window.__ydxE`).
+   - At 6.5s it removes the loader and `ydx-loading` whatever happened. This covers a stalled exit animation.
+2. **A transition could fire twice.** Pressing Enter twice on a link during the wipe started two wipes and two
+   navigations (`nav.cjs dblenter`: before, 4 wipe layers; after, 2). One transition at a time now; a repeat activation
+   is swallowed.
+3. **Pressing Back during the wipe did not cancel it.** The wipe finished and navigated anyway (`nav.cjs popstate`:
+   before, `/ → /#atelier → / → /style-tile.html`; after, it stops at `/`). On `popstate` the wipe is now cancelled
+   (`Animation.cancel()` never fires `onfinish`) and the page is given back.
+4. **A bfcache restore mid-wipe navigated by itself.** The `pageshow` handler removed the wipe layers, but their
+   animation's `onfinish` still fired and called `location.href`. Headless Chromium here has no bfcache, so I fired a
+   synthetic persisted `pageshow` 150ms into the wipe (`nav2.cjs pageshow`). Before, the restored page went on to `/`;
+   after, it stays. The handler now cancels the transition.
+5. **Hiding the tab mid-wipe stalled the navigation.** Animations stop advancing in a hidden tab, so the navigation
+   waited until the tab came back (`nav2.cjs hiddenwipe`). On `visibilitychange` to hidden, it now navigates at once.
+6. **Background-tab loads.** In a hidden tab the rAF-gated exit never ran and the safety exit's animation was frozen,
+   so the loader was only cut by the old 5s inline fallback. `hidden.cjs` emulates a hidden tab: rAF is queued,
+   animations are frozen through CDP, timers are clamped to 1s and `visibilityState` reads hidden. Real tab hiding
+   cannot be emulated in this container. Fix: `finishLoader` removes the loader at once when `document.hidden`, because
+   nobody sees the exit. It is now gone at about 4.2s while hidden, and after returning to the tab the page is fully
+   visible.
+7. **`enhance.js` arriving late made visible content blink.** Content already on screen faded out and back in.
+   `nav2.cjs late` counted 153 frames with in-view targets faded; after the fix, 0. When the loader is already gone
+   at boot, anything in view or scrolled past is marked revealed without animating.
+8. **`enhance.css` 404 left `enhance.js` working without its styles.** The wipe layers were unstyled static divs, so
+   every navigation was delayed 530ms invisibly, and the cursor div was unstyled. `enhance.css` now sets a sentinel
+   (`:root{--ydx-css:1}`). Without it, `enhance.js` skips the wipe (plain navigation), the cursor and the reveals.
+9. **`enhance.js` was not idempotent.** Running it twice gave two cursor dots and doubled every listener
+   (`nav.cjs twice`). A `window.__ydxE` guard fixes this.
+10. **The hub iframe preview ran about 0.75–1.4s against the ≤800ms target.** The 1.2s font wait also applied in
+    frame mode, and the safety cap was 4s. In frame mode the font wait is now capped at 150ms (400ms for the arrival
+    cover), the safety exit runs at 450ms, the choreography is `--k:.26`, and the exit takes 260ms.
+    `frametime.cjs` measures from the inline boot to removal in a cross-origin iframe: about 630–790ms, with one
+    outlier at 866ms. This container's software rendering inflates all timings.
+11. **Hardening (no reproducible failure, but each could leave the page covered or content hidden):**
+    - Every `boot()` part is wrapped in try/catch. If the reveal setup throws, everything it marked is revealed at once.
+    - The loader exit runs in a try/catch that falls back to removing the loader.
+    - The wipe only handles real `HTMLAnchorElement`s. An SVG `<a>`'s `href` is not a string.
+    - The hero scroll drift repaints when the hero re-enters view (it could keep a stale offset after a fast scroll back).
+    - The cursor clears its pressed state on `pointercancel`.
+12. **CSS support and selector fixes.**
+    - The `::details-content` height animation now also requires `interpolate-size`. Safari 18.4+ has the
+      pseudo-element but cannot animate to `auto`, so it keeps the app's own fade.
+    - The LTR rule for the `<em>` highlight could never match: `[dir=ltr] .js-ready`, when both are on `<html>`. It is
+      now `.js-ready[dir=ltr]`.
+    - The chip media query now uses `max-width:420px` instead of range syntax, for older Safari.
+13. **Dead code removed:** the unused `html.ydx-ready` class and the unused `#ydx-wipe` id.
+
+### Production checks (all passed after the fixes)
+
+- **Live headers.** `curl -sI` shows no CSP, X-Frame-Options or other restrictive headers, only `cache-control` and the
+  Cloudflare NEL headers. Replaying them on the local HTML (`page.route`) changed nothing and logged no errors.
+  `/style-tile.html` on the live site answers with a 307 to `/style-tile`. The transition handles this: the
+  same-page check compares against the current path, and the `ydx-nav` flag survives the redirect.
+- **JS disabled.** No loader, no `ydx-*` classes and no hidden content. The only `opacity:0` items are the hero
+  intro/description, which the app's own CSS sets with no JS. That is pre-existing.
+- **Failure cases.** The loader leaves by about 4.1–4.6s in the worst case:
+
+  | Case | Result |
+  |---|---|
+  | `enhance.js` 404 | Leaves by about 4.1–4.6s |
+  | `enhance.css` 404 | Normal exit; no wipe, cursor or reveal states |
+  | Both 404 | Leaves by about 4.1–4.6s |
+  | `enhance.js` +8s | Leaves by about 4.1–4.6s; no blink when it arrives |
+  | App bundle +8s | Leaves by about 4.1–4.6s |
+  | Background tab | Gone by about 4.2s |
+
+  The hero is visible in every case.
+- **Hub iframe**, same-origin and cross-origin. The ≤800ms version plays. The transition works inside the frame, and
+  the next page uses the `nav` cover rather than `frame`.
+- **Regression checks.**
+  - Desktop and iPhone 13 scroll-walks of both pages: 0 console messages.
+  - Loader modes: full about 2.4s, short about 0.9s, reduced about 0.8s, frame about 0.7s.
+  - Wipe frame strip: unchanged.
+  - Keyboard focus walk: every stop visible.
+  - Reveal end-state at eight viewports, plus after rotation or resize: nothing left hidden.
+
+### Known limitations
+
+- A **cross-document** Back pressed during the 530ms wipe, while the previous page loads slowly from the network, can
+  still be overridden by the wipe's navigation. Same-document Back is handled, and so is a bfcache restore. Detecting
+  this case needs the Navigation API's traverse events, which are not reliable cross-document.
+- Browsers without `:has()` (Firefox before 121) keep the original style-tile background bug. The page works; only the
+  tint is wrong.
+- Safari and Firefox were reviewed from the code only; Chromium is the only browser here. Each feature has a fallback:
+  - The masks use standard properties when `mask-composite: exclude` is supported and `-webkit-` ones otherwise.
+  - `@starting-style` and `allow-discrete` only drop the menu animation.
+  - Individual transform properties need Safari 14.1+.
