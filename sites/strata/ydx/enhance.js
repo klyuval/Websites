@@ -269,25 +269,28 @@
     scan();
     // Items in the last few pixels of the page (footer bottom row) can never cross the -8% margin:
     // reveal whatever is left once the visitor reaches the end.
-    // The end test runs in the scroll event (layout is clean there, so reading scrollY is free) against a
-    // cached page height; only at the very end is a frame scheduled to measure. Reading scrollHeight per
-    // event, or scrollY inside rAF after other writes, forced a layout every time while scrolling.
-    let docH = d.documentElement.scrollHeight, endRaf = 0;
-    if ('ResizeObserver' in window) new ResizeObserver(() => { docH = d.documentElement.scrollHeight; }).observe(d.body);
-    const atEnd = () => {
-      endRaf = 0;
+    // "The end" = the footer's bottom row fully in view, watched by an IntersectionObserver. (This used to
+    // be a scroll listener reading scrollY/scrollHeight on every event, which forced a layout each time
+    // and was the biggest ydx cost while scrolling.)
+    let endEl = null;
+    const endIO = io ? new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
       for (const el of root.querySelectorAll('[data-ydx-r]:not([data-ydx-in])')) {
-        if (el.getBoundingClientRect().top < innerHeight + 60) { show(el); if (io) io.unobserve(el); }
+        if (el.getBoundingClientRect().top < innerHeight + 60) { show(el); io.unobserve(el); }
       }
+    }, { threshold: 0.99 }) : null;
+    const watchEnd = () => {
+      const el = root.querySelector('.footer-bottom');
+      if (!endIO || !el || el === endEl) return;
+      if (endEl) endIO.unobserve(endEl);
+      endIO.observe(endEl = el);
     };
-    addEventListener('scroll', () => {
-      if (!endRaf && scrollY + innerHeight >= docH - 4) endRaf = requestAnimationFrame(atEnd);
-    }, { passive: true });
+    watchEnd();
     // The app re-renders parts of the tree (brief result, tabs): pick up new nodes.
     let pending = 0;
     new MutationObserver(() => {
       if (pending) return;
-      pending = requestAnimationFrame(() => { pending = 0; scan(); });
+      pending = requestAnimationFrame(() => { pending = 0; scan(); watchEnd(); });
     }).observe(root, { childList: true, subtree: true });
   }
 

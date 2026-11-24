@@ -108,3 +108,27 @@ span.ydx-wi.ydx-wi{display:inline-block}
 .ydx-cols>i{position:relative;overflow:hidden}
 .ydx-cols>i>.ydx-clone{position:absolute;top:0;bottom:0;right:auto;width:500%}
 .ydx-clone,.ydx-clone *,.ydx-clone *::before,.ydx-clone *::after{animation:none !important;transition:none !important}
+
+/* ---------- landscape phones (short viewports) ----------
+   The cover kept a 560px minimum height and the portrait lens (up to 400px) on a ~390px-tall screen: the lens covered the
+   whole headline and the lede, the CTA and the proof strip sat below the pinned fold, never seen. Here the cover fits the
+   screen: a two-line headline on the left, the lede on the right, a lens sized to the height. app.js re-measures the
+   lens on load and resize, so the loupe and its blueprint stay registered. */
+@media (orientation:landscape) and (max-height:500px){
+  .hero,.hero-pin,.loupe-world{min-height:0 !important}
+  .hero{--hs:min(calc((100vw - 2 * var(--g)) / 7),25svh);--D:clamp(130px,42svh,210px)}
+  .hero-layer{justify-content:flex-start;padding-top:calc(86px + 4svh)}
+  .hero h1,.bp-h1{line-height:.8}
+  .hero h1 .l2,.bp-h1 .l2{font-size:.752em;margin-top:.05em}
+  .hero h1 .l2a,.hero h1 em,.bp-h1 .l2a,.bp-h1 em{display:inline-block}
+  .hero h1 em,.bp-h1 em{font-size:1.02em;margin:0 0 0 -.06em;line-height:inherit}
+  .hero-top{top:64px;font-size:10px}
+  .hero-foot{left:auto;right:var(--g);bottom:46px;width:min(310px,40vw)}
+  .hero-lede p{font-size:15px;margin:6px 0 12px}
+  .hero-marks{display:none}
+  .hero-hint{top:calc(86px + 4svh);bottom:auto;left:auto;right:var(--g);font-size:26px}
+  .hero-hint svg{display:none}
+  .proof-strip{bottom:12px}
+  .bp-note{font-size:.115em}
+  .bp-note.n1{left:10.4em}.bp-note.n3{left:20.5em;top:auto;bottom:5.7em}
+}
