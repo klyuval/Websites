@@ -142,7 +142,9 @@ html.ydx-motion .pack-foot[data-ydx-in] { animation: ydx-rise .8s cubic-bezier(.
   .pack-core:has(.pack-count.is-full)::after { animation: ydx-tag 1.4s cubic-bezier(.3,1.2,.5,1) .5s both; }
 }
 @media (max-width: 760px) {
-  .pack-core::after { --s: 8px; --t: 17px; --b: 2px; left: calc(62% - 12px); top: 8%; width: 24px; filter: drop-shadow(2px 3px 0 rgb(11 26 40 / .28)); }
+  .pack-core::after { --s: 8px; --t: 17px; --b: 2px; left: calc(65% - 12px); top: 9.5%; width: 24px; filter: drop-shadow(2px 3px 0 rgb(11 26 40 / .28)); }
+  /* the full-pack badge wrapped as "READY FOR OUT / THERE" on phones */
+  .pack-count > span { text-wrap: balance; }
 }
 @keyframes ydx-tag {
   0% { scale: 0; opacity: 0; rotate: -60deg; }

@@ -56,7 +56,7 @@ ydx-iris.is-over .ydx-edge { stroke: rgba(238, 232, 216, .2); }
    2. Route shutter (the site's RouteTransition): the label develops like a print, a light sweep crosses the paper
    ------------------------------------------------------------------------------------------------------------- */
 @media (prefers-reduced-motion: no-preference) {
-  div.route-shutter[data-active] .route-shutter-panel > * { animation: ydx-develop .6s .04s cubic-bezier(.2, .8, .2, 1) both; }
+  div.route-shutter[data-active] .route-shutter-panel > * { animation: ydx-develop .5s .04s cubic-bezier(.3, .7, .25, 1) both; } /* r2: crisper tail (the last letter hung clipped) */
   html[dir=rtl] div.route-shutter[data-active] .route-shutter-panel > span { animation-name: ydx-develop-rtl; }
   div.route-shutter-panel::before {
     content: ""; position: absolute; inset: 0; pointer-events: none; transform: translateX(-110%);
