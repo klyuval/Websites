@@ -302,3 +302,72 @@ suspected bug got a Playwright test that reproduced it before the fix and passed
   - The masks use standard properties when `mask-composite: exclude` is supported and `-webkit-` ones otherwise.
   - `@starting-style` and `allow-discrete` only drop the menu animation.
   - Individual transform properties need Safari 14.1+.
+
+## Round 4
+
+A final look at the whole site as a jury would see it: scroll by scroll at 1440×900 and on iPhone 13, on both pages. The
+site has one language (Hebrew), so there was no second language to check; see round 1. Scratch files are in
+`scratchpad/negia-r4/`.
+
+### What I judged
+
+- **Every section already has its own motion moment** after rounds 1–3: hero entrance and scroll drift, the pills
+  swatching in, the manifesto smear, the shade view transition, compass curtain and lipstick, the painted dabs, the
+  brush, the cards, the FAQ stamp, the sealed inquiry, and the footer swipe. Adding more would be noise.
+- **The weak spot was the hand-off between scenes.** The page alternates tint, field and burgundy. Five times it cuts
+  hard between pink and burgundy, on a ruler-straight edge: compass → material, material → approach, journal →
+  questions, questions → contact, and contact → footer. Those were the only places where the page still felt like
+  stacked blocks rather than one surface of pigment.
+- **Motion language:** the layer used seven different easing curves and eight reveal durations for what are really four
+  kinds of movement. The menu, the page wipe and the loader exit are all whole-screen covers, yet each had its own curve.
+- **Noise check:** I reviewed the cursor dot, the magnetic pills, the hero drift, the Latin letter reveals and the hover
+  set again. Each is small, on-brand and does one job, so I removed nothing.
+
+### What I changed
+
+1. **Scene changes rise as a swatch** (`enhance.css`, CSS only). At each of the five pink and burgundy boundaries, the
+   incoming colour enters as a rounded dome and flattens as it scrolls up. It is flat by the time its top edge reaches
+   about a quarter of the viewport.
+   - It uses the same convex edge as the menu drop, so the two read as one gesture.
+   - It is a `::before` on the incoming section, painted in the outgoing section's colour (`var(--tint)`,
+     `var(--field)` or `var(--deep)`), so it follows every shade family. Checked in berry.
+   - It runs on `animation-timeline: view()` inside `@supports`, the same mechanism the site uses for its own drift. It
+     needs no JS, is skipped under reduced motion, is hidden in print, and leaves browsers without scroll timelines
+     unchanged.
+   - Its height is `min(18vh, 20vw)`. At 30vw it looked like a tombstone arch on phones.
+   - The footer selector uses `:has()`, so it falls back to doing nothing where `:has()` is unsupported. The footer gets
+     `position: relative` only inside that block. Its only absolutely positioned child is a 1px screen-reader copy.
+2. **Motion tokens.** There are now four easings and three hover durations, defined once as CSS custom properties
+   (`--ydx-out|paint|cover|stamp`, `--ydx-t1|t2|t3`) and mirrored in `enhance.js` as `E`:
+   - **out**: settle; this is the site's own `--out`.
+   - **paint**: a stroke laid on.
+   - **cover**: whole-screen cover or uncover. The menu drop, both coats of the page wipe and the loader's hole now all
+     share this curve.
+   - **stamp**: a kiss landing.
+
+   Durations were normalised as well:
+   - Small reveals take 900ms: swatch went from 800 to 900.
+   - Large reveals take 1100ms: card from 1050, curtain from 1150 and swipe from 1200.
+   - The shade-name write-on and the pigment stroke both take 800ms (they were 760 and 820, and they play together).
+   - Hover durations are .3, .5 and .8s, replacing .25/.35/.4/.45/.5/.6/.8/.9s.
+
+   No wall-clock duration of the loader, the wipe or navigation changed.
+
+### Regression results (round-3 suite, rerun after the changes)
+
+| Test | Result |
+|---|---|
+| `races` normal / js404 / css404 / both404 / jsslow / appslow | Loader leaves at about 2.5s normally and at 4.2–4.6s when a file is missing. The hero is visible in every case. Only the injected 404s and the expected unused-preload warning are logged. |
+| `nav` dblenter / popstate / bfcache / twice | One transition. Back cancels it. Restore is clean. One cursor. |
+| `nav2` pageshow / css404 / late / hiddenwipe | No self-navigation. A plain navigation without CSS. 0 blink frames. A hidden tab navigates. |
+| `hidden 7000` | Gone at 4.3s; hero visible after showing. |
+| `frametime` (cross-origin hub iframe) | Exit starts at 324–511ms; removal at 635–954ms. The load average was about 24 from parallel agents. The exit code and timings are unchanged from round 3. |
+| `xo /` | Frame mode; the transition inside the frame works. `xo /style-tile.html` cannot run, because the test clicks a link that only exists on `/`; this is a test limitation. |
+| `bottom` and `rotate` (8 viewports and 4 rotations, both pages) | All ok. |
+| `details` | Height animation intact. |
+| `order` and `bootorder` | No blocking: FCP about 0.12–0.32s with js+8s or css+8s. The boot always follows `js-ready`. |
+| `frame` (no-JS, live headers) | No loader and no hidden content without JS. Headers replay clean. |
+| `shoot.mjs` desktop and mobile, both pages | 0 console messages, 0 failed requests. |
+
+`curl -sI` on the live site still shows only `cache-control`, `report-to`/`nel` and Cloudflare headers. There is no CSP
+and no frame restrictions.
