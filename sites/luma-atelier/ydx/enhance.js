@@ -455,6 +455,7 @@
         if (h && h !== old) {
           store.del('ydx-route');
           if (sh && sh.hasAttribute('data-active')) arrive(140);
+          setTimeout(() => { try { riseScan(); } catch (e) { /* decorative */ } }, 450); // r4: after the scroll reset
           return;
         }
         if (performance.now() - s0 < 4000) raf(poll);
@@ -603,10 +604,12 @@
     const moving = (e) => getComputedStyle(e).animationName !== 'none';
     d.querySelectorAll('main h2').forEach((h) => {
       if (riseSeen.has(h)) return;
+      const r = h.getBoundingClientRect();
+      // on screen or above it: leave it, but look again later (after an in-place navigation the router resets the
+      // scroll only after the new page has mounted, so this is re-checked once the new heading is up)
+      if (!r.width || r.top < H) return;
       riseSeen.add(h);
       if (h.closest(RISE_SKIP) || h.style.transform || h.style.translate) return;
-      const r = h.getBoundingClientRect();
-      if (!r.width || r.top < H) return;
       if (moving(h) || [...h.querySelectorAll('*')].some(moving)) return;
       h.setAttribute('data-ydx-rise', '');
       riseIO.observe(h);

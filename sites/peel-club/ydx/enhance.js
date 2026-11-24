@@ -1,7 +1,8 @@
 /* PEEL CLUB · ydx enhancement layer
    1. curtain out (loader / arrival from a page transition): the can tops up, the tab pops, the sheet peels away
       on the site's own 14° "rip" angle with its pith + zest edge
-   2. page transitions: a citrus wheel spins in from the click point, the field floods it, the next page peels open
+   2. page transitions: a citrus wheel spins in from the click point, the field floods it, the next page peels open;
+      a link to the page you are already on glides back to the top instead
    3. hero fizz trail, add-to-mix fizz burst
    4. reveal choreography (brand "squeeze" on headings, kicker wipes, staggered lineups), hero scroll scatter
    5. magnetic pills

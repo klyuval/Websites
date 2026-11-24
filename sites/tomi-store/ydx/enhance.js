@@ -5,7 +5,7 @@
  *    appended to <body>.
  * Parts: (1. loader -> ydx/boot.js)  2. header scroll behaviour (+ cart-count pin)  3. language-switch shutter
  *        4. magnetic buttons  5. ring cursor  6. page-title fit (inline font-size on overflowing titles only)
- *        7. route-curtain word mask  8. dial notes clearance (round 2)
+ *        7. route-curtain word mask  8. dial notes clearance (round 2)  9. footer wordmark rise (round 4)
  * Round 3: loaded `async` (it must tolerate any order relative to the app bundle and must not hold
  * DOMContentLoaded/load), so it waits for the DOM itself; it runs once even if included twice; it adds
  * enhance.css if boot.js could not; overlays that need enhance.css stay off when that file is missing.
@@ -281,6 +281,46 @@ function run() {
     new MutationObserver(function () { later(); }).observe(stage, { attributes: true, attributeFilter: ['class'] });
     new MutationObserver(function () { later(); }).observe(html, { attributes: true, attributeFilter: ['lang'] });
     addEventListener('resize', function () { later(250); });
+  })();
+
+  /* ------------------------------------------------------------------ 9. footer wordmark rise (round 4)
+   * Every big Karantina title on the site rises into place when it scrolls in (the app's GSAP: yPercent 60 +
+   * fade, 0.9 s expo.out), except the giant footer "TOMI", which just sat there at the end of every page. It now
+   * rises the same way, once per render. Only a wordmark that is still below the fold is held back (a paused WAAPI
+   * animation, nothing in CSS), so it can never be left hidden on screen; the app re-renders the footer with
+   * each page, so new ones are picked up. */
+  (function footRise() {
+    if (reduced || !Element.prototype.animate || !window.IntersectionObserver) return;
+    var hosts = [document.querySelector('.home'), document.querySelector('.pages')].filter(Boolean);
+    if (!hosts.length) return;
+    var held = new Map(), t = 0;
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var a = held.get(e.target);
+        io.unobserve(e.target); held.delete(e.target);
+        if (a) try { a.play(); } catch (x) { a.cancel(); }
+      });
+    }, { rootMargin: '0px 0px -14% 0px' });
+    function scan() {
+      held.forEach(function (a, el) { if (!el.isConnected) { io.unobserve(el); a.cancel(); held.delete(el); } });
+      document.querySelectorAll('.foot-brand').forEach(function (el) {
+        if (el.__ydxRise) return;
+        el.__ydxRise = 1;
+        var r = el.getBoundingClientRect();
+        if (!r.height || r.top < innerHeight) return; // not laid out (hidden page) or already in view: leave it be
+        try {
+          var a = el.animate([{ translate: '0 60%', opacity: 0 }, { translate: '0 0', opacity: 1 }],
+            { duration: 900, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'backwards' });
+          a.pause();
+          held.set(el, a);
+          io.observe(el);
+        } catch (x) {}
+      });
+    }
+    function later() { clearTimeout(t); t = setTimeout(scan, 60); }
+    hosts.forEach(function (h, i) { new MutationObserver(later).observe(h, { childList: true, subtree: i > 0 }); });
+    later();
   })();
 }
 })();
