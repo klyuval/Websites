@@ -100,3 +100,79 @@
   `.page { overflow-x: clip }`, so it causes no horizontal scroll.
 - The fallback-HTML `sitemap.xml`, `robots.txt` and `manifest.webmanifest`. They mirror the live worker as it is.
 - `html { scrollbar-width: none }`. It is a deliberate art-direction choice of the original.
+
+## Round 2
+
+A second review of pass 1, looking at it as a first-time visitor would. Scratch files and frame strips are in
+`scratchpad/negia-r2/`.
+
+### What I audited
+
+- **Loader and transitions as frame sequences** (CDP screencast, about 16–60ms per frame). I recorded:
+  - the loader on desktop 1440×900 and iPhone 13, first visit and repeat visit;
+  - the loader with slow 3G (400kbps, 400ms RTT) plus 4× CPU throttling;
+  - the page wipe in both directions (home → style tile, style tile → home);
+  - the menu dialog opening and closing;
+  - the shade-change view transition.
+- **Loader modes, timed.** First visit is about 2.2–2.6s. Repeat visit and iframe are under 1s each. Reduced motion is about
+  0.75s.
+- **CLS.** I measured it with the `/ydx/*` layer on, and off (routed to 404). The home page is 0 in both cases. The style
+  tile shows 0.0012 in both cases: a font swap that predates this layer.
+- **Long tasks.** I recorded performance traces of the scroll-through with the layer on and off. The layer added no long
+  tasks; run-to-run noise in this container was larger than any difference.
+- **Keyboard.** I tabbed through all 44 stops and checked each one's computed opacity at the moment it received focus.
+  I also checked the menu: Escape closes it and focus returns to the toggle.
+- **Layouts.** Full-page shots plus an overflow scan at 360, 390, 844×390 (landscape), 768, 1024, 1280, 1440 and 1920,
+  on both pages. The site has only one language (Hebrew); see round 1.
+
+### What I found and fixed
+
+1. **Loader flash (mobile and page transitions).** For one frame at the start of the exit, the whole page showed with no
+   loader. Chrome does not paint an element whose CSS mask image is still loading. Decoding the mask with `new Image()`
+   did not warm the style system's copy. Fixes:
+   - a 2px `.ydx-l-warm` element in the loader uses the same mask from the first paint;
+   - the exit waits two frames after everything is ready;
+   - if the mask still has not loaded (the safety timeout fires on a very slow network), the loader fades instead.
+2. **The loader played on its own clock while its images were still loading.** On desktop the first ~600ms was empty
+   burgundy, then the animation popped in already half done. On slow 3G the dark wordmark sat almost invisible on dark
+   burgundy while the smear arrived in strips. Fixes:
+   - The choreography is now paused (`.ydx-loader:not(.is-go)`) until the smear, lipstick and kiss have decoded and the
+     display font is ready.
+   - If that takes more than 1.3s, the loader switches to `is-lite`: the cut-outs are hidden and the wordmark writes
+     itself alone in tint.
+   - The minimum display is now counted from that start. It went from 1150ms to 1400ms, so the finished composition holds
+     for a beat before the hole opens; before, the exit cut into the kiss stamp.
+   - The 4s safety cap is now measured from first paint, not from when `enhance.js` runs. Under throttling it had
+     stretched to about 4.6s.
+3. **Loader kiss weight:** it used the 108KB, 480px `kiss-rose.webp` for a ~134px stamp. It now uses `ydx/kiss-loader.webp`
+   (300px, 46KB). On mobile the kiss also sits fully inside the viewport; it was clipped at the left edge.
+4. **The footer copyright line never appeared on desktop or tablet** (`.footer-bottom` and its Latin tagline). Those
+   elements sit in the bottom 8% of the page, so the observer's `-8%` bottom margin was never crossed. Elements in the last
+   half-screen of the page now use a separate observer with no margin.
+5. **Keyboard focus landed on invisible elements.**
+   - Tabbing into reveals that had just started (FAQ, form fields, footer links) put focus on controls at opacity 0–0.4.
+     A `focusin` handler now reveals the ancestor immediately, or finishes its reveal animation.
+   - Tab, Enter, Space or Escape during the intro now skips the loader, so focus never sits behind it.
+6. **The page wipe was invisible from the burgundy footer**, which is where the style-tile link lives. The wipe was
+   burgundy on burgundy, so the visitor saw nothing and then a cut. The wipe is now two coats, like a lipstick stroke: a
+   lead in the active family's `--hi`, then the burgundy that the next page opens from 110ms later. It is done in 530ms.
+7. **The smear mask's core was only 98–99% opaque**, so a faint ghost of the page showed through the wipe. I raised the
+   core to 255 and rescaled the edge ramp. It was also re-encoded, from 33KB to 12KB.
+
+### Refined
+
+- **Menu dialog:** the drop was a flat-edged blind, because the percentage corner radii collapsed as the clip shrank. It
+  now has a fixed convex bottom edge (`round 0 0 60vw 60vw / 0 0 16vh 16vh`), so it falls like a drop of pigment and
+  retracts the same way. The open state overshoots the box so the curve ends off-screen.
+- **Loader to hero hand-off:** the hero's own entrance is released at 12% of the exit instead of 28%. The headline is
+  already rising inside the smear-shaped hole, rather than the hole opening onto empty pink.
+
+### Considered and left alone
+
+- **Hero scroll drift, Latin letter reveals, the cursor dot, magnetic buttons.** All are subtle and on-brand, and none
+  janks under 4× CPU throttling.
+- **The shade-change sequence** (circle view transition, name write-on, swatch stroke). It reads as one gesture.
+- **The manifesto word-smear sitting high behind "מקום."** This is the original art direction.
+- **The style-tile CLS of 0.0012.** It is a pre-existing font swap.
+- **The 1–2.5s desktop timings in these recordings.** They are inflated by software rendering in this container. On the
+  mobile profile the first visit takes about 2.2s from first paint to the page being interactive.
