@@ -8,8 +8,9 @@
      - a glass "ting": a ring of light from every click or tap on the cloth (stronger when you tap a glass or a candle)
      - the evening getting later as you scroll: each cloth has its own light (cool linen daylight, amber on the
        pomegranate, candle-warm on the wine cloth, low and dark on the night footer), eased between sections.
-   Soft-light with 0.5 grey is an identity, so the output is kept to a narrow band around it (0.41-0.64): text keeps
-   its WCAG AA contrast on every frame (measured, see CHANGES.md round 5).
+   Soft-light with 0.5 grey is an identity, so the output is kept to a narrow band around it (0.41-0.60), and over
+   the pomegranate cloths it never brightens at all (their pale copy is at 4.58:1 already): text keeps WCAG AA on
+   every frame (worked out per cloth and sampled from screenshots, see CHANGES.md round 5).
    Fallbacks: no WebGL / software GPU -> the static CSS light on the wrapper (enhance.css 5a); reduced motion -> one
    still frame, no loop; hub iframe -> half resolution, 30 fps; hidden tab -> stopped. Adaptive quality from a frame
    time EMA. API (used by enhance.js and /play/): window.ydxLight.ting(x, y, strength), .mood(name), .ready.
@@ -129,7 +130,7 @@
       gl.enableVertexAttribArray(0);
       gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
       ['uA', 'uB', 'uC', 'uHi', 'uWarm', 'uCool', 'uTing', 'uNo'].forEach(n => { U[n] = gl.getUniformLocation(prog, n); });
-      gl.uniform1f(U.uHi, .62);
+      gl.uniform1f(U.uHi, .6);
       sent.w = sent.c = sent.no = '';
       return true;
     }

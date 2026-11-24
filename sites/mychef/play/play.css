@@ -219,4 +219,8 @@ html[lang=he] .pl-ticket__note{font-size:26px}
 }
 .pl-tools,.pl-tool,.pl-plate,.pl-stage{-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 .pl-tool img{-webkit-user-drag:none;pointer-events:none}
+/* without play.js (JS off, or the file failed) the plate is only a picture: no dead tools or buttons, and a way back */
+.pl-nojs{display:none}
+html:not(.pl-js) .pl-nojs,html.pl-broken .pl-nojs{display:block}
+html:not(.pl-ready) :is(.pl-tools,.pl-actions,.pl-how,.pl-hint){display:none}
 @media print{.pl-cv,.ydx-light{display:none!important}}

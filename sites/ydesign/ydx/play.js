@@ -214,7 +214,7 @@ void main(){
     const dt = Math.min(0.05, (now - (last || now)) / 1000);
     last = now;
     ema += (dt * 1000 - ema) * 0.08;
-    if (!window.__ydxFluidNoAdapt) { if (ema > 26) slow++; else slow = Math.max(0, slow - 2); if (slow > 50) { slow = 0; ema = 16; fx.degrade(); } }
+    if (!window.__ydxFluidNoAdapt) { if (ema > 26) slow += dt * 1000; else slow = Math.max(0, slow - dt * 2000); if (slow > 1200) { slow = 0; ema = 16; fx.degrade(); } }
     const r = cv.getBoundingClientRect();
     // user strokes
     if (P.inside || P.down) {

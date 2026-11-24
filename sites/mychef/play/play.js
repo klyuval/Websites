@@ -14,6 +14,7 @@
   const FINE = matchMedia('(hover: hover) and (pointer: fine)').matches;
   const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const CLOTH = 'cubic-bezier(.66,0,.22,1)', SETTLE = 'cubic-bezier(.2,.8,.2,1)';
+  cls.add('pl-ready');   // the tools and actions are shown only once this file runs (play.css)
 
   /* ------------------------------------------------------------------------------------------------- words */
   const T = {

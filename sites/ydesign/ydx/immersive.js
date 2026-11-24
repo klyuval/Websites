@@ -269,10 +269,13 @@ void main(){
     last = now;
     t += dt;
     ema += ((dt * 1000) - ema) * 0.08;
+    // adaptive quality, by time (not frame count, so a very slow device reacts as fast as a slightly slow one):
+    // 1.2s of slow frames -> one tier down (fluid.js: sim, dye and canvas resolution); slow at the last tier for 2.4s
+    // more -> give up and fade to the still look. Never steps back up.
     if (!window.__ydxFluidNoAdapt) {
-      if (ema > 26) slow++; else slow = Math.max(0, slow - 2);
-      if (slow > 50) { slow = 0; ema = 16; if (!fx.degrade()) verySlow++; }
-      if (verySlow > 2) { giveUp(); return; }
+      if (ema > 26) slow += dt * 1000; else slow = Math.max(0, slow - dt * 2000);
+      if (slow > 1200) { slow = 0; ema = 16; if (!fx.degrade()) verySlow++; }
+      if (verySlow > 1) { giveUp(); return; }
     }
     geometry();
     const rel = sr.top - cr.top;

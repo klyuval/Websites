@@ -327,7 +327,7 @@
     inst.setTint = function (c) { tintT = hex(c); if (RM.matches || !raf) tint = tintT.slice(); };
     inst.ripple = function (x, y, a) { addRipple(x, y, a == null ? 1 : a); };
     inst.quality = function () { return q; };
-    inst.debug = function () { return { rows: Array.from(rowCols).map(function (v) { return Math.round(v * 255); }), W: W, H: H, recs: records.length, raf: !!raf, snap: arguments[0] ? (draw(), canvas.toDataURL()) : null }; };
+    inst.debug = function () { return { rows: Array.from(rowCols).map(function (v) { return Math.round(v * 255); }), W: W, H: H, recs: records.length, raf: !!raf }; }; // QA
     inst.destroy = function () {
       dead = true; if (raf) cancelAnimationFrame(raf); raf = 0; teardownLive();
       removeEventListener('pointermove', onMove); removeEventListener('pointerdown', onDown); removeEventListener('resize', onResize);

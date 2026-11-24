@@ -28,7 +28,7 @@ html:not(.pl-xfer) .pl-cv b{opacity:0;animation:pl-fade .5s .12s forwards}
 <link rel="preload" href="/img/plate-empty.webp" as="image">
 <link rel="stylesheet" href="/play/play.css">
 <script src="/ydx/light.js" async></script>
-<script src="/play/play.js" defer onerror="document.documentElement.classList.add('pl-in');document.documentElement.classList.remove('pl-cover')"></script>
+<script src="/play/play.js" defer onerror="document.documentElement.classList.add('pl-in','pl-broken');document.documentElement.classList.remove('pl-cover')"></script>
 </head>
 <body>
 <div class="pl-cv" aria-hidden="true"><i></i><i></i><i></i><i><b></b></i></div>
@@ -50,7 +50,7 @@ html:not(.pl-xfer) .pl-cv b{opacity:0;animation:pl-fade .5s .12s forwards}
     <h1 id="pl-title"><span data-t="t1">תורכם,</span> <em data-t="t2">שף.</em></h1>
     <p class="pl-lead" data-t="lead">מושכים רוטב, מפזרים תבלין, מסובבים את הצלחת. כשזה נראה כמו ערב, שולחים להגשה.</p>
     <p class="pl-how" data-t="how">גררו על הצלחת כדי לצייר · אחזו מחוץ לשוליים כדי לסובב</p>
-    <noscript><p class="pl-lead">This little game needs JavaScript. <a href="/">Back to the table</a>.</p></noscript>
+    <p class="pl-lead pl-nojs">This little game needs JavaScript. <a href="/">Back to the table</a>.</p>
   </section>
 
   <section class="pl-stage" aria-label="Plate" data-t-label="stage">

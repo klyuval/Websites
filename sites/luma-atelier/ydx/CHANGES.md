@@ -254,3 +254,86 @@ repeated probes), not a site bug.
   events: 0 log lines.
 - Live headers re-checked (`curl -sI`): still no CSP / X-Frame-Options / cache-control; `.rsc` served as
   `text/x-component`.
+
+## Round 5 (immersive: a living background and a darkroom you can use)
+
+The owner's note after round 4: still too quiet. The site's identity is a darkroom and framing workshop, and it
+already owns two big moments (the WebGL hero film with its pointer light, and the frame builder), so round 5 adds the
+two things it did not have: **a background that is alive everywhere else**, and **a genuinely interactive darkroom**.
+Both are variations on the site's own motif (proof, exposure, safelight, paper), not generic demos.
+
+### 1. The living darkroom (reactive background) — `ydx/darkroom-bg.js` (+ `enhance.css`, `enhance.js` `living()`)
+
+- **What it looks like:** the flat olive-black grounds become the surface of a developer tray under a safelight. A
+  faint caustic web of warm light drifts on the "liquid" (two ridged simplex layers, playbook §5), brighter around the
+  pointer, which acts as a hand-held safelight (continuing the hero film's own pointer light below the fold). Moving the
+  pointer agitates the bath (a soft ripple every ~140px of travel), a click/tap drops a stronger ripple; the rings bend
+  the caustics and catch the light. Scrolling makes the bath flow (phase and position follow scroll, with parallax),
+  and scroll speed stretches and stirs it. Idle or on touch, the safelight drifts slowly by itself.
+- **Keeps the art direction exactly:** each screen row samples the real colour of the section under it (body
+  #171b12, studio-home #22251d, folio #1d2419, directory, workbench, footer, …) from live rects, so every section keeps
+  its own olive and the light is only added on top; seams between two dark sections blend softly. Paper sections,
+  photos, cards and the hero film stay opaque above it; when they fill the screen the shader does not draw at all.
+- **Changes with the page and the product:** safelight tint per route (events warmer, restoration sepia) and, on the
+  prints page, per selected frame finish (oak, walnut, gallery black, chalk white, brushed silver, raw timber) and print
+  surface (paper, canvas, glass, wood block), eased over 0.7s.
+- **How it is attached (never touches React's tree):** one fixed `<ydx-bg>` canvas appended to `<body>` (z-index -1,
+  `pointer-events:none`, `aria-hidden`). A scan walks only full-width blocks and marks dark ones whose ancestors are
+  transparent with `data-ydx-clear="r,g,b"`; only after the first frame is drawn does `html.ydx-bg-live` make those
+  backgrounds transparent (the canvas paints the same colour, so the hand-over is invisible). Rescanned with the
+  existing MutationObserver scan (route changes, in-place navigation). Loaded after the loader has finished, in idle
+  time, as a separate file (8.3 KB gzip), so it can never delay the loader or the app.
+- **Chrome quirk found and worked around:** with the canvas behind the page, the home page's two "possibility" cards
+  (opaque background + `overflow:clip`) made Chrome cull the canvas far beyond their box, leaving black holes below
+  them. Such boxes now get a background alpha of .995 (invisible) via `data-ydx-ovh` while the layer is live.
+- **Fallbacks:** no WebGL / software GPU (`failIfMajorPerformanceCaveat`) / file missing / no enhance.css →
+  `ydx-bg-live` is never set: the page is exactly the original design. Reduced motion → not started (and removed live if
+  the setting changes): the original static design is the "beautiful still frame". Hub iframe → not started (light
+  version). Context loss → original backgrounds back at once; restored → rebuilt. Print → hidden, colours restored.
+- **Performance:** DPR cap 1.25 (1 on touch) × quality 0.8 (0.6 on touch), adaptive down to 0.36 when frames are
+  slow, never steps back up more than once; paused in hidden tabs, and no draw at all while opaque content covers the
+  viewport (home hero, full paper sections). JS cost per frame: see the numbers below.
+
+### 2. The Darkroom — `/darkroom/` (new standalone page: `darkroom/index.html`, `ydx/darkroom.js`, `ydx/darkroom.css`)
+
+An interactive darkroom session that makes a real black-and-white print from one of the site's photographs:
+
+1. **Negative** — a film strip (sprocket holes, frame numbers, the photographs shown as negatives). The enlarger's red
+   focus filter projects the chosen negative on the paper without exposing it.
+2. **Expose** — choose an aperture (f/4 to f/16) and switch the enlarger lamp on and off; the clock counts. While the
+   lamp burns, the visitor's hand (pointer, or finger on touch) over the paper is a **dodging tool**: its soft shadow
+   holds light back and that area prints lighter. Exposure is simulated on a 64×64 grid on the CPU (lamp-seconds ×
+   dodging, (8/f)² per second); the negative's full-resolution detail is applied in the shader, so prints stay sharp.
+3. **Develop** — the paper slides into the tray. The image comes up out of white paper, shadows first (development
+   rate depends on density), under the red safelight. Dragging across the tray agitates it (ripples, up to 1.9× faster);
+   left too long, the whites fog. A "Rock the tray" button does the same for keyboard users.
+4. **Fix & dry** — the white light comes on, the print is judged like a darkroom tutor would ("Rich blacks, clean
+   whites. Alex would frame this one." / thin / heavy / pulled early / fogged, plus a nod to visible dodging) with the
+   recipe (`f/8 · 6.0 s · dev 1:05 · dodged`), and it is hung on the **drying line** with a peg (swaying, kept in
+   localStorage, last 8). "Download the print" gives a PNG computed on the CPU from the same model (up to 1200px, no
+   GPU read-back). The CTA leads to Prints & frames.
+
+- **Site look and system:** same palette, Optical display caps, Atelier Sans, numbered indexes, crop corners, a header
+  with the ALEXSTUDIO mark, a "Darkroom · in use" safelight sign, EN/עב/РУ switch (shares `alexstudio-language` with
+  the site; Hebrew is RTL, all copy translated) and "Back to the studio".
+- **One canvas** draws the whole room (safelight pool, bench, easel, tray, liquid, paper) behind the DOM; all text and
+  controls are real DOM: radio groups with arrow keys, lamp toggle also on "L", focus moves to each new step's heading,
+  the stage has a live `aria-label` describing the print's state.
+- **Same loader / transition system:** arriving from the site, the site's two-panel shutter (closed on the page you
+  left, labelled "Darkroom") opens here; leaving, the shutter closes here and the site's page continues it through the
+  existing `ydx-route` record (hard navigation and in-place live navigation both verified). Direct visits get a short
+  door-sign loader (the red bulb flickers on), 1s min first visit / 0.42s repeat / 0.3s in the hub iframe, 4s safety,
+  plain fade-free under reduced motion; the inline bootstrap gives up after 3.5s if the script never arrives.
+- **Entry point:** a small "Darkroom · Develop a print" chip with a breathing safelight dot, appended outside the app
+  root on every page; it appears only once the visitor has scrolled 60% of a screen (never over the hero), hides while
+  the mobile menu or a dialog is open or the shutter runs, localised (EN/HE/RU), `data-no-transition` so the site's
+  own router/shutter leaves it alone; ours closes the shutter, then navigates.
+- **Fallbacks:** no WebGL → the same four steps with a CSS print that develops with filters (the timer, verdict, drying
+  line and download still work, computed on the CPU). Reduced motion → no caustics/ripples/sway, instant state changes.
+  No JS → a designed static print, the copy, and links back to the studio and contact.
+
+### Removed / kept
+
+Nothing from rounds 1–4 competes with these, so nothing was removed: the loader, shutter continuation, language iris,
+AF brackets, menu blind, heading rises and paper laydown are all still in place. The background deliberately does not
+run under the hero film (the hero already is the moving light there) and stays out of the paper sections.

@@ -425,6 +425,7 @@
           bands, busy: fieldBusy,
           fps: () => (sceneLive() ? 30 : 60),
           allowSoftware: qs.get('ydx-gl') === 'soft',
+          q: +qs.get('ydx-q') || 0, // debug: force a render scale (perf tests isolate main-thread cost with a tiny buffer)
           burstOk: (e) => e.button === 0 && !(e.target.closest && e.target.closest('dialog, input, textarea, select, .carousel-hero')),
           onReady: () => requestAnimationFrame(() => html.classList.add('ydx-field-on')),
           onLost: () => html.classList.remove('ydx-field-on'),

@@ -294,7 +294,7 @@
     return (performance.now() - t0) / 2;
   }
   const stats = window.__ydxFieldStats = { frames: 0, jsMs: 0 };   // main-thread cost of a frame (EMA), read by the tests
-  function loop(now) { raf = 0; const t0 = performance.now(); frame(now); stats.frames++; stats.jsMs += (performance.now() - t0 - stats.jsMs) * 0.05; schedule(); }
+  function loop(now) { raf = 0; const t0 = performance.now(); frame(now); stats.frames++; stats.jsMs += (performance.now() - t0 - stats.jsMs) * 0.05; stats.reg = reg; stats.vel = vel; schedule(); }
   function schedule() { if (!raf && !dead && !lost && !d.hidden && gl) raf = requestAnimationFrame(loop); }
 
   /* ---------- start (after the loader has left, in idle time) ---------- */

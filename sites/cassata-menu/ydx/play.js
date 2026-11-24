@@ -410,6 +410,7 @@
     });
     lastField = f0[2];
     if (F.state === 'fallback') { cv.remove(); F = null; return; }
+    w.__ydxField = F; // enhance.js holds it still during the language View Transition
     const size = () => F.setSize(innerWidth, innerHeight);
     size(); addEventListener('resize', size, { passive: true });
     let pend = null, pr = 0;

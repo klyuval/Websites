@@ -177,7 +177,7 @@
     var cv = document.createElement('canvas');
     wrap.appendChild(cv);
     var gl = null, U = {}, prog = null, raf = 0, dead = false, lost = false, ready = false;
-    var W = 0, H = 0, cssW = 1, cssH = 1, vh = innerHeight || 800, q = coarse ? 0.5 : 0.6, upgraded = false;
+    var W = 0, H = 0, cssW = 1, cssH = 1, vh = innerHeight || 800, q = opts.q || (coarse ? 0.5 : 0.6), upgraded = false;
     var t = 7.3, last = 0, lastDraw = 0, ema = 16, slow = 0, fast = 0;
     var ptr = [-1e4, -1e4], ptrT = [-1e4, -1e4], ptrS = 0, ptrST = 0, vel = [0, 0], client = null, lastMove = -1e9;
     var bursts = [[0, 0, 9, 0], [0, 0, 9, 0], [0, 0, 9, 0]], bi = 0;
