@@ -56,7 +56,30 @@ html.ydx-hdr-hide .top:focus-within { translate: none; }
 }
 html.ydx-hdr-bg body:not(.in-page):not(.in-dial):not(.menu-open) .top::before { opacity: 1; }
 
-/* ---------------------------------------------------------------- magnetic buttons */
-@media (prefers-reduced-motion: no-preference) and (pointer: fine) {
-  .cta, .hero-nav .arrow, .dial-step .arrow, .detail-step .arrow, .gate-yes { will-change: auto; }
+/* ---------------------------------------------------------------- ring cursor (pointer: fine, JS adds it) */
+.ydx-cursor {
+  position: fixed; left: 0; top: 0; z-index: 90; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  pointer-events: none; mix-blend-mode: difference; opacity: 0; transition: opacity .3s;
 }
+.ydx-cursor.on { opacity: 1; }
+.ydx-cursor::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid #fff;
+  transition: transform .45s var(--ease-out), border-color .3s, background-color .3s;
+}
+.ydx-cursor.hot::before { transform: scale(1.55); background-color: rgba(255,255,255,.12); }
+.ydx-cursor.drag::before { transform: scale(2.1); border-style: dashed; animation: ydx-spin 6s linear infinite; }
+.ydx-cursor.down::before { transform: scale(.75); }
+.ydx-cursor.drag.down::before { transform: scale(1.7); }
+.ydx-cursor::after {
+  content: "\2194"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff;
+  font: 700 15px/1 var(--text); opacity: 0; transition: opacity .25s;
+}
+.ydx-cursor.drag::after { opacity: 1; }
+@keyframes ydx-spin { from { rotate: 0deg; } to { rotate: 360deg; } }
+@media (pointer: coarse), (prefers-reduced-motion: reduce) { .ydx-cursor { display: none; } }
+
+/* ---------------------------------------------------------------- design fixes */
+/* checkout with an empty cart reuses the dark drawer's empty block: its side padding pushed it off the page's
+   column edge, and its cream button nearly vanished on the sand page */
+.acct-body > .drawer-empty { padding-inline: 0; }
+.acct-body > .drawer-empty .cta { background: var(--ink); color: #fff8ef; }

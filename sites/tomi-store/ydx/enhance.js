@@ -213,10 +213,46 @@
       if (!el) { tx = ty = 0; kick(); return; }
       var r = el.getBoundingClientRect();
       var k = el.classList.contains('arrow') ? 0.3 : 0.22;
-      tx = (e.clientX - (r.left + r.width / 2)) * k;
-      ty = (e.clientY - (r.top + r.height / 2)) * k;
+      // measure from the element's resting centre (rect includes our current offset)
+      tx = (e.clientX - (r.left - x + r.width / 2)) * k;
+      ty = (e.clientY - (r.top - y + r.height / 2)) * k;
       kick();
     }, { passive: true });
     document.addEventListener('pointerdown', function () { tx = ty = 0; kick(); }, { passive: true });
+  })();
+
+  /* ------------------------------------------------------------------ 5. ring cursor (pointer: fine)
+   * A trailing ring, the TOMI mark's ring, that follows the native cursor (which stays visible). It swells over
+   * anything clickable, turns into a "drag" ring over the 3D dial, and disappears over text fields. */
+  (function ringCursor() {
+    if (reduced || !fine) return;
+    var c = document.createElement('div');
+    c.className = 'ydx-cursor';
+    c.setAttribute('aria-hidden', 'true');
+    document.body.append(c);
+    var mx = -100, my = -100, x = -100, y = -100, raf = 0, shown = false;
+    var HOT = 'a[href], button:not(:disabled), summary, [role="tab"], label[for], select, .fc, .pc, .chip';
+    function loop() {
+      x += (mx - x) * 0.22; y += (my - y) * 0.22;
+      c.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0)';
+      raf = Math.abs(mx - x) + Math.abs(my - y) > 0.2 ? requestAnimationFrame(loop) : 0;
+    }
+    document.addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'mouse') { c.classList.remove('on'); return; }
+      mx = e.clientX; my = e.clientY;
+      if (!shown) { shown = true; x = mx; y = my; }
+      var t = e.target;
+      var field = t.closest && t.closest('input, textarea, [contenteditable="true"]');
+      var drag = !field && t.closest && t.closest('.stage.is-dial .dial, .finder-rail, [data-lenis-prevent-horizontal]');
+      var hot = !field && !drag && t.closest && t.closest(HOT);
+      c.classList.toggle('on', !field);
+      c.classList.toggle('hot', !!hot);
+      c.classList.toggle('drag', !!drag);
+      if (!raf) raf = requestAnimationFrame(loop);
+    }, { passive: true });
+    document.addEventListener('pointerdown', function () { c.classList.add('down'); }, { passive: true });
+    document.addEventListener('pointerup', function () { c.classList.remove('down'); }, { passive: true });
+    document.documentElement.addEventListener('pointerleave', function () { c.classList.remove('on'); });
+    addEventListener('blur', function () { c.classList.remove('on'); });
   })();
 })();

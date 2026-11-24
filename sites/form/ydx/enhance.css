@@ -157,7 +157,7 @@ dialog.modal[open]::backdrop { animation: ydx-fade .22s ease both; }
 @keyframes ydx-grow { from { transform: scaleX(0); } }
 @keyframes ydx-kb { from { opacity: 0; translate: 0 30px; rotate: -8deg; } }
 @keyframes ydx-tick { 50% { opacity: .86; } }
-@keyframes ydx-word { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes ydx-word { from { clip-path: inset(100% -30% -30% -30%); } to { clip-path: inset(-30% -30% -30% -30%); } }
 @keyframes ydx-shake { 0%, 100% { translate: 0 0; } 20% { translate: -6px 0; } 40% { translate: 5px 0; } 60% { translate: -3px 0; } 80% { translate: 2px 0; } }
 
 /* Touch: headline-style name buttons (23–28px tall) and short text links get

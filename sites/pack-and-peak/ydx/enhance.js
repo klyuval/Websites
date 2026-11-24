@@ -259,9 +259,9 @@
       html.classList.toggle('ydx-scrolled', y > 8);
       var on = y > innerHeight * .6 && !footerIn && !html.classList.contains('ydx-loading');
       a.classList.toggle('is-on', on);
-      var g = gain(), alt = Math.round((TRAILHEAD + g * p) / 5) * 5;
+      var g = gain(), alt = Math.round((TRAILHEAD + g * Math.min(1, p / .92)) / 5) * 5;   // reach the summit as the last chapter lands
       if (alt !== shown) { shown = alt; b.firstChild.nodeValue = fmt(alt); }
-      var top = p > .9;
+      var top = p >= .92;
       if (top !== onFlag) { onFlag = top; a.classList.toggle('is-summit', top); small.textContent = top ? 'SUMMIT' : 'ALT.'; }
     }
     function q() { if (!queued) { queued = true; raf(update); } }

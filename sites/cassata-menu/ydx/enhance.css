@@ -117,7 +117,7 @@ html.ydx-motion .btn { transition: transform .16s var(--ease), box-shadow .16s v
   html.ydx-vt-lang::view-transition-new(root) { animation: ydx-vt-new .66s cubic-bezier(.7,0,.25,1) both; }
 }
 
-@keyframes ydx-hero-out { to { translate: 0 18%; opacity: .25; } }
+@keyframes ydx-hero-out { to { translate: 0 12%; opacity: .55; } }
 @keyframes ydx-brand { from { translate: 0 28%; scale: 1 .45; opacity: 0; } to { translate: 0 0; scale: 1 1; opacity: 1; } }
 @keyframes ydx-panel { from { opacity: 0; translate: 0 26px; rotate: -1.2deg; } }
 @keyframes ydx-row { from { opacity: 0; translate: 0 10px; } }
