@@ -5,7 +5,7 @@
  *    appended to <body>.
  * Parts: (1. loader -> ydx/boot.js)  2. header scroll behaviour (+ cart-count pin)  3. language-switch shutter
  *        4. magnetic buttons  5. ring cursor  6. page-title fit (inline font-size on overflowing titles only)
- *        7. route-curtain word mask (round 2)
+ *        7. route-curtain word mask  8. dial notes clearance (round 2)
  */
 (function () {
   'use strict';
@@ -32,7 +32,7 @@
     function locked() {
       return body.classList.contains('menu-open') || body.classList.contains('gated') ||
         body.classList.contains('in-dial') || html.classList.contains('lenis-stopped') ||
-        document.querySelector('.drawer:not([hidden])') || top.contains(document.activeElement) ||
+        document.querySelector('.drawer:not([hidden])') || kbFocus() ||
         performance.now() < pinnedUntil;
     }
     function update() {
@@ -47,7 +47,14 @@
       else if (acc < -14) html.classList.remove('ydx-hdr-hide');
     }
     addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
-    top.addEventListener('focusin', function () { html.classList.remove('ydx-hdr-hide'); });
+    // keyboard focus in the header pins it; a mouse/touch click on lang or cart (which keeps focus there, and the
+    // cart drawer hands focus back to its button on close) must not pin it for good (round 2)
+    function kbFocus() {
+      var a = document.activeElement;
+      if (!a || !top.contains(a)) return false;
+      try { return a.matches(':focus-visible'); } catch (e) { return true; }
+    }
+    top.addEventListener('focusin', function () { if (kbFocus()) html.classList.remove('ydx-hdr-hide'); });
     // keep the cart visible for a moment when something is added (the count bump is the only feedback)
     var n = document.querySelector('.cart-n'), prev = n && n.textContent;
     if (n) new MutationObserver(function () {
@@ -217,5 +224,32 @@
       var k = document.querySelector('.curtain');
       if (k) { mo.disconnect(); hook(k); }
     }).observe(document.body, { childList: true });
+  })();
+
+  /* ------------------------------------------------------------------ 8. dial: keep the notes line clear of the
+   * active flavour label (round 2). On the 3D dial the selected flavour's label sits at the needle, next to the
+   * panel. Between 761 and ~1300px wide it ran into the panel's notes line ("ענבים סגולים, עגול" under
+   * "ענבים Grape"; worst with long names like "Al Fakher Double Apple"). The dial geometry follows the 3D device,
+   * so we measure it once per dial layout (not per flavour, so nothing reflows while you spin) and give the notes
+   * line just enough inline padding on the dial's side. */
+  (function dialNotes() {
+    var stage = document.querySelector('.stage');
+    if (!stage) return;
+    var t = 0;
+    function fit() {
+      if (!stage.classList.contains('is-dial') || stage.classList.contains('is-detail') || innerWidth <= 760) return;
+      var a = document.querySelector('.dial-labels .dial-label.active'), p = document.querySelector('.panel');
+      if (!a || !p || p.hidden) return;
+      var rtl = html.dir === 'rtl', ar = a.getBoundingClientRect(), pr = p.getBoundingClientRect(), maxW = 0;
+      document.querySelectorAll('.dial-labels .dial-label').forEach(function (l) { maxW = Math.max(maxW, l.getBoundingClientRect().width); });
+      maxW *= 1.12; // inactive labels are drawn smaller than the active one
+      var need = rtl ? pr.right - (ar.right - maxW - 14) : ar.left + maxW + 14 - pr.left;
+      need = Math.min(Math.max(0, Math.round(need)), Math.round(pr.width * 0.45));
+      html.style.setProperty('--ydx-np', need + 'px');
+    }
+    function later(ms) { clearTimeout(t); t = setTimeout(fit, ms || 900); }
+    new MutationObserver(function () { later(); }).observe(stage, { attributes: true, attributeFilter: ['class'] });
+    new MutationObserver(function () { later(); }).observe(html, { attributes: true, attributeFilter: ['lang'] });
+    addEventListener('resize', function () { later(250); });
   })();
 })();

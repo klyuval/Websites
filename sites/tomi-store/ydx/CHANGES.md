@@ -101,3 +101,97 @@
   mean editing app-rendered text.
 - The minor copy inconsistency between "Tomi Vape" and "TOMI" in the privacy/shipping text is content, so it was
   not changed.
+
+## Round 2
+
+A second review with fresh eyes. I recorded the loader, the route curtain, the language shutter and the menu as
+frame sequences (CDP screencast, so each frame has its real render time), on desktop and mobile. I also ran
+throttled loads (400 kbps, 400 ms RTT, 4x CPU) and CLS and long-task measurements with and without the ydx layer.
+Other checks: a keyboard-only pass, a load with the live site's CSP header applied, and layout probes at 360, 390,
+768, 1024, 1280, 1440 and 1920 px wide, plus 844x390 landscape, in Hebrew and English. A note on method:
+SwiftShader renders this scene at 1–2 fps here. For the motion timing, the WebGL draw calls were stubbed out in
+the test browser so the DOM and CSS motion ran at real speed. The app was not changed for these tests.
+
+### Found and fixed
+
+- **The loader scripts were blocked on the live site (all pages, all viewports).** The worker sends
+  `Content-Security-Policy: script-src 'self' …` with no `'unsafe-inline'`. Because of that, the two inline
+  `<script data-ydx>` blocks would not run in production. The effects were a CSP console error, no loader colour
+  for `#x`, `#xl-plus` and `#ultima` (the purple flash would come back), and no repeat or iframe flags.
+  - Fix: the boot code now lives in **`ydx/boot.js`**, a small synchronous same-origin script in `<head>`.
+  - Verified with the live CSP header injected: no CSP error from ydx, and the loader is the right colour.
+  - The app's own WASM decoder is also blocked by that CSP (`'unsafe-eval'`) and falls back to plain GLBs. That
+    is pre-existing and was not touched.
+- **On a slow connection the loader started late and looked frozen at 0%.** The loader controller lived in the
+  `defer` enhance.js, and deferred scripts run after the 870 KB module bundle. On slow 3G that meant about 20 s
+  with no caption, no progress and no safety timer.
+  - The controller now runs from `boot.js` as soon as the loader markup is parsed.
+  - The app only reports progress for the model downloads. To cover the part before that (bundle and fonts), the
+    loader creeps slowly toward 14% over time. Real model progress then maps onto 14–100%, and the value only
+    ever rises.
+- **The percentage swapped fonts inside the loader (slow networks).** The numbers drew in Arial Narrow first and
+  then jumped to Karantina. They now fade in once the Karantina face has loaded, with a 2.6 s fallback.
+- **The loader exit froze on weak devices.** Right after `ready`, three.js compiles its shaders in one long
+  main-thread task, which is 0.5–6 s here. The old clip-path wipe stood still during that task.
+  - The exit is now transform and opacity only: the panel lifts the same way the gate and curtain move. The
+    compositor runs it, so it no longer depends on the main thread.
+- **The loader then popped away before the lift had finished.** This was the round-2 regression caught in frame
+  review. The exit animation was created inside the app's long `ready` task, so the main thread dated its start
+  far earlier than the compositor actually began it. `onfinish` then fired while the panel was only about 20% of
+  the way up, and the loader disappeared in a single frame.
+  - The exit now starts from a rendered frame (two requestAnimationFrame calls).
+  - The panel is hidden two frames after `onfinish`, and the fallback timer is now 2.2×D.
+  - Re-recorded: the lift now runs to the end without a jump.
+- **The route curtain squashed its word (all routes).** The app's GSAP curtain scales the whole panel on Y, so
+  "TOMI" was a flat smear for most of the move.
+  - enhance.js now reads the curtain's live scale, which GSAP still owns, and counter-scales only the `<b>`.
+  - The word keeps its shape and rides in the middle of the band, from bottom to centre on the way in and from
+    centre to top on the way out. The band's edges clip it like a mask. No app code was changed.
+- **The language shutter felt laggy.** Its in-phase used a strong ease-in, so nothing moved for about 250 ms after
+  the click. It now starts moving at once and lands with the same 340 ms. The language still flips under cover
+  within 500 ms of the input, so that shift counts as user-initiated.
+- **The header stayed pinned after a mouse click on its buttons (desktop).** The hide-on-scroll pin treated any
+  focus inside the header as keyboard focus. Clicking Lang or Cart leaves focus there, and the cart drawer hands
+  focus back to its button when it closes, so the header never tucked away again. It now pins only for
+  `:focus-visible`, which is real keyboard focus.
+- **Dial flavour label overlapping the panel (761–1300 px, he and en).** The selected flavour's label at the
+  dial needle ran into the panel's notes line. At 1024 px this happened for every flavour; at 1280 px for long
+  names such as "Al Fakher Double Apple" and "Kiwi Strawberry".
+  - enhance.js measures the dial once per dial layout (on entering the dial, on resize and on a language change),
+    not per flavour, so nothing reflows while you spin.
+  - It writes `--ydx-np` on `<html>`, and CSS pads only `.panel .fl-notes` on the dial's side. The padding is
+    capped at 45% of the panel width.
+- **Hero arrows over the stats (761–~860 px, e.g. iPad mini portrait, he and en).** The centred prev/next
+  arrows sat on the "2%" and price cells. The stat grid is tightened in that range.
+- **Header tap targets on touch tablets (>760 px).** The desktop links were 18 px tall. The hit area is now larger
+  (padding with an equal negative margin, so the layout does not move), and the underline stays where it was.
+
+### Audited and left as is
+
+- **CLS** with the ydx layer is the same as or lower than without it: desktop home 0.0074 vs 0.0073, mobile shop
+  0.0002 vs 0.0058, and the first-visit gate 0.13 vs 0.21. The remaining shifts belong to the app (hero copy and
+  gate render) and happen under the loader. Long tasks are the same within noise.
+- **Keyboard:** the Tab order is logical and every stop has a visible ring. Escape closes the cart and the menu,
+  and focus returns to the opener. The loader holds no focus: Tab during load goes to the header behind it, which
+  is not a trap. The decorative overlays (shutter, cursor, curtain) are `aria-hidden`. The old app counter is
+  `display: none`, so the status is announced only once.
+- **Reduced motion:** the loader does a plain 240 ms fade; the shutter, cursor, magnet and curtain word are off.
+- **Throttled load:** the loader is never stuck. The only time limit it adds is the 4 s safety exit when the app
+  reports nothing; otherwise it waits for the app's own `ready`. The app waits up to 90 s for the models, and the
+  page is not usable before that. So on slow 3G the loader honestly shows progress for as long as that takes,
+  rather than revealing an empty stage.
+- **Landscape phones (844x390):** the stage has `min-height: 560px`, so the hero CTA and stats sit below the fold
+  and need a scroll. This is the app's deliberate floor for the 3D composition. Shrinking the canvas would mean
+  re-tuning the 3D camera, so it was not changed.
+- **Pass-1 cursor and magnet:** reviewed again. They are subtle and on-motif, so they stay.
+- **Nothing new added for ambient or idle motion.** The 3D carousel, ripple rings and GSAP sections already
+  carry plenty of motion, and more would compete with them.
+
+### Files (round 2)
+
+- `ydx/boot.js` (new): flags, loader colour and the loader controller.
+- `index.html`: the inline boot script is replaced by `<script src="/ydx/boot.js">`, and two lines were added to
+  the loader's inline CSS (the numeral fade-in).
+- `ydx/enhance.js`: the loader block is removed (it moved to boot.js). Added: header pin only on keyboard focus,
+  the shutter ease, §7 curtain word mask and §8 dial notes clearance.
+- `ydx/enhance.css`: hero stats at 761–900 px, tablet header hit areas and the dial notes padding.

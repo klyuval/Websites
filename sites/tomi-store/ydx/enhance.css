@@ -57,7 +57,7 @@ html.ink .curtain, html.ink .ydx-shutter {
   .top { transition: color .45s var(--ease-out), translate .55s var(--ease-out); }
 }
 html.ydx-hdr-hide .top { translate: 0 -110%; }
-html.ydx-hdr-hide .top:focus-within { translate: none; }
+html.ydx-hdr-hide .top:has(:focus-visible) { translate: none; }
 /* progressive blur under the transparent home header once the hero is scrolled away */
 .top::before {
   content: ""; position: absolute; inset: 0 0 -28px; z-index: -1; pointer-events: none; opacity: 0;
@@ -112,4 +112,8 @@ html.ydx-hdr-bg body:not(.in-page):not(.in-dial):not(.menu-open) .top::before { 
 @media (pointer: coarse) and (min-width: 761px) {
   .nav a, .tools > a, .tools > button { padding: 13px 8px; margin: -13px -8px; }
   .nav a::after, .tools > button::after { bottom: 9px; inset-inline: 8px; }
+}
+/* dial: room for the active flavour label next to the panel (width measured by enhance.js, 0 when not needed) */
+@media (min-width: 761px) {
+  .panel .fl-notes { padding-inline-start: var(--ydx-np, 0px); }
 }
