@@ -121,7 +121,7 @@ dialog .close:focus-visible,.recipe-tabs button:focus-visible{outline-color:var(
    Scroll-driven (same mechanism as the site's own rise/roll), so it costs nothing on the main thread. */
 @media (prefers-reduced-motion:no-preference){
   @supports (animation-timeline:view()){
-    .edge{transform-origin:50% 100%;animation:ydx-pour linear both;animation-timeline:view();animation-range:entry 0% cover 45%}
+    .edge{transform-origin:50% 100%;animation:ydx-pour linear both;animation-timeline:view();animation-range:entry 0% cover 35%}
     @keyframes ydx-pour{0%{scale:1 .15}60%{scale:1 1.12}100%{scale:1 1}}
   }
 }

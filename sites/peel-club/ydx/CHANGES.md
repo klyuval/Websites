@@ -92,3 +92,56 @@ Checked and clean: no horizontal overflow at 360, 390, 1280, 1440 and 1920 on an
 
 Copy `ydx/` into `public/`, and copy the `ydx` lines from any page's `<head>` and the first `<script data-ydx>` in `<body>`
 into the HTML template.
+
+## Round 2
+
+A second review of the first pass, done as a first-time visitor would see it and as a QA engineer would test it.
+
+### What was audited
+
+- **Loader and transitions, as frame sequences.** Recorded with CDP screencast on desktop (1440) and iPhone 13, at normal
+  speed and on slow 3G (400 kbps, 400 ms RTT) with 4x CPU throttling. Also recorded a late-arriving `enhance.js` (delayed
+  6 s), repeat visit, back/forward, hub iframe and reduced motion.
+- **CLS.** Measured per page and viewport, with and without the layer (`/ydx/*` routed to 404), with the shifts attributed
+  to their source nodes. Long tasks and scroll frame times were measured under 4x CPU throttling, with and without the layer.
+- **Keyboard.** Tabbed through every focus stop on the home page, opened and closed the dialogs and mobile menu with Escape,
+  and checked that focus came back.
+- **Layout.** Checked for overflow at 360, 390, 768, 1024, 1280, 1440 and 1920, plus an 844×390 landscape phone, on all 5
+  pages, and took scroll-walk screenshots at 768, 1024 and landscape. The site is English-only, so there is no RTL.
+
+### Found and fixed
+
+| Where | Problem | Fix |
+| --- | --- | --- |
+| Loader, slow network | **The section headings could stay invisible for good.** When `enhance.js` arrived after the inline 4.2 s safety timer had already removed the curtain, `leaveCurtain()` returned early. The `held` promise then never resolved, so no `.ydx-sq` or `.ydx-kick` element was ever revealed. | `enhance.js` now releases the hold when the curtain is missing or already gone. The early return also releases it. |
+| Loader, slow network | The safety timer started when the body script ran. On slow 3G, CSS blocks painting for about 5 s, so the timer fired with almost no visible loader and then *snapped* the curtain away (`remove()`). | The inline script stamps `window.__ydxT0` on the curtain's first frame (rAF) and starts the 4.0 s safety net there. The net now fades out over 300 ms instead of cutting. `enhance.js` measures its minimum and cap from that stamp, not from navigation start. |
+| Loader, every first visit | As the sheet peeled, the strip it uncovered first showed an empty hero, because the page's entrance was only un-paused 30% into the peel. | The page's entrance is released as the peel starts. The headline is already squeezing open when it comes into view. |
+| Loader, first ~250 ms | The printed half-wheel's spokes floated on their own in empty space before the soda reached them, next to a lid that was not yet attached to a can. | The wheel is masked by the liquid (an SVG `<mask>` driven by the same `c-liq` animation). It now only shows "printed" where the soda is. |
+| Loader, CLS | The loop that squeezes PEEL↔CLUB by font width changed the wordmark's width every frame. That moved the centred stack, can included, and the 84%→100% counter widened the meta line. It added about 0.01 CLS on phones. | The wordmark is a fixed 5.62em box with PEEL anchored left and CLUB anchored right (`direction:rtl`, so its start edge never moves). The counter has a min-width that fits "100%". The loader now adds **0** CLS: mobile home went from 0.0098 to 0, and desktop is the same as without the layer. The rest of the desktop figure comes from the site's own footer squeeze. |
+| Page transitions | A click took about 1.6–1.8 s to reach an open page. The wheel took 600 ms, then the next page held its label for up to 1 s while it waited for the hero image to decode. | The wheel is a little quicker (navigation at 540 ms). An arriving page waits for fonts and the lead image for at most **320 ms** after its first frame, then peels in 560 ms. The page's own `drop-in` covers an image that is still decoding. |
+| Home hero, 701–1180 px (tablet, small laptop, landscape phone) | The desktop 3-column foot was too narrow. "A grown-up bite. A refreshingly wild side." broke into four ragged lines, and the scroll cue became a six-line sliver jammed against the swatches. | The tagline sits above its button. Under 900 px, the cue gets its own centred line above the row. |
+| Mobile menu (≤900 px) | The panel is the same flat field as the hero beneath it, so it ended on an invisible line that sliced the hero can in half. | The panel closes on the brand's rip edge, a pith band and zest line, as in the flavour wipe. |
+
+Checked and fine:
+- Focus is never trapped by the curtain or the transitions. The curtain and overlays are `aria-hidden` and contain no focusables.
+- Escape closes the product and bag dialogs and the mobile menu, and focus returns to the trigger.
+- Focus rings are visible on every stop.
+- No overflow at any width.
+- No console errors or warnings in any mode, including slow network, late script, iframe, reduced motion and back/forward.
+- Scroll frame times and long tasks under 4x CPU throttling are no worse than without the layer.
+
+### Added (second improvement loop)
+
+- **Poured section edges.** The site's wavy section edges are flat as they come up the screen. They swell to full
+  amplitude with a slight overshoot as they arrive, like a poured surface settling. It is scroll-driven (`view()`
+  timeline, the same mechanism as the site's own `rise` and `roll`), so it costs nothing on the main thread. It is off under
+  reduced motion and needs `animation-timeline` support.
+
+### Kept / deliberately not added
+
+- The hero fizz, magnetic pills, heading squeezes, kicker wipes and dialog exits from pass 1 still feel on-brand and
+  restrained (the fizz is capped and subtle). Nothing was removed.
+- No cursor follower and no fly-to-bag animation: the header (and its bag) is hidden while scrolling down, so a can flying
+  into it would usually land offscreen. The site already bumps the bag count and drops a can top into the mix slots.
+- "A little twist of fate." overlapping the half orange on phones, and the gap in "A lot   alive." at tablet portrait,
+  are the site's own layered art direction.
