@@ -59,11 +59,9 @@ span.ydx-wi.ydx-wi{display:inline-block}
   .ydx-js .strike path{transition-delay:.85s}
 
   /* mobile menu: the sheet unrolls, its lines are set one by one */
-  #mobile-nav:not([hidden]){animation:ydx-menu .42s cubic-bezier(.2,.8,.2,1) both;transform-origin:50% 0}
   #mobile-nav:not([hidden]) a{animation:ydx-menu-a .5s cubic-bezier(.2,.8,.2,1) both}
   #mobile-nav:not([hidden]) a:nth-child(2){animation-delay:.05s}
   #mobile-nav:not([hidden]) a:nth-child(3){animation-delay:.1s}
-  @keyframes ydx-menu{from{clip-path:inset(0 0 100% 0 round 22px);transform:translate3d(0,-8px,0)}to{clip-path:inset(0 0 0 0 round 22px);transform:none}}
   @keyframes ydx-menu-a{from{opacity:0;transform:translate3d(0,14px,0)}to{opacity:1;transform:none}}
   .menu-toggle span{display:inline-block;transition:rotate .35s var(--ease)}
   .menu-toggle[aria-expanded=true] span{rotate:180deg}
@@ -116,14 +114,14 @@ span.ydx-wi.ydx-wi{display:inline-block}
    lens on load and resize, so the loupe and its blueprint stay registered. */
 @media (orientation:landscape) and (max-height:500px){
   .hero,.hero-pin,.loupe-world{min-height:0 !important}
-  .hero{--hs:min(calc((100vw - 2 * var(--g)) / 7),25svh);--D:clamp(130px,42svh,210px)}
+  .hero{--hs:min(calc((100vw - 2 * var(--g)) / 7.4),25svh);--D:clamp(130px,42svh,210px)}
   .hero-layer{justify-content:flex-start;padding-top:calc(86px + 4svh)}
   .hero h1,.bp-h1{line-height:.8}
   .hero h1 .l2,.bp-h1 .l2{font-size:.752em;margin-top:.05em}
   .hero h1 .l2a,.hero h1 em,.bp-h1 .l2a,.bp-h1 em{display:inline-block}
   .hero h1 em,.bp-h1 em{font-size:1.02em;margin:0 0 0 -.06em;line-height:inherit}
   .hero-top{top:64px;font-size:10px}
-  .hero-foot{left:auto;right:var(--g);bottom:46px;width:min(310px,40vw)}
+  .hero-foot{left:auto;right:var(--g);bottom:46px;width:min(310px,36vw)}
   .hero-lede p{font-size:15px;margin:6px 0 12px}
   .hero-marks{display:none}
   .hero-hint{top:calc(86px + 4svh);bottom:auto;left:auto;right:var(--g);font-size:26px}
@@ -131,4 +129,24 @@ span.ydx-wi.ydx-wi{display:inline-block}
   .proof-strip{bottom:12px}
   .bp-note{font-size:.115em}
   .bp-note.n1{left:10.4em}.bp-note.n3{left:20.5em;top:auto;bottom:5.7em}
+  /* loader: the "x-height" note was pushed into the top crop marks */
+  .ydx-loader .ydx-n1{top:calc(var(--F) * -.3)}
+}
+
+/* ---------- round 2: reading progress, printed as the proof colour bar ----------
+   A 3px strip along the top edge: the five proof colours are laid down left to right as the guide is read
+   (CSS scroll timeline, no script per frame). Hidden where scroll timelines are not supported. */
+.ydx-progress{position:fixed;left:0;top:0;width:100%;height:3px;z-index:70;pointer-events:none;display:none;
+  background:linear-gradient(90deg,var(--violet) 0 20%,var(--pink) 0 40%,var(--mint) 0 60%,var(--ink) 0 80%,var(--white) 0)}
+@supports (animation-timeline:scroll()){
+  .ydx-progress{display:block;clip-path:inset(0 100% 0 0);animation:ydx-prog linear both;animation-timeline:scroll(root)}
+  @keyframes ydx-prog{to{clip-path:inset(0 0 0 0)}}
+}
+
+/* ---------- round 2: the mobile menu sheet rolls back up when it closes (it used to vanish) ---------- */
+@media (prefers-reduced-motion:no-preference){
+  /* opens with @starting-style, closes with a discrete display transition (keyframes on the sheet blocked the exit) */
+  #mobile-nav{clip-path:inset(0 0 0 0 round 22px);translate:0 0;transition:clip-path .42s cubic-bezier(.2,.8,.2,1),translate .42s cubic-bezier(.2,.8,.2,1),display .42s allow-discrete}
+  @starting-style{#mobile-nav:not([hidden]){clip-path:inset(0 0 100% 0 round 22px);translate:0 -8px}}
+  #mobile-nav[hidden]{clip-path:inset(0 0 100% 0 round 22px);translate:0 -8px;transition-duration:.24s;transition-timing-function:cubic-bezier(.5,0,.75,0)}
 }

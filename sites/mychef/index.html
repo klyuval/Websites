@@ -2,7 +2,7 @@
 <!-- ydx: boot flags + loading screen critical CSS (design/motion pass, see /ydx/CHANGES.md) --><script data-ydx>(function(){var d=document.documentElement,c=d.classList,l='he',s=false;c.add('ydx-js');try{l=localStorage.getItem('mychef-language')||'he'}catch(e){}if(!/^(he|en|fr)$/.test(l))l='he';d.setAttribute('data-ydx-lang',l);try{s=sessionStorage.getItem('ydx-seen')==='1'}catch(e){}c.add('ydx-loading');if(matchMedia('(prefers-reduced-motion: reduce)').matches)c.add('ydx-ld-reduced');else if(window.self!==window.top)c.add('ydx-ld-frame');else if(s)c.add('ydx-ld-short');var f=['frankruhllibre-latin'].concat(l==='he'?[]:['caveat-latin']);f.forEach(function(n){var k=document.createElement('link');k.rel='preload';k.as='font';k.type='font/woff2';k.crossOrigin='anonymous';k.href='/fonts/'+n+'.woff2';document.head.appendChild(k)})})()</script><style data-ydx>
 .ydx-ld{display:none}
 html.ydx-loading .ydx-ld{display:grid}
-.ydx-ld{--k:1;position:fixed;inset:0;z-index:2147483000;place-items:center;background:#0d635f url(/img/weave.png);background-size:256px 256px;color:#fbf3e0;animation:ydx-bail .35s 4.6s forwards}
+.ydx-ld{--k:1;position:fixed;inset:0;z-index:2147483000;place-items:center;background:#0d635f url(/img/weave.png);background-size:256px 256px;color:#fbf3e0;animation:ydx-bail .35s 4.2s forwards}
 .ydx-ld:after{content:"";position:absolute;inset:14px;border:1.5px dashed #fbf3e052;border-radius:4px;pointer-events:none}
 html.ydx-ld-short .ydx-ld{--k:.42}
 html.ydx-ld-frame .ydx-ld{--k:.34;animation-delay:.9s}

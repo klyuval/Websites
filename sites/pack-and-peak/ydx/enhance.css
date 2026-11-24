@@ -23,6 +23,12 @@
   .hero-small { font-size: 9.6vw; }
 }
 
+/* Landscape phones (short + wide): the hero card sat at 100svh - 190px, i.e. on top of the OUT wordmark,
+   and the dock covered "out there.". Anchor the card to the foot of the hero instead, as on portrait phones. */
+@media (max-height: 500px) and (min-width: 761px) {
+  .calling-bottom { top: auto; bottom: 96px; }
+}
+
 /* Orphans: "…make the journey / yours." on phones; keep short lines balanced. */
 .atlas-note span, .chapter-copy, .pack-foot p, .summit-copy { text-wrap: pretty; }
 
@@ -43,7 +49,8 @@ html.ydx-hold .hero .route-walk { animation-play-state: paused !important; }
 @media (prefers-reduced-motion: no-preference) {
   html.ydx-in .intro-kicker { animation: ydx-rise .8s cubic-bezier(.2,.8,.2,1) .05s both; }
   html.ydx-in .hero-small { animation: ydx-rise .9s cubic-bezier(.2,.8,.2,1) .12s both; }
-  html.ydx-in .masthead > * { animation: ydx-drop .8s cubic-bezier(.2,.8,.2,1) both; animation-delay: .32s; }
+  /* the brand is handed over in place by the loader's top bar, so only the note and CTA drop in */
+  html.ydx-in .masthead > :not(.brand) { animation: ydx-drop .8s cubic-bezier(.2,.8,.2,1) both; animation-delay: .32s; }
   html.ydx-in .masthead > :nth-child(2) { animation-delay: .4s; }
   html.ydx-in .masthead > :nth-child(3) { animation-delay: .48s; }
   html.ydx-in .altitude-label { animation: ydx-fade 1s ease 1.15s both; }
@@ -133,23 +140,25 @@ html.ydx-motion .summit-footer[data-ydx-in] > :last-child { animation-delay: .15
   }
   [data-slot=dialog-overlay][data-open] { --tw-animation-duration: .4s; }
   [data-slot=dialog-overlay][data-closed] { --tw-animation-duration: .26s; }
-  .packing-dialog[data-open] :is(.eyebrow, .packing-title, [data-slot=dialog-description], .pack-progress, .packing-list label, .packing-advice, .pill, .small-note) {
-    animation: ydx-row .5s cubic-bezier(.2,.8,.2,1) both; animation-delay: .12s;
+  /* :where() keeps this base rule at low specificity so the per-element delays below apply
+     (round 2: with :is() the label selector out-ranked them and everything but the rows started at .12s) */
+  .packing-dialog[data-open] :where(.eyebrow, .packing-title, [data-slot=dialog-description], .pack-progress, .packing-list label, .packing-advice, .pill, .small-note) {
+    animation: ydx-row .45s cubic-bezier(.2,.8,.2,1) both; animation-delay: .1s;
   }
-  .packing-dialog[data-open] .packing-title { animation-delay: .16s; }
-  .packing-dialog[data-open] [data-slot=dialog-description] { animation-delay: .2s; }
-  .packing-dialog[data-open] .pack-progress { animation-delay: .24s; }
-  .packing-dialog[data-open] .packing-list label:nth-child(1) { animation-delay: .28s; }
-  .packing-dialog[data-open] .packing-list label:nth-child(2) { animation-delay: .31s; }
-  .packing-dialog[data-open] .packing-list label:nth-child(3) { animation-delay: .34s; }
-  .packing-dialog[data-open] .packing-list label:nth-child(4) { animation-delay: .37s; }
-  .packing-dialog[data-open] .packing-list label:nth-child(5) { animation-delay: .40s; }
-  .packing-dialog[data-open] .packing-list label:nth-child(6) { animation-delay: .43s; }
-  .packing-dialog[data-open] .packing-list label:nth-child(7) { animation-delay: .46s; }
-  .packing-dialog[data-open] .packing-list label:nth-child(8) { animation-delay: .49s; }
-  .packing-dialog[data-open] .packing-advice { animation-delay: .52s; }
-  .packing-dialog[data-open] .pill { animation-delay: .56s; }
-  .packing-dialog[data-open] .small-note { animation-delay: .6s; }
+  .packing-dialog[data-open] .packing-title { animation-delay: .13s; }
+  .packing-dialog[data-open] [data-slot=dialog-description] { animation-delay: .16s; }
+  .packing-dialog[data-open] .pack-progress { animation-delay: .19s; }
+  .packing-dialog[data-open] .packing-list label:nth-child(1) { animation-delay: .22s; }
+  .packing-dialog[data-open] .packing-list label:nth-child(2) { animation-delay: .245s; }
+  .packing-dialog[data-open] .packing-list label:nth-child(3) { animation-delay: .27s; }
+  .packing-dialog[data-open] .packing-list label:nth-child(4) { animation-delay: .295s; }
+  .packing-dialog[data-open] .packing-list label:nth-child(5) { animation-delay: .32s; }
+  .packing-dialog[data-open] .packing-list label:nth-child(6) { animation-delay: .345s; }
+  .packing-dialog[data-open] .packing-list label:nth-child(7) { animation-delay: .37s; }
+  .packing-dialog[data-open] .packing-list label:nth-child(8) { animation-delay: .395s; }
+  .packing-dialog[data-open] .packing-advice { animation-delay: .42s; }
+  .packing-dialog[data-open] .pill { animation-delay: .45s; }
+  .packing-dialog[data-open] .small-note { animation-delay: .48s; }
   /* the pen-stroke through a packed item draws across instead of snapping */
   .packing-list label > span:last-child {
     background: linear-gradient(var(--vermilion), var(--vermilion)) 0 55% / 0 2px no-repeat;

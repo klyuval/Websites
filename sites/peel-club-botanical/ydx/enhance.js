@@ -11,7 +11,7 @@
  *  6. theme-color    the browser chrome follows the section colour under the header
  *  7. magnetic       pills and carousel arrows lean toward a fine pointer
  *  8. fizz           bubbles rise out of "Add to sample bag"; the header bag count pops when it goes up
- *  9. breeze (r2)    botanical cut-outs sway gently while on screen
+ *  9. breeze (r2)    leafy cut-outs sway once, settling, as they first scroll into view
  * 10. bag exit (r2)  the bag drawer slides back out instead of vanishing
  */
 (() => {
@@ -49,7 +49,7 @@
     const fw = flap.getBoundingClientRect().width || 100;
     wrap.style.boxShadow = '0 0 46px rgba(8,26,18,.3)';
     const u0 = D / 2 + fw * 0.6, u1 = -D / 2 - 30;
-    const duration = opts.framed ? 520 : opts.quick ? 720 : 980;
+    const duration = opts.framed ? 450 : opts.quick ? 720 : 980;
     const t = { duration, easing: 'cubic-bezier(.62,0,.2,1)', fill: 'forwards' };
     const a = wrap.animate([{ transform: `translateX(${-S}px) rotate(${PHI}deg) translateX(${u0}px)` }, { transform: `translateX(${-S}px) rotate(${PHI}deg) translateX(${u1}px)` }], t);
     inner.animate([{ transform: `translateX(${S - u0}px) rotate(${-PHI}deg)` }, { transform: `translateX(${S - u1}px) rotate(${-PHI}deg)` }], t);
@@ -253,24 +253,28 @@
   }
 
   /* ---------------------------------------------------------------- 9. breeze (r2) */
-  // Botanical cut-outs sway a little while visible. The class is toggled by an IntersectionObserver, so nothing animates
-  // off screen; each image gets its own period, phase and amplitude so a cluster never moves in lockstep.
-  // leafy cut-outs only: branch-*, sprig-*, and the herb of each flavour (lemon-basil-basil, pineapple-mint-mint…)
+  // Leafy cut-outs catch a little breeze once, as they first scroll into view: a short damped sway on the individual
+  // `rotate` property (composes with the app's own transforms and scroll-driven drift). One-shot on purpose: a
+  // continuous sway kept the main thread producing frames and cost ~5x the scroll work under a throttled CPU.
   const SWAY_SRC = /\/(branch|sprig)[^/]*\.webp$|-(basil|mint|leaves|verbena|rosemary)(-s)?\.webp$/;
   let swayIO = null, swayN = 0;
   const swaySeen = new WeakSet();
+  function sway(img) {
+    const i = swayN++;
+    const a = (1.6 + (i % 3) * 0.5) * (i % 2 ? 1 : -1);
+    anim(img, [
+      { rotate: '0deg' }, { rotate: a + 'deg', offset: 0.22 }, { rotate: (-a * 0.55) + 'deg', offset: 0.5 },
+      { rotate: (a * 0.22) + 'deg', offset: 0.76 }, { rotate: '0deg' }
+    ], { duration: 2200 + (i % 4) * 260, delay: 120 + (i % 3) * 90, easing: 'ease-in-out', fill: 'none' });
+  }
   function scanSway() {
     if (reduced() || !('IntersectionObserver' in window)) return;
-    if (!swayIO) swayIO = new IntersectionObserver((entries) => {
-      for (const e of entries) e.target.classList.toggle('ydx-sway', e.isIntersecting);
-    }, { rootMargin: '80px 0px' });
+    if (!swayIO) swayIO = new IntersectionObserver((entries, obs) => {
+      for (const e of entries) if (e.isIntersecting) { obs.unobserve(e.target); sway(e.target); }
+    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.25 });
     document.querySelectorAll('#root img.cut').forEach((img) => {
-      if (swaySeen.has(img) || !SWAY_SRC.test(img.getAttribute('src') || '')) return;
+      if (swaySeen.has(img) || !SWAY_SRC.test(img.getAttribute('src') || '') || img.closest('.hs')) return; // hero specimens already pop on
       swaySeen.add(img);
-      const i = swayN++;
-      img.style.setProperty('--ydx-sd', (6.2 + (i * 1.7) % 3.4).toFixed(2) + 's');
-      img.style.setProperty('--ydx-sdel', (-((i * 2.3) % 6)).toFixed(2) + 's');
-      img.style.setProperty('--ydx-sa', (1 + (i % 3) * 0.35).toFixed(2) + 'deg');
       swayIO.observe(img);
     });
   }

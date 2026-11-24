@@ -252,6 +252,9 @@
     const a = arrival();
     store.set('ydx-seen', '1');
     if (!a) { cls.remove('ydx-quick', 'ydx-cont'); return; }
+    // r2: the inline bootstrap gave up waiting for this file (very slow network): the site's own arrival is already
+    // running (or done) natively. Taking it over now would bring a finished arrival back over the page.
+    if (window.__ydxGaveUp) { cls.remove('ydx-quick', 'ydx-cont'); d.querySelectorAll('ydx-veil').forEach((v) => v.remove()); return; }
     if (MODE === 'cont') return runContinuation(a);
     const reduce = RM.matches || !clipOK;
     const quick = MODE !== 'first';
@@ -294,7 +297,7 @@
     addEventListener('keydown', onKey);
     const left = minShow - performance.now();
     if (left > 0) await Promise.race([wait(left), skipped]);
-    if (meter) { // let the needle land on f/8 before the shutter opens (max 700ms)
+    if (meter) { // let the needle land on f/8 before the shutter opens (max ~510ms)
       const s = performance.now();
       let skippedNow = false;
       skipped.then(() => { skippedNow = true; });
@@ -415,10 +418,11 @@
       busy = true;
       const iris = makeIris(false);
       const rot0 = 0.2;
-      await tween(300, (p) => iris.draw(1 - p, rot0 + p * 0.5), ease.in);
+      // r2: 300 + 460ms of full blackout felt heavy for a language toggle; tightened to 250 + 400ms
+      await tween(250, (p) => iris.draw(1 - p, rot0 + p * 0.5), ease.in);
       bypass = true; btn.click(); bypass = false;
       await frames(3);
-      await tween(460, (p) => iris.draw(p, rot0 + 0.5 - p * 0.5), ease.out);
+      await tween(400, (p) => iris.draw(p, rot0 + 0.5 - p * 0.5), ease.out);
       iris.remove();
       busy = false;
     }, true);

@@ -281,6 +281,8 @@
       var eye = $('#' + c.id + ' .eyebrow');
       $('.ydx-s-eye', s).textContent = eye ? eye.textContent.trim() : '';
       $('.ydx-s-name', s).textContent = c.name;
+      // Warm the destination's lazy images while it is covered, so nothing pops in as the strata lift.
+      $$('#' + c.id + ' img[loading=lazy]').forEach(function (im) { if (!im.complete) { var pre = new Image(); pre.src = im.currentSrc || im.src; } });
       s.classList.add('is-on');
       var e = 'cubic-bezier(.7,0,.3,1)';
       // A (accent) leads in and leaves last; B (destination field) arrives second and leaves first.

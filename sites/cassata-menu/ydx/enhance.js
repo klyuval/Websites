@@ -154,8 +154,10 @@
     anim(drip, [{ transform: 'scaleY(1.7)' }, { transform: 'scaleY(1)' }], { duration: dur + 160, easing: 'cubic-bezier(.3,0,.2,1)', fill: 'forwards' });
     anim(inner, [{ translate: '0 -60px', opacity: 0 }, { translate: '0 0', opacity: 1 }], { duration: 340, delay: dur - 200, easing: EASE, fill: 'both' });
     const a = anim(loader, [{ transform: OFF }, { transform: 'translate3d(0,0,0)' }], { duration: dur, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
-    const t = setTimeout(go, dur + 260); // in case `finished` never resolves
-    if (a) a.finished.then(() => { clearTimeout(t); go(); }, () => {});
+    // Start the request just before the curtain lands: the old page keeps painting (and the
+    // curtain keeps falling) until the next document commits, so the network wait overlaps the
+    // pour instead of following it. The next page opens already covered.
+    setTimeout(go, a ? dur - 110 : 0);
   }
 
   d.addEventListener('click', e => {
@@ -221,7 +223,7 @@
     el.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
     el.setAttribute('aria-hidden', 'true'); el.inert = true;
     el.classList.add('ydx-ghost');
-    el.style.animation = 'none'; el.style.pointerEvents = 'none';
+    el.style.pointerEvents = 'none';
     d.body.appendChild(el);
     const a = anim(el, kf, Object.assign({ fill: 'forwards' }, o));
     const rm = () => el.remove();
@@ -244,7 +246,11 @@
       const a = d.activeElement;
       if (opener && opener.isConnected && (!a || a === d.body)) { try { opener.focus({ preventScroll: true }); } catch (e) {} }
     }
-    if (!hadSheet && has) snap = null;
+    if (!hadSheet && has) {
+      snap = null;
+      // the sheet now sits under a pointer that hasn't moved: drop the card's ✳ cursor state
+      const c = d.querySelector('.ydx-cursor'); if (c) c.classList.remove('is-hot', 'is-link');
+    }
     hadSheet = has;
   }).observe(d.body, { childList: true });
 

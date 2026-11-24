@@ -69,14 +69,16 @@ html:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paused !imp
 
 /* ---------------------------------------------------------------------------------------------------------------
    3. Courses stack like cloths laid one over another (desktop, where they are sticky): the one underneath sinks a
-      little and dims as the next is pulled over it. --ydx-cover (0..1) is written by enhance.js on scroll. */
+      little and dims as the next is pulled over it. enhance.js scrubs two paused Web Animations (the course's
+      transform and this ::before shade's opacity) and flags [data-ydx-stack] / [data-ydx-sunk].
+      Round 2: layer-promoted and no per-frame custom property, so scrolling the stack no longer repaints.        */
 @media (prefers-reduced-motion: no-preference) {
-  .course { transform-origin: 50% 35%; }
-  .course[style*="--ydx-cover"] { transform: scale(calc(1 - var(--ydx-cover, 0) * .055)); border-radius: calc(var(--ydx-cover, 0) * 18px); }
-  .course[style*="--ydx-cover"]::before {
+  .course[data-ydx-stack] { transform-origin: 50% 35%; will-change: transform; transition: border-radius .5s var(--ydx-ease); }
+  .course[data-ydx-stack]::before {
     content: ""; position: absolute; inset: 0; z-index: 9; pointer-events: none;
-    background: #041413; opacity: calc(var(--ydx-cover, 0) * .45);
+    background: #041413; opacity: 0; will-change: opacity;
   }
+  .course[data-ydx-sunk] { border-radius: 16px; }
 }
 
 /* ---------------------------------------------------------------------------------------------------------------

@@ -180,5 +180,6 @@ html.ydx-motion .btn { transition: transform .16s var(--ease), box-shadow .16s v
 }
 
 /* Flavour-sheet exit (round 2): enhance.js plays a frozen, inert copy of the sheet + overlay
-   after Radix unmounts them. Freeze the copy's own CSS entrances so it leaves as it looked. */
-.ydx-ghost, .ydx-ghost * { animation: none !important; transition: none !important; }
+   after Radix unmounts them. Freeze the copy's own CSS entrances so it leaves as it looked.
+   (A negative delay finishes every CSS animation in the copy at once, `fill` keeps its end state.) */
+.ydx-ghost, .ydx-ghost * { animation-delay: -60s !important; transition: none !important; }

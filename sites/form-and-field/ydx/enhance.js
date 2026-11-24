@@ -152,7 +152,9 @@
   shutter.className = 'ydx-shutter'; shutter.setAttribute('aria-hidden', 'true');
   shutter.innerHTML = '<div class="ydx-sh-cols"><i></i><i></i><i></i><i></i><i></i></div><div class="ydx-sh-label"><span class="mono ydx-sh-k"></span><strong class="display ydx-sh-t"></strong><i class="reg"></i></div>';
   let busy = false, settle = () => {};                     // settle: set by the reveals below
-  const ready = () => d.body.append(shutter);
+  const progress = d.createElement('i');                   // round 2: reading progress as the proof colour bar (enhance.css)
+  progress.className = 'ydx-progress'; progress.setAttribute('aria-hidden', 'true');
+  const ready = () => d.body.append(shutter, progress);
   if (d.body) ready(); else d.addEventListener('DOMContentLoaded', ready, { once: true });
 
   /* flush: a transition lands a colour field exactly at the top. With the 70px scroll padding a strip of the previous
@@ -303,7 +305,7 @@
 
   /* ================= 4. small things ================= */
   /* magnetic: the pill buttons and round arrows lean toward the pointer */
-  if (fine.matches) $$('.pill-button, .round-link, .main-nav .nav-cta, .q-btn').forEach(el => {
+  if (fine.matches) $$('.pill-button, .round-link, .main-nav .nav-cta').forEach(el => {
     const tgt = el.classList.contains('round-link') ? $('.round-icon', el) : el;
     if (!tgt) return;
     const k = el.classList.contains('round-link') ? 0.32 : 0.22;

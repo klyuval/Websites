@@ -190,6 +190,8 @@
           }
         };
         const bootError = (event) => {
+          // ydx r2: a failed /ydx/ enhancement script is not an app failure (the page works without it)
+          if (event.target?.tagName === "SCRIPT" && /\/ydx\//.test(event.target.src || "")) return;
           if (!appReady && (event.target?.tagName === "SCRIPT" || event.error)) entry.recover("app-error");
         };
         deadline = setTimeout(() => entry.finish("timeout"), 12000);

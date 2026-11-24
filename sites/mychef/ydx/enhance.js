@@ -22,8 +22,15 @@
   const FRAME = cls.contains('ydx-ld-frame');
   const SHORT = cls.contains('ydx-ld-short');
   const now = () => performance.now();
-  const MIN = RM ? 0 : FRAME ? 260 : SHORT ? 300 : 1200;  // ms since navigation start
-  const HARD = FRAME ? 320 : 4000;                       // frame: total stays <= 800ms incl. the exit
+  // Times are measured from the loader's first paint, not from navigation start: on a slow connection the first
+  // paint can come seconds after navigation, and the guest should still get the plating and never more than ~4s
+  // of it. (Round 2: the old navigation-based cap let the CSS bail decide on slow 3G, ~5s on screen.)
+  const fp = () => {
+    const e = performance.getEntriesByType ? performance.getEntriesByType('paint')[0] : null;
+    return e ? e.startTime : Math.min(now(), 400);
+  };
+  const MIN = RM ? 0 : FRAME ? 260 : SHORT ? 300 : 1050;  // the full plating sequence lasts ~1.05s
+  const HARD = FRAME ? 320 : 3500;                         // frame: total stays <= 800ms incl. the exit
   let loaderDone = false;
 
   const hydrated = () => {
@@ -48,19 +55,31 @@
     }
     // The cloth is lifted off the table: the panel rises with its hem curving, the setting drifts up a little
     // faster, and the page's own "lay the table" entrance starts underneath as the hem clears the hero.
-    const dur = FRAME ? 460 : SHORT ? 480 : 700;
+    // Round 2: the cloth is the same teal as the hero, so the lift used to be invisible and left an empty teal frame
+    // before the pieces arrived. Now the hem casts a shadow and its stitching curves with it, so it reads as a cloth
+    // being drawn off, and the page's own entrance is released as the lift starts: the plate, cutlery and headline
+    // are being set while the hem passes over them, so there is never a blank frame.
+    const dur = FRAME ? 460 : SHORT ? 520 : 760;
+    const ease = 'cubic-bezier(.7,0,.22,1)';
     loader.style.display = 'grid';
     loader.style.animation = 'none';
     const stage = loader.querySelector('.ydx-ld__stage');
     const lift = loader.animate([
-      { transform: 'translateY(0)', borderRadius: '0 0 0 0 / 0 0 0 0' },
-      { transform: 'translateY(-104%)', borderRadius: '0 0 50% 50% / 0 0 16vh 16vh' }
-    ], { duration: dur, easing: 'cubic-bezier(.76,0,.24,1)', fill: 'forwards' });
+      { transform: 'translateY(0)', borderRadius: '0 0 0 0 / 0 0 0 0', boxShadow: '0 0 0 0 rgba(4,20,19,0)' },
+      { transform: 'translateY(-30%)', borderRadius: '0 0 50% 50% / 0 0 9vh 9vh', boxShadow: '0 26px 50px -6px rgba(4,20,19,.55)', offset: .4 },
+      { transform: 'translateY(-106%)', borderRadius: '0 0 50% 50% / 0 0 16vh 16vh', boxShadow: '0 30px 60px -8px rgba(4,20,19,.5)' }
+    ], { duration: dur, easing: ease, fill: 'forwards' });
+    try {
+      loader.animate([
+        { borderRadius: '4px' },
+        { borderRadius: '4px 4px 50% 50% / 4px 4px calc(16vh - 14px) calc(16vh - 14px)' }
+      ], { duration: dur, easing: ease, fill: 'forwards', pseudoElement: '::after' });
+    } catch (e) { /* no pseudo-element animation support: the stitching just stays square */ }
     if (stage) stage.animate([
       { transform: 'none', opacity: 1 },
-      { transform: 'translateY(-16vh)', opacity: 0 }
-    ], { duration: dur * .7, easing: 'cubic-bezier(.6,0,.4,1)', fill: 'forwards' });
-    setTimeout(() => cls.remove('ydx-loading'), dur * .3);
+      { transform: 'translateY(-14vh) scale(.97)', opacity: 0 }
+    ], { duration: dur * .62, easing: 'cubic-bezier(.55,0,.45,1)', fill: 'forwards' });
+    cls.remove('ydx-loading');
     lift.finished.then(finish, finish);
   }
 
@@ -71,7 +90,7 @@
     (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => { fontsReady = true; });
     const tick = () => {
       if (loaderDone) return;
-      const t = now();
+      const t = now() - fp();
       const ready = loaded && hydrated() && langApplied() && fontsReady;
       if ((ready && t >= MIN) || t >= HARD) liftLoader();
       else setTimeout(tick, 40);
@@ -180,7 +199,8 @@
   const measure = () => {
     sticky = !!courses[0] && getComputedStyle(courses[0]).position === 'sticky';
     wide = FINE && innerWidth > 800;
-    if (!sticky) courses.forEach(c => { c.style.removeProperty('--ydx-cover'); c._ydx = undefined; });
+    courses.forEach(c => c.toggleAttribute('data-ydx-stack', sticky));
+    if (!sticky) courses.forEach(c => sink(c, 0));
     if (!wide) heroTable && (heroTable.style.translate = '');
   };
   function frame() {
@@ -195,18 +215,35 @@
           const top = next.getBoundingClientRect().top;
           p = Math.min(1, Math.max(0, 1 - top / H));
         }
-        p = Math.round(p * 1000) / 1000;
-        if (courses[i]._ydx !== p) {
-          courses[i]._ydx = p;
-          if (p > 0) courses[i].style.setProperty('--ydx-cover', p);
-          else courses[i].style.removeProperty('--ydx-cover');
-        }
+        sink(courses[i], Math.round(p * 1000) / 1000);
       }
     }
     if (wide && hero) {
       const y = Math.min(scrollY, H * 1.2);
       if (heroTable) heroTable.style.translate = y > 0 ? `0 ${(y * .12).toFixed(1)}px` : '';
     }
+  }
+  /* Round 2 (performance): this used to write a custom property on the course, which re-styled every node of a
+     full-screen section on every scroll frame and repainted it (scale + border-radius + a dimming ::before), up to
+     ~850ms of long tasks per scroll-through. Now the sink is two paused Web Animations scrubbed by currentTime: a
+     transform on the (layer-promoted) course and an opacity on its ::before shade, both compositor-friendly. The
+     rounded corners are a one-off transition toggled by an attribute instead of being repainted every frame. */
+  function sink(c, p) {
+    if (c._ydxP === p) return;
+    c._ydxP = p;
+    if (!p) {
+      if (c._ydxA) { c._ydxA.forEach(a => a.cancel()); c._ydxA = null; }
+      c.removeAttribute('data-ydx-sunk');
+      return;
+    }
+    if (!c._ydxA) {
+      const o = { duration: 1000, fill: 'both' };
+      c._ydxA = [c.animate([{ transform: 'none' }, { transform: 'scale(.945)' }], o)];
+      try { c._ydxA.push(c.animate([{ opacity: 0 }, { opacity: .45 }], { ...o, pseudoElement: '::before' })); } catch (e) { /* no shade */ }
+      c._ydxA.forEach(a => a.pause());
+    }
+    c._ydxA.forEach(a => { a.currentTime = p * 1000; });
+    c.toggleAttribute('data-ydx-sunk', p > .03);
   }
   function onScroll() { if (!RM && !raf) raf = requestAnimationFrame(frame); }
   if (!RM) {

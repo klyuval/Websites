@@ -215,6 +215,12 @@
   @media (hover: hover) and (pointer: fine) {
     .btn { transition: translate .45s var(--ease); }
     .nav-cta { transition: translate .45s var(--ease), background-color .18s, color .18s; }
+
+    /* 4k. Text links share the buttons' "top layer lifts" language: on hover the underline drops a
+       little further and takes a layer colour (violet on light fields, lime on the ink footer). */
+    .link { transition: text-underline-offset .2s var(--ease), text-decoration-color .2s; }
+    .link:hover { text-underline-offset: .42em; text-decoration-color: var(--violet); }
+    .footer .link:hover { text-decoration-color: var(--lime); }
   }
 }
 
