@@ -133,3 +133,57 @@ alone. Verified with `t-lang3.cjs` in HE and EN, with and without ydx, on a fres
 - Jump via the nav link while the switch is still pending: the bug reproduces without ydx in HE and is fixed with
   ydx. The demo works afterwards.
 - The visitor picks a language: it sticks through step 4 and the jump.
+
+## Round 4: creative-director pass
+
+### What I judged
+I walked both languages at 1440 and on an iPhone 13 (the shoot.mjs walk, plus targeted shots and a frame recording of a
+wheel scroll). The hub already has a signature moment in every section: the cursor loader, the hero preview, the tapes,
+the wall dive, the pinned bench, the arc, the "why" cards and the footer weight wave. Each round-1 to round-3 addition
+still earns its place (the close dissolve, the loading line, the kicker rules, the index and "next" staggers, the fixes),
+so nothing was removed. The motion language is already consistent: ydx reveals use the site's own `--ease`
+(`cubic-bezier(.22,1,.36,1)`), and only the dialog's exit uses an ease-in curve, on purpose.
+
+What still felt abrupt was the **hand-off between scenes**. The page changes colour three times with a hard horizontal
+cut: the ink wall to the paper process, the paper to the orange studio, and the orange studio to the ink contact.
+Only the studio had a rounded top (40px, 26px on phones), so the three hand-offs did not match.
+
+### Changed
+- **The next sheet lifts in** (`enhance.css` 2b, `enhance.js` 3b). The process, studio and contact sections now share
+  the studio's rounded top. It is drawn as the previous scene's colour painted into the sheet's top corners: ink over
+  the process, paper over the studio and orange over the contact. It uses a `::before` on each section, so the layout,
+  the page height and the ScrollTriggers are untouched (the page height is the same before and after). While the
+  sheet rises from the bottom of the screen, its corner radius eases from a wide arch (22vw, max 360px; 36vw on phones)
+  to the resting 40px/26px. It settles once the sheet's top reaches the upper third, so the sheet flattens as it lifts.
+  This takes one rAF per scroll frame, three rect reads and a style write only when the rounded radius changes. It is
+  symmetrical, so it needs no RTL handling.
+  The studio's own `border-radius` is set to 0 because the drawn corner replaces it. The old 40px clip left a faint
+  orange anti-aliasing arc under the drawn corner.
+- **Fallbacks:** with reduced motion, without JS (the `<noscript>` loads enhance.css) or with enhance.js missing, the
+  corners rest at 40px/26px. That is still the consistent shape, just without the lift. If enhance.css is missing, the
+  site looks as it did originally.
+
+### Looked at and left alone
+- A mobile shot of the index showed a band of empty rows. A per-frame opacity trace shows this is the index stagger
+  caught mid-reveal (and a raster tile in headless). The rows are all at opacity 1 within about 1s.
+- The contact's top corners are flat orange, while the studio above has faint conic rays. At this contrast it reads
+  as one colour, so a textured match was not worth the complexity.
+- No 404 page was added. The live worker returns an empty 404, and its assets config (`not_found_handling`) is not
+  in this mirror, so a `404.html` might never be served.
+
+### Regression results (round-3 suite, re-run after the change)
+- `t-base` HE/EN: loader leaves and the page scrolls. No errors other than the headless `GL Driver` warnings.
+- `t-prod`: live headers, js404, css404, both404, jsDelay8, cssDelay8, mainDelay8 and twice all end usable. For
+  main404/mainThrows the inline watchdog lifts the screen (loader `display:none`), the same as in round 3.
+- `t-rm`: reduced (0.98s), reduced+slowimg, main404 (ydx lift at 4.1s) and repeat all pass.
+- `t-frame` (hub iframe): `?noloader` path, about 0.4s after DOMContentLoaded (first run 1.3s, with the machine at
+  load average 24).
+- `t-dlg`: all 10 close scenarios end closed, not diving, and with no animations left.
+- `t-idx` 360/1024/1280/1920 and `t-alt`: pass.
+- `t-lang3` HE: all four scenarios OK.
+- `t-bg3` hidden tab: waits, then finishes 1.3s after it is shown.
+- `t-ovf`: only the decorative studio "Y" (clipped on purpose, unchanged).
+- `t-nl`: pass.
+- `shoot.mjs` desktop + mobile, HE + EN: same page heights as before, no console errors beyond the GL warnings.
+- A scrollY trace during a wheel scroll is monotonic with and without ydx.
+- `t-bg2` needs a headed browser (no X server here). It was superseded by `t-bg3` in round 3.
