@@ -303,3 +303,91 @@ scripts are in the round-3 scratch folder: `bugs.mjs`, `prod.mjs`, `bg.mjs`, `ba
 - `ydx/enhance.js`
 - `ydx/enhance.css`
 - `index.html`: the inline boot script's `fonts.load` check (CRLF kept)
+
+## Round 4
+
+A last pass as a jury would take it: the whole page scroll by scroll at 1440×900 and on iPhone 13. The site is English
+only, so there was one language to check. After three rounds the page carries itself. Every section has its own motion
+moment, the loader and the plates are in the site's motif, and the hard cuts between fields stay, as the art direction
+intends. So this round is small. It makes the motion consistent, fixes the interaction states, and gives the page an
+ending.
+
+### Judged and changed
+
+- **Motion tokens.** The ydx layer used seven different curves. There were three near-duplicates of the site's own
+  `--ease`, plus one-offs for the headline words (`.16,1,.3,1`), the plate cover (`.7,0,.3,1`) and the hint
+  (`.4,0,.2,1`). It now uses four, defined once in `enhance.js` and mirrored as CSS custom properties in
+  `enhance.css`:
+  - `OUT` is the site's `--ease`. It settles anything arriving: reveals, headline words, small print, the menu.
+  - `INOUT` (`--ydx-io`) moves plates and wipes: loader strips, transition plates, headline inking, kicker rules.
+  - `IN` (`--ydx-in`) takes things away: the transition label, the menu closing.
+  - `SPRING` is kept for the one object dropped onto the page, the lens.
+
+  The durations were left as they were. Each already belongs to one kind of movement.
+- **One set of interaction states.** Every control had a hover look, but keyboard focus only had the ring, and only
+  three controls answered a press. Now:
+  - **Focus mirrors hover.** The pill CTA lifts and turns yellow. The round arrows fill and nudge. The nav links get
+    the pink/violet mis-registration, and the nav CTA turns pink. The study, chip and swatch buttons lift or grow.
+    The brand star turns on the wordmark. Frame tabs, critique cards, scaled questions and text buttons show their
+    hover state.
+  - **Every press answers.** Chip, nav CTA, frame tabs, critique steps and text buttons sink 1px, which is the site's
+    own pill and q-btn press. Round arrows and swatches give a little (scale .92/.94), echoing the site's own save
+    button.
+  - These are CSS only, and they only touch transforms and colours the site already transitions.
+- **The footer gets an end-of-page moment.** It answers the loader. As the footer arrives, its wordmark inks up from
+  weight 200 to 800, the same act as the proof sheet at the start, and the brand star turns half a turn.
+  - The word's box is locked at its inked width (in em, so resizing keeps it true) a screen before the footer
+    arrives, and the weight drops while it is off screen. The letters ink inside the box, so nothing beside them moves.
+    Measured: the tagline and the bars do not move at all, and desktop/mobile CLS is identical with and without the
+    change (0.0022 / 0.0000 over the same scripted scroll).
+  - It plays once. With reduced motion, or a page restored already at the bottom, the wordmark simply stays inked.
+    Print forces weight 800.
+- **Footer bug: the proof bar lost its ink chip.** The fourth chip is ink on the ink footer, so the bar read as violet,
+  pink, mint, a gap, white (desktop and mobile). It now has the same faint paper keyline as the header's wordmark pill.
+
+### Removed (noise)
+
+- The chapter-index card's number sliding 6px on hover. The card already lifts 14px, so a second motion on the same
+  hover was noise.
+
+### Considered and left
+
+- Colour transitions between fields: still no. The hard cuts are the stack of proofs, and the long jumps already
+  get the plates.
+- A cursor follower: still no. The loupe is the cursor on the cover.
+- No data-driven parts here (no external APIs), so there are no empty or error states to design. The save-button demo
+  in chapter 05 is the site's own lesson on those states.
+
+### Regression (round-3 suite re-run after the changes, all with zero console errors)
+
+- `bugs.mjs`: **11/11 pass** (double Enter, hash + Back, throw in the loader exit, throw in a transition, late
+  enhance.js and app.js, 404s, print, Back mid-transition).
+- `prod.mjs`: **18/18 pass**. This covers:
+  - live headers;
+  - JS off;
+  - enhance.js, enhance.css or both returning 404;
+  - enhance.js, app.js or Lenis arriving 8s late;
+  - fonts returning 404;
+  - reduced motion;
+  - iPhone 13;
+  - slow 3G with 4× CPU;
+  - a page frozen during the loader and mid-transition;
+  - a background tab;
+  - bfcache;
+  - the hub iframe at 1440 and 390, about 0.58s wall-clock (re-run alone).
+- `bg.mjs`: 4/4 pass (hidden until 1.2s, 2.5s or 7s, and a bfcache round trip).
+- `back.mjs`, `twice.mjs` and `order.mjs`: same results as round 3. Back and Forward restore the position. A second
+  injection gives one shutter, one progress bar and no nested spans. app.js runs at about 0.4s with enhance.js 8s
+  late or hung.
+- `tools/shoot.mjs` desktop and mobile: 0 log lines. Live headers (`curl -sI`) are unchanged, with Cloudflare cache
+  and NEL headers only.
+- New checks:
+  - the footer inking: frame sequence, the neighbours' positions sampled every 70ms, CLS against the round-3 files;
+  - reduced motion: the weight stays at 800;
+  - focus-visible and active computed styles on every control type.
+
+### Files touched in round 4
+
+- `ydx/enhance.js` (tokens, the footer inking)
+- `ydx/enhance.css` (tokens, interaction states, the footer keyline, the removed index slide, print)
+- `index.html`, `styles.css` and `app.js` were not touched.
