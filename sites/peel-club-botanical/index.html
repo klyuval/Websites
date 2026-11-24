@@ -9,13 +9,83 @@
     <title>PEEL CLUB — A little zest for living</title>
     <style>html{background:#f5811f}#peel-entry{z-index:2147483647;box-sizing:border-box;color:#0f3b2d;text-align:center;background:#f5811f;place-content:center;justify-items:center;padding:24px;font-family:Fraunces Variable,Georgia,serif;display:none;position:fixed;inset:0}html[data-peel-entry=loading] #peel-entry{display:grid}#peel-entry strong{font-variation-settings:"opsz" 144,"WONK" 0;letter-spacing:-.035em;font-size:clamp(52px,10vw,150px);font-style:italic;font-weight:900;line-height:.84;display:block}#peel-entry strong em{display:inline-block;position:relative}#peel-entry strong em:before{content:"";z-index:-1;background:#f4ebd6;position:absolute;inset:.19em -.13em -.075em -.11em;transform:rotate(-1.3deg);box-shadow:0 1px 2px #081a1233,0 16px 28px -20px #081a128c}#peel-entry .entry-caption,#peel-entry p{color:#17251d;background:#f4ebd6;padding:6px 11px 4px;font-family:Courier Prime,Courier New,monospace;font-size:12.5px;line-height:1.4;box-shadow:1px 2px 2px #081a123d}#peel-entry .entry-caption{margin-bottom:34px;transform:rotate(-2deg)}#peel-entry .entry-stem{display:none}#peel-entry p{margin:34px 0 0;transform:rotate(1.5deg)}html[data-peel-entry=recovery] #peel-entry{display:grid}#peel-recovery{max-width:360px;margin:24px auto 0;font:15px/1.5 Georgia,serif;display:none}#peel-recovery p{box-shadow:none;color:#0f3b2d;background:0 0;margin:0 0 18px;padding:0;font:15px/1.5 Georgia,serif;transform:none}#peel-recovery a{color:#f4ebd6;background:#0f3b2d;border-radius:32px;justify-content:center;align-items:center;min-height:46px;margin:4px;padding:0 20px;font:italic 700 16px/1.4 Georgia,serif;text-decoration:none;display:inline-flex}#peel-recovery a:focus-visible{outline-offset:4px;outline:2.5px solid #0f3b2d}</style>
     
+    <!-- ydx: brand fonts preloaded so the loader headline paints in Fraunces, not Georgia -->
+    <link rel="preload" href="/assets/fraunces-latin-full-italic-D2JnYqd-.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/assets/courier-prime-latin-400-normal-BbyBr73r.woff2" as="font" type="font/woff2" crossorigin>
+    <!-- ydx: botanical loader critical styles (the cover must paint before the app CSS arrives) -->
+    <style data-ydx>
+      @font-face{font-family:"Fraunces Variable";font-style:italic;font-display:swap;font-weight:100 900;src:url(/assets/fraunces-latin-full-italic-D2JnYqd-.woff2) format("woff2-variations");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+      @font-face{font-family:"Courier Prime";font-style:normal;font-display:swap;font-weight:400;src:url(/assets/courier-prime-latin-400-normal-BbyBr73r.woff2) format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+      #ydx-peel{display:none;position:fixed;inset:0;z-index:2147483647;pointer-events:auto}
+      html[data-peel-entry=loading] #ydx-peel,html[data-peel-entry=recovery] #ydx-peel{display:block}
+      #ydx-peel .ydx-peel__inner{position:absolute;inset:0}
+      #ydx-peel .ydx-peel__flap{display:none;position:absolute;top:0;right:0;height:100%;transform-origin:100% 50%;background:linear-gradient(to left,#fffaf0 0,#f4ebd6 6px,#efe2c4 55%,#e2d2ae 100%);box-shadow:-18px 0 34px -10px rgba(8,26,18,.42),inset -1px 0 0 rgba(255,255,255,.7)}
+      #ydx-peel #peel-entry{gap:0;row-gap:0;overflow:hidden}
+      #peel-entry .ydx-art{width:auto;height:clamp(150px,31vh,270px);aspect-ratio:240/300;margin:0 0 -.4em;overflow:visible;position:relative;z-index:1}
+      #peel-entry .ydx-art .can{fill:rgba(244,235,214,.16);stroke:#0f3b2d;stroke-width:2.2;stroke-linejoin:round}
+      #peel-entry .ydx-art .line{fill:none;stroke:#0f3b2d;stroke-width:2;stroke-linecap:round}
+      #peel-entry .ydx-art .label{fill:#f4ebd6}
+      #peel-entry .ydx-art .label-text{fill:#b8380f;font:italic 900 30px "Fraunces Variable",Georgia,serif;letter-spacing:-1px}
+      #peel-entry .ydx-art .label-small{fill:#0f3b2d;font:400 7.5px "Courier Prime","Courier New",monospace;letter-spacing:1.6px}
+      #peel-entry .ydx-art .stem{fill:none;stroke:#0f3b2d;stroke-width:2.6;stroke-linecap:round}
+      #peel-entry .ydx-art .lf path{fill:#0f3b2d}
+      #peel-entry .ydx-art .lf .rib{fill:none;stroke:#f5811f;stroke-width:1.1;stroke-linecap:round;opacity:.75}
+      #peel-entry .ydx-art .lf.alt path:first-child{fill:#1a4f3d}
+      #peel-entry .ydx-art .petal{fill:#f4ebd6;stroke:#0f3b2d;stroke-width:1.2}
+      #peel-entry .ydx-art .pistil{fill:#f5811f;stroke:#0f3b2d;stroke-width:1.2}
+      #peel-entry .ydx-art .bub{fill:none;stroke:#f4ebd6;stroke-width:1.6;opacity:0}
+      #peel-entry .entry-caption{margin:0 0 28px}
+      #peel-entry strong{font-size:clamp(42px,7.4vw,112px);position:relative;z-index:2}
+      #peel-entry p#peel-loading-note{margin-top:30px}
+      #peel-entry .ydx-dots i{font-style:normal;opacity:.2}
+      @media (prefers-reduced-motion:no-preference){
+        #peel-entry .ydx-art .draw{stroke-dasharray:1;stroke-dashoffset:1;animation:ydx-draw .9s cubic-bezier(.45,0,.2,1) forwards}
+        #peel-entry .ydx-art .stem.draw{animation-duration:.75s;animation-delay:.12s}
+        #peel-entry .ydx-art .stem.draw.r{animation-delay:.35s;animation-duration:.5s}
+        #peel-entry .ydx-art .label-g{clip-path:inset(0 100% 0 0);animation:ydx-wrap .62s cubic-bezier(.65,0,.2,1) .32s forwards}
+        #peel-entry .ydx-art .lf{transform-box:fill-box;transform-origin:0 50%;transform:scale(0) rotate(-55deg);animation:ydx-unfurl .6s cubic-bezier(.3,1.5,.5,1) forwards;animation-delay:calc(.3s + var(--i) * 55ms)}
+        #peel-entry .ydx-art .bloom{transform-box:fill-box;transform-origin:50% 50%;transform:scale(0) rotate(-120deg);animation:ydx-bloom .7s cubic-bezier(.3,1.4,.5,1) .72s forwards}
+        #peel-entry .ydx-art .bub{animation:ydx-fizz 1.6s cubic-bezier(.3,.1,.6,1) infinite;animation-delay:calc(.6s + var(--b) * 230ms)}
+        #peel-entry .entry-caption{animation:ydx-tag .55s cubic-bezier(.3,1.4,.5,1) .15s both}
+        #peel-entry strong{animation:ydx-rise .8s cubic-bezier(.22,1,.36,1) .05s both}
+        #peel-entry strong em:before{animation:ydx-tape .55s cubic-bezier(.65,0,.25,1) .45s both}
+        #peel-entry .ydx-dots i{animation:ydx-dot 1.2s steps(1) infinite}
+        #peel-entry .ydx-dots i:nth-child(2){animation-delay:.2s}#peel-entry .ydx-dots i:nth-child(3){animation-delay:.4s}
+        html.ydx-quick #peel-entry *,html.ydx-quick #peel-entry *:before{animation-duration:.01s!important;animation-delay:0s!important}
+        html.ydx-quick #peel-entry .ydx-art .bub{animation-duration:1.6s!important;animation-delay:calc(var(--b) * 120ms)!important}
+      }
+      @keyframes ydx-draw{to{stroke-dashoffset:0}}
+      @keyframes ydx-wrap{to{clip-path:inset(0 0 0 0)}}
+      @keyframes ydx-unfurl{to{transform:none}}
+      @keyframes ydx-bloom{to{transform:none}}
+      @keyframes ydx-fizz{0%{opacity:0;transform:translate(0,0) scale(.4)}15%{opacity:.95}70%{opacity:.8}100%{opacity:0;transform:translate(var(--x,4px),-74px) scale(1.15)}}
+      @keyframes ydx-tag{from{opacity:0;transform:translateY(-14px) rotate(-9deg)}}
+      @keyframes ydx-rise{from{opacity:0;transform:translateY(.35em)}}
+      @keyframes ydx-tape{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+      @keyframes ydx-dot{0%{opacity:.2}50%{opacity:1}}
+    </style>
+    <script src="/ydx/enhance.js" defer></script><!-- ydx -->
     <script type="module" crossorigin src="/assets/index-BNQk_vTS.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-Bru9Umfv.css" data-peel-style media="print" onload="this.media='all';this.dataset.loaded='true';window.__peelEntry&amp;&amp;window.__peelEntry.stylesReady()" onerror="this.dataset.failed='true';window.__peelEntry&amp;&amp;window.__peelEntry.recover('styles-error')">
+    <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx: enhancement layer, after the app CSS so it can override -->
   </head>
   <body>
+    <div id="ydx-peel"><!-- ydx: peel wrapper (the cover peels away like a can label) --><div class="ydx-peel__inner">
     <div id="peel-entry" role="status" aria-live="polite" aria-atomic="true">
-      <span class="entry-caption">BOTANICAL SPARKLING SODA</span><strong>Good things<br /><em>take a little zest.</em></strong><span class="entry-stem" aria-hidden="true">&#10087;</span>
-      <p id="peel-loading-note">Preparing your first taste</p>
+      <svg class="ydx-art" viewBox="0 0 240 300" aria-hidden="true" focusable="false"><!-- ydx: botanical loader art -->
+        <g><circle class="bub" cx="108" cy="88" r="3" style="--b:0;--x:-6px"/><circle class="bub" cx="126" cy="88" r="4.5" style="--b:1;--x:7px"/><circle class="bub" cx="142" cy="88" r="2.6" style="--b:2;--x:-3px"/><circle class="bub" cx="118" cy="88" r="2.2" style="--b:3;--x:9px"/><circle class="bub" cx="150" cy="88" r="3.6" style="--b:4;--x:4px"/><circle class="bub" cx="132" cy="88" r="2.8" style="--b:5;--x:-8px"/></g>
+        <path class="can draw" pathLength="1" d="M70 104C70 96 76 92 84 91L156 91C164 92 170 96 170 104L172 268C172 280 164 286 152 286L88 286C76 286 68 280 68 268Z"/>
+        <ellipse class="line draw" pathLength="1" cx="120" cy="92" rx="45" ry="6"/>
+        <path class="line draw" pathLength="1" d="M70 112C95 117 145 117 170 112M69 258C95 264 145 264 171 258"/>
+        <g class="label-g"><path class="label" d="M69 128C95 134 145 134 171 128L171.6 242C145 248 95 248 68.6 242Z"/><text class="label-text" x="120" y="172" text-anchor="middle">PEEL</text><text class="label-text" x="120" y="202" text-anchor="middle">CLUB</text><text class="label-small" x="120" y="227" text-anchor="middle">BOTANICAL SODA</text></g>
+        <path class="stem draw r" pathLength="1" d="M214 298C204 262 224 238 196 204"/>
+        <g transform="translate(211.2 263.7) rotate(-42) scale(.8)"><g class="lf alt" style="--i:3"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g><g transform="translate(210.3 232.5) rotate(-147) scale(.85)"><g class="lf" style="--i:5"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g><g transform="translate(196 204) rotate(-84) scale(.7)"><g class="lf alt" style="--i:7"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g>
+        <path class="stem draw" pathLength="1" d="M30 298C44 250 22 205 42 165C62 125 40 78 90 46"/>
+        <g transform="translate(35 255.7) rotate(-139)"><g class="lf" style="--i:0"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g><g transform="translate(33.4 221.9) rotate(-45) scale(.95)"><g class="lf alt" style="--i:1"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g><g transform="translate(35.6 183.3) rotate(-126) scale(1.05)"><g class="lf" style="--i:2"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g><g transform="translate(48.5 146.6) rotate(-29)"><g class="lf alt" style="--i:3"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g><g transform="translate(53.4 112.5) rotate(-131) scale(.9)"><g class="lf" style="--i:4"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g><g transform="translate(57.9 87.8) rotate(-26) scale(.85)"><g class="lf alt" style="--i:5"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g><g transform="translate(69.3 64.6) rotate(-101) scale(.75)"><g class="lf" style="--i:6"><path d="M0 0C10-12 28-13 42 0C28 11 10 11 0 0Z"/><path class="rib" d="M3 0Q20-1 38 0"/></g></g>
+        <g transform="translate(92 44)"><g class="bloom"><ellipse class="petal" cx="0" cy="-9" rx="5.2" ry="9" transform="rotate(0)"/><ellipse class="petal" cx="0" cy="-9" rx="5.2" ry="9" transform="rotate(72)"/><ellipse class="petal" cx="0" cy="-9" rx="5.2" ry="9" transform="rotate(144)"/><ellipse class="petal" cx="0" cy="-9" rx="5.2" ry="9" transform="rotate(216)"/><ellipse class="petal" cx="0" cy="-9" rx="5.2" ry="9" transform="rotate(288)"/><circle class="pistil" r="4.2"/></g></g>
+      </svg>
+      <span class="entry-caption">Pl. 0 &middot; botanical sparkling soda</span><strong>Good things<br /><em>take a little zest.</em></strong><span class="entry-stem" aria-hidden="true">&#10087;</span>
+      <p id="peel-loading-note">Preparing your first taste<span class="ydx-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>
       <div id="peel-recovery">
         <p>The page couldn’t finish loading. Check your connection and try again.</p>
         <a id="peel-retry" href="/">Try again</a>
@@ -23,12 +93,23 @@
       </div>
       <noscript><p>Enable JavaScript in your browser to explore PEEL CLUB, then reload this page.</p></noscript>
     </div>
+    </div><i class="ydx-peel__flap" aria-hidden="true"></i></div><!-- /ydx-peel -->
     <div id="root"></div>
     <script>
       (() => {
         const html = document.documentElement;
         const root = document.getElementById("root");
         const cover = document.getElementById("peel-entry");
+        // ydx: the cover now lives inside a peel wrapper; timing rules for the loader
+        const peel = document.getElementById("ydx-peel");
+        let framed = true;
+        try { framed = window.self !== window.top; } catch (e) {}
+        let seen = false;
+        try { seen = sessionStorage.getItem("ydx-peel-seen") === "1"; } catch (e) {}
+        if (seen || framed) html.classList.add("ydx-quick");
+        // minimum time on screen (ms since navigation start), so the botanical drawing can finish its first beat
+        const minShow = framed ? 0 : seen ? 250 : 1150;
+        let minTimer;
         const recovery = document.getElementById("peel-recovery");
         const loadingNote = document.getElementById("peel-loading-note");
         const styles = Array.from(document.querySelectorAll("link[data-peel-style]"));
@@ -40,6 +121,7 @@
         let appReady = false;
         let requestedReason = null;
         let deadline;
+        let safety; // ydx
         let resolveStyles;
         const stylesLoaded = new Promise((resolve) => { resolveStyles = resolve; });
         const entry = window.__peelEntry = {
@@ -69,17 +151,34 @@
               if (reason === "timeout") entry.recover(reason);
               return;
             }
+            // ydx: hold the cover for its minimum time (first visit), then leave
+            const wait = minShow - performance.now();
+            if (wait > 16 && reason !== "unmounted") {
+              clearTimeout(minTimer);
+              minTimer = setTimeout(() => entry.finish(requestedReason || reason), wait);
+              return;
+            }
             entry.done = true;
             clearTimeout(deadline);
+            clearTimeout(safety);
+            try { sessionStorage.setItem("ydx-peel-seen", "1"); } catch (e) {}
             html.dataset.peelEntry = reason;
             root.inert = previousInert;
-            if (reason === "ready" && cover.animate && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            const leaving = reason === "ready" || reason === "safety" || reason === "fallback" || reason === "skipped";
+            const drop = () => peel.remove();
+            if (leaving && window.__ydxPeel) {
+              // ydx: enhance.js peels the cover off like a label (or fades it under reduced motion)
+              peel.style.display = "block";
               cover.style.display = "grid";
-              cover.style.pointerEvents = "none";
-              const reveal = cover.animate([{ transform: "translateY(0)" }, { transform: "translateY(-101%)" }], {duration: 550, easing: "cubic-bezier(.76,0,.24,1)", fill: "forwards"});
-              reveal.finished.then(() => cover.remove(), () => cover.remove());
-              setTimeout(() => cover.remove(), 700);
-            } else cover.remove();
+              window.__ydxPeel(peel, { quick: seen, framed }).then(drop, drop);
+            } else if (leaving && cover.animate && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+              peel.style.display = "block";
+              cover.style.display = "grid";
+              peel.style.pointerEvents = "none";
+              const reveal = peel.animate([{ transform: "translateY(0)" }, { transform: "translateY(-101%)" }], {duration: 550, easing: "cubic-bezier(.76,0,.24,1)", fill: "forwards"});
+              reveal.finished.then(drop, drop);
+              setTimeout(drop, 700);
+            } else drop();
             window.removeEventListener("error", bootError, true);
           }
         };
@@ -87,6 +186,9 @@
           if (!appReady && (event.target?.tagName === "SCRIPT" || event.error)) entry.recover("app-error");
         };
         deadline = setTimeout(() => entry.finish("timeout"), 12000);
+        // ydx: hard safety. Once the app has mounted, never hold the cover longer than ~4s (0.8s inside the hub iframe),
+        // even if the 3D scene is still warming up (the photo fallback shows until it is ready).
+        safety = setTimeout(() => entry.finish("safety"), framed ? 800 : 4000);
         window.addEventListener("error", bootError, true);
         root.inert = true;
         entry.stylesReady();

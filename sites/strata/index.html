@@ -11,10 +11,67 @@
     <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400..900&family=Martian+Mono:wght@400..600&display=swap" rel="stylesheet" />
     <link rel="preload" as="image" href="/img/w-physical-graphite.webp" type="image/webp" />
     <title>STRATA | Ideas, made physical.</title>
+    <!-- ydx: loading screen critical CSS (paints before the app bundle) -->
+    <style data-ydx>
+      #ydx-loader{position:fixed;inset:0;z-index:1000;overflow:hidden;color:#f4efe2;font:500 11px/1.5 "Martian Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;letter-spacing:.03em;text-transform:uppercase;pointer-events:auto;--head:clamp(70px,9.6vw,150px)}
+      #ydx-loader p{margin:0}
+      .yl-bands{position:absolute;inset:0;display:grid;grid-template-rows:repeat(8,1fr)}
+      .yl-bands i{display:block;background:#17151c;margin-bottom:-1px;transform-origin:100% 50%}
+      .yl-grid{position:absolute;inset:0;background:linear-gradient(rgba(244,239,226,.075) 1px,transparent 1px) 0 0/32px 32px,linear-gradient(90deg,rgba(244,239,226,.075) 1px,transparent 1px) 0 0/32px 32px,linear-gradient(rgba(244,239,226,.06) 1px,transparent 1px) 0 0/160px 160px,linear-gradient(90deg,rgba(244,239,226,.06) 1px,transparent 1px) 0 0/160px 160px;background-position:50% 50%;-webkit-mask:radial-gradient(ellipse 75% 70% at 50% 50%,#000 30%,transparent 100%);mask:radial-gradient(ellipse 75% 70% at 50% 50%,#000 30%,transparent 100%)}
+      .yl-ui{position:absolute;inset:0;padding:18px clamp(16px,2.6vw,40px)}
+      .yl-tl,.yl-tr{position:absolute;top:22px}
+      .yl-tl{left:clamp(16px,2.6vw,40px)}
+      .yl-tr{right:clamp(16px,2.6vw,40px);opacity:.6}
+      .yl-tl b,.yl-count b{color:#c6f24e;font-weight:500}
+      .yl-stage{position:absolute;left:50%;top:50%;width:min(84vw,1000px,(100svh - 240px)*3.6);transform:translate(-50%,-56%)}
+      .yl-sel{position:absolute;inset:-14px -16px -10px;border:1px solid rgba(244,239,226,.35)}
+      .yl-sel b{position:absolute;width:9px;height:9px;margin:-5px;background:#17151c;border:1.5px solid rgba(244,239,226,.7)}
+      .yl-sel b:nth-child(2){left:100%}.yl-sel b:nth-child(3){top:100%}.yl-sel b:nth-child(4){left:100%;top:100%}
+      .yl-word{position:relative;aspect-ratio:1555/388}
+      .yl-ghost{position:absolute;inset:0;background:#f4efe2;opacity:.9;-webkit-mask:url(/img/w-strata-ghost.webp) 0 0/100% 100% no-repeat;mask:url(/img/w-strata-ghost.webp) 0 0/100% 100% no-repeat}
+      .yl-ink{position:absolute;inset:0;width:100%;height:100%;clip-path:inset(100% 0 0 0)}
+      .yl-gantry{position:absolute;inset:0;pointer-events:none;transform:translate3d(0,100%,0)}
+      .yl-car{position:absolute;left:0;top:0;width:100%;height:0;transform:translateX(6%)}
+      .yl-rail{position:absolute;left:calc(var(--head)*-.2);bottom:calc(var(--head)*.47);width:220vw;height:calc(var(--head)*.15);background:linear-gradient(#33313b 0 22%,#1d1b23 22% 78%,#0e0d12 78%)}
+      .yl-head{position:absolute;left:0;bottom:-2px;height:var(--head);width:auto;max-width:none;transform:translate(-33%)}
+      .yl-foot{position:absolute;left:clamp(16px,2.6vw,40px);right:clamp(16px,2.6vw,40px);bottom:30px;display:flex;justify-content:space-between;gap:12px}
+      .yl-seam{position:absolute;left:0;right:0;bottom:0;display:grid}
+      .yl-seam i{display:block;height:5px;transform:scaleX(0);transform-origin:0 50%}
+      .yl-seam i:nth-child(1){background:#c6f24e}.yl-seam i:nth-child(2){background:#ff6a1a}.yl-seam i:nth-child(3){background:#4a2cf0}
+      html.ydx-hold .hero-word{transform:translate3d(0,150vh,0);opacity:0}
+      html.ydx-hold .hero-vase img{animation:none;opacity:0}
+      @media (max-width:560px){.yl-tr{display:none}.yl-stage{width:88vw}.yl-foot{bottom:26px;flex-direction:column}}
+    </style>
+    <script src="/ydx/enhance.js" defer></script><!-- ydx -->
     <script type="module" crossorigin src="/assets/index-CkiVEG1F.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-C1lfMyBM.css">
+    <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
   </head>
   <body>
+    <!-- ydx: loading screen (an FDM nozzle printing the STRATA logotype layer by layer); driven by /ydx/enhance.js -->
+    <div id="ydx-loader" aria-hidden="true">
+      <div class="yl-bands"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="yl-grid"></div>
+      <div class="yl-ui">
+        <p class="yl-tl">STRATA<b>&reg;</b> / BUILD_001.3MF</p>
+        <p class="yl-tr">PLA &middot; ACID LIME &middot; 0.20 MM</p>
+        <div class="yl-stage">
+          <div class="yl-sel"><b></b><b></b><b></b><b></b></div>
+          <div class="yl-word">
+            <div class="yl-ghost"></div>
+            <img class="yl-ink" src="/img/w-strata-lime.webp" alt="" draggable="false">
+            <div class="yl-gantry"><div class="yl-car"><span class="yl-rail"></span><img class="yl-head" src="/img/o-head.webp" alt="" draggable="false"></div></div>
+          </div>
+        </div>
+        <div class="yl-foot"><p class="yl-status">Slicing ideas</p><p class="yl-count">Layer <b>00</b> / 38 &middot; Z <b>0.0</b> mm</p></div>
+        <div class="yl-seam"><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <script data-ydx>
+      // ydx: hold the hero's own print animation until the loader hands over; failsafe if enhance.js never runs.
+      (function(){var d=document.documentElement;try{if(!location.hash||location.hash==='#top')d.classList.add('ydx-hold')}catch(e){}
+      setTimeout(function(){if(window.__ydxLoader)return;var l=document.getElementById('ydx-loader');l&&l.remove();d.classList.remove('ydx-hold')},4500)})();
+    </script>
     <div id="root"></div>
   </body>
 </html>

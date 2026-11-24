@@ -13,8 +13,59 @@
   <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;800&family=Karantina:wght@400;700&display=swap" rel="stylesheet" />
   <script type="module" crossorigin src="/assets/index-Ci-iogGv.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-DD8vXL23.css">
+  <!-- ydx: loading screen critical CSS (paints before anything else) -->
+  <style data-ydx>
+    .loader{display:none!important}
+    .ydx-loader{position:fixed;inset:0;z-index:70;display:grid;place-items:center;align-content:center;gap:clamp(10px,2vh,22px);padding:24px;color:var(--ydx-lf,#fff8ef);background:radial-gradient(120% 70% at 50% 42%,var(--ydx-l1,#8152c4) 0%,var(--ydx-l2,#6b34b8) 46%,var(--ydx-l3,#331958) 100%);clip-path:inset(0 0 0 0);font-family:"Karantina","Arial Narrow",sans-serif;-webkit-user-select:none;user-select:none}
+    .ydx-loader[hidden]{display:none}
+    .ydx-mark{width:clamp(168px,30vmin,260px);height:auto;overflow:visible}
+    .ydx-mark .t{fill:none;stroke:currentColor;stroke-opacity:.16;stroke-width:5}
+    .ydx-mark .r{fill:none;stroke:var(--ydx-acc,#e83e7a);stroke-width:7;stroke-linecap:round;stroke-dasharray:0 100;transform:rotate(-90deg);transform-origin:100px 100px}
+    .ydx-mark .w{fill:none;stroke:currentColor;stroke-width:1.3;stroke-opacity:.62;stroke-linecap:round;vector-effect:non-scaling-stroke}
+    .ydx-mark .m{stroke-opacity:.32}
+    .ydx-mark .s{fill:#fff8ef}.ydx-mark .k{fill:#0e0d0c}
+    .ydx-count{margin:0;display:flex;align-items:baseline;direction:ltr;font-weight:700;font-size:clamp(52px,8vw,92px);line-height:.8;font-variant-numeric:tabular-nums}
+    .ydx-count i{font-style:normal;font-size:.42em;opacity:.6;margin-inline-start:2px}
+    .ydx-cap{margin:0;font:700 11px/1 "Assistant",system-ui,sans-serif;letter-spacing:.32em;text-transform:uppercase;opacity:.62}
+    .ydx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    html.ready .ydx-loader:not(.ydx-ctl){clip-path:inset(0 0 100% 0);visibility:hidden;transition:clip-path .9s cubic-bezier(.22,1,.36,1),visibility 0s .9s}
+  </style>
+  <noscript><style>.ydx-loader{display:none}</style></noscript>
+  <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
+  <script src="/ydx/enhance.js" defer></script><!-- ydx -->
 </head>
 <body>
+  <!-- ydx: brand loader (TOMI mark: device wireframe filling solid inside the ring). Progress mirrors the app's own .loader-n counter. -->
+  <script data-ydx>(function(){var d=document.documentElement,c=d.classList;c.add('ydx-js','ydx-load');try{if(sessionStorage.getItem('ydx-tomi-seen'))c.add('ydx-repeat')}catch(e){}try{if(window.self!==window.top)c.add('ydx-frame')}catch(e){c.add('ydx-frame')}
+  var h=location.hash||'',id=h.indexOf('#/')===0?'':h.slice(1).split('/')[0],M={x:'#17a673','xl':'#6b34b8','xl-plus':'#f28c0f',ultima:'#e0262c'},hex=M[id]||'#6b34b8',
+  mix=function(a,t,b){var o='#';for(var i=1;i<7;i+=2){var x=parseInt(a.substr(i,2),16),y=parseInt(b.substr(i,2),16);o+=('0'+Math.round(x+(y-x)*t).toString(16)).slice(-2)}return o},st=d.style;
+  st.setProperty('--ydx-l1',mix(hex,.14,'#ffffff'));st.setProperty('--ydx-l2',hex);st.setProperty('--ydx-l3',mix(hex,.52,'#000000'));
+  if(id==='xl-plus'){st.setProperty('--ydx-lf','#0e0d0c');st.setProperty('--ydx-acc','#0e0d0c')}else if(id==='ultima'){st.setProperty('--ydx-acc','#fff8ef')}
+  var en=false;try{en=localStorage.getItem('tomi-lang')==='en'}catch(e){}d.setAttribute('data-ydx-l',en?'en':'he')})();</script>
+  <div class="ydx-loader" role="status" aria-live="polite">
+    <span class="ydx-sr">TOMI · Loading / טוען</span>
+    <svg class="ydx-mark" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+      <defs>
+        <clipPath id="ydx-dev"><path d="M94 34h12a6 6 0 0 1 6 6v24h-24v-24a6 6 0 0 1 6-6z"/><path d="M92 62h16a14 14 0 0 1 14 14v78a14 14 0 0 1-14 14h-16a14 14 0 0 1-14-14v-78a14 14 0 0 1 14-14z"/></clipPath>
+        <clipPath id="ydx-lvl"><rect class="ydx-lv" x="0" y="168" width="200" height="200"/></clipPath>
+      </defs>
+      <circle class="t" cx="100" cy="100" r="88"/>
+      <circle class="r" cx="100" cy="100" r="88" pathLength="100"/>
+      <g clip-path="url(#ydx-dev)">
+        <g class="ydx-mer"><line class="w m" x1="100" y1="60" x2="100" y2="170"/><line class="w m" x1="100" y1="60" x2="100" y2="170"/><line class="w m" x1="100" y1="60" x2="100" y2="170"/><line class="w m" x1="100" y1="60" x2="100" y2="170"/></g>
+        <g clip-path="url(#ydx-lvl)"><rect class="s" x="70" y="30" width="60" height="140"/><rect class="k" x="86" y="30" width="28" height="33"/><rect class="k" x="95" y="80" width="10" height="56" rx="5"/></g>
+      </g>
+      <g class="ydx-wire">
+        <path class="w" pathLength="1" d="M94 34h12a6 6 0 0 1 6 6v24h-24v-24a6 6 0 0 1 6-6z"/>
+        <path class="w" pathLength="1" d="M92 62h16a14 14 0 0 1 14 14v78a14 14 0 0 1-14 14h-16a14 14 0 0 1-14-14v-78a14 14 0 0 1 14-14z"/>
+        <path class="w" pathLength="1" d="M78 96a22 4 0 0 0 44 0M78 124a22 4 0 0 0 44 0M78 150a22 4 0 0 0 44 0M88 50a12 2.5 0 0 0 24 0"/>
+        <rect class="w" pathLength="1" x="95" y="80" width="10" height="56" rx="5"/>
+        <ellipse class="w ydx-surf" cx="100" cy="168" rx="22" ry="4" style="stroke-opacity:0"/>
+      </g>
+    </svg>
+    <p class="ydx-count" aria-hidden="true"><b>0</b><i>%</i></p>
+    <p class="ydx-cap" aria-hidden="true">TOMI</p>
+  </div>
   <div class="loader" aria-live="polite"><span class="loader-n">0</span><i>%</i></div>
   <header class="top">
     <a class="brand" href="#" aria-label="TOMI">TOMI</a>
