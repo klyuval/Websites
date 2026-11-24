@@ -44,6 +44,11 @@
     <style>html.is-loading{overflow:hidden}.loader{z-index:90;background:#ffc22e;position:fixed;inset:0;overflow:hidden}.ld-cur{z-index:6;will-change:transform, opacity;width:0;height:0;position:absolute;top:46%;left:50%}.ld-cur i{transform-origin:0 0;animation:.4s cubic-bezier(.34,1.56,.64,1) both ld-pop;display:block;position:absolute;top:0;left:0}.ld-cur svg{filter:drop-shadow(3px 4px #17130f);width:clamp(34px,3.3vw,54px);height:auto;display:block;overflow:visible}.ld-cur b{color:#fff3d9;letter-spacing:.01em;white-space:nowrap;background:#dc3b1c;border-radius:4px 14px 14px;padding:6px 11px 7px;font:700 15px/1 system-ui,-apple-system,Segoe UI,sans-serif;position:absolute;top:96%;left:78%;box-shadow:2px 3px #17130f}@keyframes ld-pop{0%{transform:scale(0)}}html.is-deep .loader{background:#17130f}html.is-deep .ld-cur{display:none}@media (prefers-reduced-motion:reduce){.ld-cur i{animation:none}}</style>
     <script type="module" crossorigin src="/assets/main-BEEExDhL.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/main-A2DhiWJl.css">
+    <!-- ydx: while the page is still arriving, the designer's cursor idles with a small multiplayer-cursor drift instead of
+         sitting frozen; src/loader.ts sets animation:none on it when the build starts. -->
+    <style data-ydx>@media (prefers-reduced-motion:no-preference){.ld-cur>i{animation:.4s cubic-bezier(.34,1.56,.64,1) both ld-pop,2.6s ease-in-out .45s infinite ydx-idle}}@keyframes ydx-idle{0%,100%{translate:0 0}35%{translate:6px -4px}70%{translate:-3px 3px}}</style>
+    <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
+    <script src="/ydx/enhance.js" defer></script><!-- ydx -->
   </head>
   <body>
     <!-- Loading screen: the page starts unlit, flat in its accent colour, and the designer's cursor builds the first screen on
