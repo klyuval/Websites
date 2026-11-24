@@ -69,3 +69,54 @@ All in `ydx/enhance.css`, `ydx/enhance.js` and an inline `<style data-ydx>` in b
   in, not a bug.
 - The live sites inside the case iframes are other projects; their own loaders show inside the frame.
 - The `.sr` portrait description is a visually-hidden paragraph and is meant to overflow its 1px box.
+
+## Round 3: code review, production hardening, second-reviewer audit
+
+Line-by-line review of `enhance.js`, `enhance.css` and the inline `ydx` blocks. Production checks used Playwright with the
+live response headers (`referrer-policy`, `x-content-type-options: nosniff`; the site sends no CSP), JS disabled, each
+ydx file 404 or delayed 8s, the bundle 404, throwing or delayed 8s, `enhance.js` included twice, an emulated background
+tab (`visibilityState` hidden, rAF paused, timers clamped to 1s, then shown), and the page inside an iframe. I also
+recorded the loader, the dialog open/close (desktop dive and phone lift) and the process bench, and scanned HE and EN
+for overflow at 360/390/768/1024/1280/1920. The test scripts are in the scratchpad `ydesign-r3/` folder (`t-*.cjs`).
+
+### Bugs found and fixed
+
+| Bug | How it was reproduced | Fix |
+| --- | --- | --- |
+| With JS disabled the yellow loading screen covered the page forever, with `overflow:hidden` on `<html>` | `javaScriptEnabled:false`: loader present, scrollY stuck at 0 | `<noscript>` in `<head>` hides `.loader`, restores scrolling and loads `enhance.css` |
+| If the bundle 404s or throws before it boots, the loading screen never leaves (the site has no timeout of its own) | Bundle routed to a 404 or to `throw new Error()`: loader never left | Inline `<script data-ydx>` watchdog starts at DOMContentLoaded and counts only *visible* time. After 4s with no `loader-start` mark and no `is-ready` it lifts the screen: fade, `display:none` (the node stays, so a late bundle cannot throw) and `is-loading` is removed. Once the build has started, the ceiling is 20s. It is inline, so it works even when `enhance.js` is missing. A background tab never trips it (checked with the hidden-tab emulation: the loader waits, then finishes 1.4s after the tab is shown). |
+| In a frame (the hub preview) the loader took about 2.3s, against the ≤800ms rule | Page in an iframe: 2.28s from `loader-start` until the loader was gone | When framed, the inline script adds `?noloader` (`history.replaceState`) before the bundle runs, so the site uses its own short no-build path: about 0.35 to 0.45s after DOMContentLoaded. It is skipped if the URL already has `loader`/`noloader`. |
+| Escape pressed while the desktop dive was still opening (the first ~0.95s) left the zoomed wall (`.is-diving`, z-index 45) over the page after the dialog closed | `t-dlg.cjs escEarly`: Escape 250ms after the tile click left `diving:true` with a `scale(2.28)` transform. This happens **with or without ydx** (it is a bundle bug: its close takes the clip branch because the dive has not landed yet). | `softClose` waits for the landing (the site keeps the dialog `visibility:hidden` until then; capped at 90 frames), then closes the normal way. The dissolve now uses end-only keyframes, so it starts from whatever is on screen. Verified with Escape at 100/250/600/900/1100ms, double Escape, double click, Close then Escape, and next then Escape. |
+| The ydx arrow-key swap (RTL dialog) also caught Alt/Ctrl/Meta+Arrow and called `preventDefault`, which blocked the browser's Alt+Arrow back/forward | Dispatched Alt+ArrowLeft in the open dialog: `defaultPrevented` was true | Modified keys are passed through untouched |
+| `enhance.js` was `defer` and `enhance.css` blocked rendering, so a slow ydx file held up first paint/DOMContentLoaded (coordinator finding) | Delayed each file by 8s | `enhance.js` is now `async` and guarded against running twice (`window.__ydxEnhance`). Its DOM work waits for DOMContentLoaded itself (`ready()`), so it tolerates any order with the bundle. `enhance.css` loads non-blocking (`media="print" onload`, with a `<noscript>` fallback). With either file delayed 8s, first paint stays around 0.15 to 0.4s and the site's loader runs on time. |
+| `softClose` could leave the dialog faded and unclosable if the site's close did not go through | Code review (no repro) | `done()` runs in `try/finally`, and a 2s backstop cancels the fade animations and resets the closing flag |
+
+### Polish
+- **Phone dialog close:** the site's lift close removed the live iframe at once and swapped it for the screenshot,
+  usually a different crop, so the page jumped. Now the live site first crossfades into its screenshot (280ms, using
+  the site's own `.is-live` opacity transitions), then the card lifts back to the wall.
+- **Phone bench fade:** made taller (22 → 36px), so the last sliver of a big step numeral fades out under the pinned
+  bench instead of showing as a hard fragment.
+- **Comments:** updated to match the code. The `framed` hurry branch was removed (frames now take the `?noloader` path).
+
+### Checked and fine
+Live headers do not block anything in ydx. JS disabled, each file 404, both 404, each delayed 8s, the bundle delayed 8s,
+`enhance.js` included twice and reduced motion (loader gone at 0.4s, or 2.8s with slow images) all end usable and
+scrollable. No new console errors: only the headless GPU `GL Driver` warnings, which are present without ydx too. There
+is no horizontal overflow at any width in either language (the big decorative "Y" in the studio section is clipped by
+its section on purpose). Storage access is wrapped in try/catch. The MutationObservers never write to what they observe.
+The only "patch" is the synthetic `keydown` that triggers the loader's own speed-up.
+
+### Remaining known limitations
+- 4a (process demo language): the only way to switch back is a click on the demo's own button, and the bundle also
+  treats that as "the visitor picked". After such a restore, step 3 stops demonstrating the switch for the rest of the
+  visit. Correct page language was judged more important.
+- If the bundle stalls *after* the build started, the 20s lift uncovers the page, but Lenis (stopped by the site
+  during loading) can keep swallowing wheel scrolling. Keyboard and the scrollbar still work. This only happens if
+  the site's own timeline dies mid-way.
+- In a frame the URL gains `?noloader=1`. The language switch carries it to the other language, which is the
+  intended behaviour inside a frame.
+- Without JS the page shows the site's own no-JS state (the app-rendered wall and index are empty, and the nav colours
+  are unset). It is readable and scrollable, but it is not a designed fallback.
+- Hidden tabs are emulated: headless Chromium always reports `visible`, so throttling was simulated with an init
+  script.
