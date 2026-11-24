@@ -1,0 +1,102 @@
+/* PEEL CLUB · ydx enhancement layer
+   Loader + page transitions + motion polish + design fixes. Loaded after the site's own CSS on every page.
+   Critical loader CSS lives inline in each page (<style data-ydx>); this file holds everything else. */
+
+/* ---------- 1. page transition out: a citrus wheel spins in from the click, then the field floods it ---------- */
+.ydx-out{position:fixed;inset:0;z-index:2147483000;pointer-events:auto;overflow:hidden;contain:strict;color:var(--on)}
+.ydx-out[data-flavor="0"]{--rind:#ff6a00;--flesh:#ff9a1f}
+.ydx-out[data-flavor="1"]{--rind:#ff5a3c;--flesh:#d4203f}
+.ydx-out[data-flavor="2"]{--rind:#2f9a3a;--flesh:#c6eb59}
+.ydx-out[data-flavor="3"]{--rind:#ffb36b;--flesh:#ff6f86}
+.ydx-wheel,.ydx-disk{position:absolute;border-radius:50%;will-change:transform}
+.ydx-wheel svg{width:100%;height:100%;display:block;overflow:visible}
+.ydx-wheel .w-rind{fill:var(--rind)}
+.ydx-wheel .w-pith{fill:var(--pith)}
+.ydx-wheel .w-flesh{fill:var(--flesh)}
+.ydx-wheel .w-line{stroke:var(--pith);stroke-width:3.4;stroke-linecap:round}
+.ydx-disk{background:var(--field)}
+.ydx-out .ydx-dest{position:absolute;top:50%;left:50%;translate:-50% -50%;white-space:nowrap;opacity:0}
+.ydx-out--calm{background:var(--field);opacity:0}
+
+/* ---------- 2. hero fizz: "Move a little. Feel the fizz." now actually fizzes ---------- */
+.ydx-fizz{position:fixed;inset:0;z-index:45;pointer-events:none;overflow:hidden;contain:strict}
+.ydx-fizz i{position:absolute;top:0;left:0;border:3px solid currentColor;border-radius:50%;will-change:transform,opacity}
+
+/* ---------- 3. reveal choreography (only once JS is running: content stays visible without it) ---------- */
+@media (prefers-reduced-motion:no-preference){
+  html.ydx-js .ydx-sq:not(.ydx-in),
+  html.ydx-js .ydx-kick:not(.ydx-in),
+  html.ydx-js .ydx-up:not(.ydx-in){opacity:0}
+}
+
+/* ---------- 4. magnetic buttons (individual `translate` composes with the site's own hover `transform`) ---------- */
+.button{transition:transform .35s var(--out),translate .5s var(--out)}
+.bag-trigger,.menu-toggle{transition:translate .5s var(--out),transform .35s var(--out)}
+.bag-trigger:hover,.menu-toggle:hover{transform:scale(1.04,.96)}
+.bag-trigger:active,.menu-toggle:active{transform:scale(.96,1.04)}
+
+/* ---------- 5. dialogs: they used to vanish instantly on close; now they drop away like they popped in ---------- */
+@media (prefers-reduced-motion:no-preference){
+  dialog{transition:opacity .26s var(--out),translate .34s var(--out),scale .34s var(--out),display .34s allow-discrete,overlay .34s allow-discrete}
+  dialog:not([open]){opacity:0;translate:0 22px;scale:.96}
+  dialog::backdrop{transition:opacity .34s,display .34s allow-discrete,overlay .34s allow-discrete}
+  dialog:not([open])::backdrop{opacity:0}
+  @starting-style{dialog[open]::backdrop{opacity:0}}
+  dialog[open] #dialog-image{animation:ydx-can-drop .8s var(--out) .06s backwards}
+  @keyframes ydx-can-drop{0%{opacity:0;transform:translateY(-26%) rotate(-16deg) scale(.9)}45%{opacity:1}}
+  dialog[open] .dialog-product>div>*{animation:ydx-in-x .6s var(--out) backwards}
+  dialog[open] .dialog-product>div>:nth-child(2){animation-delay:.05s}
+  dialog[open] .dialog-product>div>:nth-child(3){animation-delay:.1s}
+  dialog[open] .dialog-product>div>:nth-child(4){animation-delay:.15s}
+  @keyframes ydx-in-x{0%{opacity:0;transform:translateX(18px)}}
+
+  /* mobile menu: links squeeze in one after another instead of arriving as a block */
+  @media (width<=900px){
+    html.ydx-js .header nav>*{opacity:0;translate:0 14px;transition:opacity .25s,translate .5s var(--out)}
+    html.ydx-js .header.menu-open nav>*{opacity:1;translate:0 0}
+    html.ydx-js .header.menu-open nav>:nth-child(1){transition-delay:.04s}
+    html.ydx-js .header.menu-open nav>:nth-child(2){transition-delay:.08s}
+    html.ydx-js .header.menu-open nav>:nth-child(3){transition-delay:.12s}
+    html.ydx-js .header.menu-open nav>:nth-child(4){transition-delay:.16s}
+    html.ydx-js .header.menu-open nav>:nth-child(5){transition-delay:.2s}
+  }
+}
+
+/* ---------- 6. design fixes ---------- */
+
+/* Focus rings used `currentColor`, which on pill buttons is the button's *text* colour, i.e. the section
+   background: the ring was invisible on every primary button, the bag/menu pills and the dialog close. */
+.button:focus-visible{outline-color:var(--fg,var(--on))}
+.bag-trigger:focus-visible,.menu-toggle:focus-visible,.quantity button:focus-visible{outline-color:var(--on)}
+dialog .close:focus-visible,.recipe-tabs button:focus-visible{outline-color:var(--ink)}
+.all-four button:focus-visible{outline-color:var(--ink)}
+.dialog-product .button:focus-visible,.bag .button:focus-visible{outline-color:var(--ink)}
+
+/* Tap targets under 44px on touch: Menu pill (42px), footer links (23px), wordmark (22px). */
+@media (width<=900px){
+  .menu-toggle{height:44px}
+  .wordmark{padding:11px 0}
+}
+@media (width<=700px){
+  .footer-bottom nav{gap:0 22px}
+  .footer-bottom nav a{padding:11px 0}
+  .bag-row button{padding:12px 0}
+}
+
+/* Story opener: the half orange sat right on top of the "PEEL CLUB / CITRUS SODA" rail (yellow text on orange).
+   Lift it clear of the rail and keep it off the "twist" line. */
+@media (width>700px){
+  .story-open__bit{width:clamp(120px,15vw,300px);bottom:calc(clamp(60px,8vw,112px) + 52px);right:6vw}
+}
+
+/* "Mix things up ↗" style links: the wide line is a flex row, so on phones the words wrapped inside an anonymous
+   flex item and the arrow floated detached at the far right. Let it flow as text with the arrow after the last word. */
+@media (width<=700px){
+  .route-next a .wide{display:block}
+  .route-next a .wide .icon{display:inline-block;vertical-align:-.04em;margin-left:-.12em}
+}
+
+/* Reduced motion: the transition overlay is a plain fade */
+@media (prefers-reduced-motion:reduce){
+  .ydx-fizz{display:none}
+}

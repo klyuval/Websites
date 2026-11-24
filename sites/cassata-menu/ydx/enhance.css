@@ -1,0 +1,147 @@
+/* Cassata — ydx enhancement layer (design + motion pass).
+   Plain CSS, no build step. Loaded after the site's own stylesheet so it can override.
+   Everything that moves sits behind html.ydx-motion (set by enhance.js only when
+   prefers-reduced-motion is not "reduce"), so content is fully visible without JS. */
+
+/* ------------------------------------------------------------------ */
+/* 1. Design fixes                                                     */
+/* ------------------------------------------------------------------ */
+
+/* English hero seal: "LIVE FROM THE COUNTER ✳ TODAY'S SCOOPS ✳" is ~40% longer than the
+   Hebrew ring text, and textLength=240 squeezed the glyphs into each other. A smaller size
+   lets lengthAdjust=spacing breathe instead of overlapping. */
+.english .seal text { font-size: 8.4px; letter-spacing: .02em; }
+
+/* Opening hours: "12:00–00:00" broke onto two lines at 360px in English. */
+.hours b { white-space: nowrap; }
+
+/* Staff page footer: the wordmark is direction:ltr, so text-align:start pushed it to the
+   left while everything else on the RTL page starts on the right. */
+.host-site[dir=rtl] .footer-brand { text-align: right; }
+
+/* Focus ring was ink-on-forest / ink-on-red (barely visible) in the dark sections. */
+.visit :focus-visible,
+.servings :focus-visible { outline-color: var(--cream); }
+.visit .hours :focus-visible { outline-color: var(--ink); }
+.footer-brand:focus-visible { outline-offset: -6px; }
+
+/* Lone last word under "כמה אושר?" / "How much happy?" */
+.servings__lead { text-wrap: balance; }
+
+/* Tap targets under 44px on phones (tabs 42, chips 43, staff link 38, hours link 26). */
+@media (max-width: 820px) {
+  .tabs button, .chips button { min-height: 44px; }
+  .staff-link { display: inline-flex; align-items: center; min-height: 44px; }
+  .hours a { padding-block: 10px; margin-top: 6px; }
+}
+
+/* Dialog: soften what's behind the sheet a touch (keeps the site's ink tint). */
+.dialog-overlay { -webkit-backdrop-filter: blur(3px) saturate(.9); backdrop-filter: blur(3px) saturate(.9); }
+
+/* Today's opening-hours row gets a butter highlighter stroke (set by enhance.js). */
+.hours p[data-ydx-today] { position: relative; isolation: isolate; }
+.hours p[data-ydx-today]::before {
+  content: ""; position: absolute; inset: 5px -9px; z-index: -1;
+  background: var(--butter); border-radius: 9px 4px 10px 5px;
+  transform: scaleX(1); transform-origin: 100% 50%;
+}
+.english .hours p[data-ydx-today]::before { transform-origin: 0 50%; }
+
+/* ------------------------------------------------------------------ */
+/* 2. Motion (only with html.ydx-motion)                               */
+/* ------------------------------------------------------------------ */
+
+/* Scroll reveals: hidden only until enhance.js reveals them (data-ydx-seen). */
+html.ydx-motion [data-ydx-r]:not([data-ydx-seen]) { opacity: 0; }
+html.ydx-motion .tickets[data-ydx-r]:not([data-ydx-seen]) { opacity: 1; }
+html.ydx-motion .tickets:not([data-ydx-seen]) :is(.ticket__price, .ticket__ask) { opacity: 0; }
+
+html.ydx-motion .hours p[data-ydx-today]::before { transform: scaleX(0); transition: transform .9s var(--ease) .35s; }
+html.ydx-motion .hours.ydx-on p[data-ydx-today]::before { transform: scaleX(1); }
+
+/* Press squish on the filter pills (individual `scale` so it composes with the site's transforms). */
+html.ydx-motion :is(.chips button, .tabs button, .staff-link, .notice button) { transition-property: transform, box-shadow, background-color, color, scale; }
+html.ydx-motion :is(.chips button, .tabs button, .staff-link, .notice button):active { scale: .94; }
+
+/* Magnetic CTA: enhance.js writes `translate`; this smooths it back. */
+html.ydx-motion .btn { transition: transform .16s var(--ease), box-shadow .16s var(--ease), background-color .5s, color .5s, translate .4s var(--spring); }
+
+/* Hidden flavour-sheet copy staggers in after the site's own `pop` (enhance.js). */
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    /* Hero content sinks + fades a little slower than the page as it scrolls away. */
+    html.ydx-motion .hero { view-timeline: --ydx-hero block; }
+    html.ydx-motion .hero__stage {
+      animation: ydx-hero-out linear both;
+      animation-timeline: --ydx-hero;
+      animation-range: exit 0% exit 100%;
+    }
+    /* Footer wordmark rises out of the pink like soft-serve leaving the machine. */
+    html.ydx-motion footer .footer-brand {
+      transform-origin: 50% 100%;
+      animation: ydx-brand linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 42%;
+    }
+  }
+
+  /* Staff dashboard panels mount after login: pop them in, sticker-style. */
+  html.ydx-motion :is(.dashboard-toolbar, .host-instruction, .manager-catalog, .settings) {
+    animation: ydx-panel .6s var(--spring) both;
+  }
+  html.ydx-motion .host-instruction { animation-delay: .06s; }
+  html.ydx-motion .manager-catalog { animation-delay: .12s; }
+  html.ydx-motion .settings { animation-delay: .18s; }
+  html.ydx-motion .flavor-table tbody tr { animation: ydx-row .45s var(--ease) both; }
+  html.ydx-motion .flavor-table tbody tr:nth-child(2) { animation-delay: .03s; }
+  html.ydx-motion .flavor-table tbody tr:nth-child(3) { animation-delay: .06s; }
+  html.ydx-motion .flavor-table tbody tr:nth-child(4) { animation-delay: .09s; }
+  html.ydx-motion .flavor-table tbody tr:nth-child(5) { animation-delay: .12s; }
+  html.ydx-motion .flavor-table tbody tr:nth-child(6) { animation-delay: .15s; }
+  html.ydx-motion .flavor-table tbody tr:nth-child(7) { animation-delay: .18s; }
+  html.ydx-motion .flavor-table tbody tr:nth-child(n+8) { animation-delay: .21s; }
+  html.ydx-motion .login-panel .tiny-star { transition: rotate .5s var(--spring); }
+  html.ydx-motion .login-panel:hover .tiny-star,
+  html.ydx-motion .login-panel:focus-within .tiny-star { rotate: 72deg; }
+
+  /* Language switch: the new language scoops open from the toggle (View Transitions). */
+  html.ydx-vt-lang::view-transition-old(root) { animation: ydx-vt-old .66s cubic-bezier(.7,0,.25,1) both; }
+  html.ydx-vt-lang::view-transition-new(root) { animation: ydx-vt-new .66s cubic-bezier(.7,0,.25,1) both; }
+}
+
+@keyframes ydx-hero-out { to { translate: 0 18%; opacity: .25; } }
+@keyframes ydx-brand { from { translate: 0 28%; scale: 1 .45; opacity: 0; } to { translate: 0 0; scale: 1 1; opacity: 1; } }
+@keyframes ydx-panel { from { opacity: 0; translate: 0 26px; rotate: -1.2deg; } }
+@keyframes ydx-row { from { opacity: 0; translate: 0 10px; } }
+@keyframes ydx-vt-new {
+  from { clip-path: circle(0 at var(--ydx-vx, 50%) var(--ydx-vy, 0%)); }
+  to { clip-path: circle(160vmax at var(--ydx-vx, 50%) var(--ydx-vy, 0%)); }
+}
+@keyframes ydx-vt-old { to { scale: .985; filter: brightness(.9); } }
+
+/* ------------------------------------------------------------------ */
+/* 3. Scoop cursor (pointer:fine only; element created by enhance.js)   */
+/* ------------------------------------------------------------------ */
+.ydx-cursor {
+  position: fixed; left: 0; top: 0; z-index: 9990; pointer-events: none;
+  width: 64px; height: 64px; margin: -32px 0 0 -32px;
+  display: grid; place-items: center;
+  opacity: 0; transition: opacity .25s;
+}
+.ydx-cursor.is-on { opacity: 1; }
+.ydx-cursor i {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: var(--red); border: 2.5px solid var(--ink);
+  scale: .22; transition: scale .38s var(--spring), background-color .25s, box-shadow .25s;
+}
+.ydx-cursor b {
+  position: relative; font: 900 1.5rem/1 var(--display); color: var(--red);
+  scale: 0; rotate: -90deg; transition: scale .38s var(--spring), rotate .38s var(--spring);
+}
+.ydx-cursor.is-link i { scale: .6; background: transparent; }
+.ydx-cursor.is-hot i { scale: 1; background: var(--cream); box-shadow: 4px 4px 0 var(--ink); }
+.ydx-cursor.is-hot b { scale: 1; rotate: 0deg; animation: turn 6s linear infinite; }
+.ydx-cursor.is-down i { scale: .16; }
+.ydx-cursor.is-hot.is-down i { scale: .85; }
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) { .ydx-cursor { display: none; } }

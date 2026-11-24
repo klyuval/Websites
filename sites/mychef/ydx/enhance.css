@@ -1,0 +1,192 @@
+/* MyChef Israel: design + motion pass (ydx). Plain CSS, no build step.
+   Loaded after the site's own CSS. The loading screen's critical CSS lives inline in index.html (<style data-ydx>).
+   The site already: lays table pieces down when a section enters ([data-lay].is-laid), fades [data-rise] blocks up,
+   moves the hero pieces with the pointer, smooth-scrolls with Lenis and stacks the four courses as sticky cloths.
+   Everything here complements that and keys off the same classes, so nothing is animated twice.
+   Hide-before-reveal styles only apply under html.lay-ready (set by the site when motion is allowed) + html.ydx-on
+   (set by /ydx/enhance.js), so the page is complete without either script. */
+
+:root { --ydx-ease: cubic-bezier(.2,.8,.2,1); --ydx-swing: cubic-bezier(.76,0,.24,1); }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   1. Hold every entrance while the loader (or the language wipe) is covering the page, so the table is set
+      in front of the guest, not behind the cloth.                                                            */
+html:is(.ydx-loading,.ydx-hold) [data-lay],
+html:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paused !important; }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   2. Entrance choreography (desktop + mobile). Headlines rise line by line out of an invisible slot (whole lines,
+      never split letters, so Hebrew stays intact); the copy, tags and actions follow; scribbles write themselves. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes ydx-line {
+    from { clip-path: inset(-.3em -.4em 100% -.4em); transform: translateY(100%); }
+    to   { clip-path: inset(-.3em -.4em -.3em -.4em); transform: none; }
+  }
+  @keyframes ydx-up   { from { opacity: 0; transform: translateY(22px); } }
+  @keyframes ydx-down { from { opacity: 0; transform: translateY(-16px); } }
+  @keyframes ydx-stamp { from { opacity: 0; transform: translateY(-10px) scale(1.12); } }
+  @keyframes ydx-write-ltr { from { clip-path: inset(-25% 100% -25% -6%); } to { clip-path: inset(-25% -6% -25% -6%); } }
+  @keyframes ydx-write-rtl { from { clip-path: inset(-25% -6% -25% 100%); } to { clip-path: inset(-25% -6% -25% -6%); } }
+
+  /* headline lines */
+  html.lay-ready.ydx-on [data-lay]:not(.is-laid) :is(.hero h1, .course h2, .invitation h2, .quilt__title) > * {
+    clip-path: inset(0 0 100% 0);
+  }
+  html.lay-ready.ydx-on [data-lay].is-laid :is(.hero h1, .course h2, .invitation h2, .quilt__title) > * {
+    animation: ydx-line .95s var(--ydx-ease) backwards;
+    animation-delay: calc(var(--ydx-l, 0) * 110ms + var(--ydx-base, 120ms));
+  }
+  :is(.hero h1, .course h2, .invitation h2, .quilt__title) > :nth-child(2) { --ydx-l: 1; }
+  :is(.hero h1, .course h2, .invitation h2, .quilt__title) > :nth-child(3) { --ydx-l: 2; }
+  .quilt { --ydx-base: 60ms; }
+
+  /* copy that follows the headline */
+  html.lay-ready.ydx-on [data-lay]:not(.is-laid) :is(
+      .hero__copy > .tag, .hero__copy > p, .hero__copy > .hero__actions, .hero__tabs a, .top,
+      .course__top, .course__copy > p, .course__detail, .course__foot, .course__turn,
+      .invitation__copy > .tag, .invitation__copy > p, .invitation__copy > .hero__actions, .invitation__closing,
+      .quilt__head > .tag, .strip__name) { opacity: 0; }
+
+  html.lay-ready.ydx-on [data-lay].is-laid :is(.hero__copy > p, .course__copy > p, .invitation__copy > p) { animation: ydx-up .8s var(--ydx-ease) backwards .42s; }
+  html.lay-ready.ydx-on [data-lay].is-laid :is(.course__detail) { animation: ydx-up .8s var(--ydx-ease) backwards .5s; }
+  html.lay-ready.ydx-on [data-lay].is-laid :is(.hero__actions, .course__foot) { animation: ydx-up .8s var(--ydx-ease) backwards .56s; }
+  html.lay-ready.ydx-on [data-lay].is-laid :is(.hero__copy > .tag, .course__top .tag, .invitation__copy > .tag, .quilt__head > .tag) { animation: ydx-stamp .6s var(--ydx-ease) backwards .05s; }
+  html.lay-ready.ydx-on [data-lay].is-laid .course__top { animation: ydx-up .7s var(--ydx-ease) backwards; }
+  html.lay-ready.ydx-on [data-lay].is-laid .course__turn { animation: ydx-up .7s var(--ydx-ease) backwards .7s; }
+  html.lay-ready.ydx-on [data-lay].is-laid .top { animation: ydx-down .8s var(--ydx-ease) backwards .1s; }
+  html.lay-ready.ydx-on [data-lay].is-laid .hero__tabs a { animation: ydx-up .7s var(--ydx-ease) backwards; animation-delay: calc(.62s + var(--ydx-t, 0) * 70ms); }
+  .hero__tabs a:nth-child(2) { --ydx-t: 1; } .hero__tabs a:nth-child(3) { --ydx-t: 2; } .hero__tabs a:nth-child(4) { --ydx-t: 3; }
+  html.lay-ready.ydx-on [data-lay].is-laid .invitation__closing { animation: ydx-up .8s var(--ydx-ease) backwards .7s; }
+  html.lay-ready.ydx-on [data-lay].is-laid .strip__name { animation: ydx-up .7s var(--ydx-ease) backwards; animation-delay: calc(.35s + var(--n, 0) * 80ms); }
+
+  /* handwriting writes itself in, in its own reading direction (signature, scribbles, the quilt hint) */
+  html.lay-ready.ydx-on [data-ydx-write]:not([data-ydx-in]) { clip-path: inset(0 100% 0 0); }
+  html.lay-ready.ydx-on [dir=rtl] [data-ydx-write]:not([data-ydx-in]):not([dir=ltr]) { clip-path: inset(0 0 0 100%); }
+  html.lay-ready.ydx-on [data-ydx-write][data-ydx-in] { animation: ydx-write-ltr 1.15s cubic-bezier(.45,.05,.35,1) backwards var(--ydx-wd, .15s); }
+  html.lay-ready.ydx-on [dir=rtl] [data-ydx-write][data-ydx-in]:not([dir=ltr]) { animation-name: ydx-write-rtl; }
+  .signature { --ydx-wd: .55s; }
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+   3. Courses stack like cloths laid one over another (desktop, where they are sticky): the one underneath sinks a
+      little and dims as the next is pulled over it. --ydx-cover (0..1) is written by enhance.js on scroll. */
+@media (prefers-reduced-motion: no-preference) {
+  .course { transform-origin: 50% 35%; }
+  .course[style*="--ydx-cover"] { transform: scale(calc(1 - var(--ydx-cover, 0) * .055)); border-radius: calc(var(--ydx-cover, 0) * 18px); }
+  .course[style*="--ydx-cover"]::before {
+    content: ""; position: absolute; inset: 0; z-index: 9; pointer-events: none;
+    background: #041413; opacity: calc(var(--ydx-cover, 0) * .45);
+  }
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+   4. Micro-interactions (hover devices only) */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  /* the ✳ in the wordmark turns like a garnish being placed */
+  .wordmark i { display: inline-block; transition: transform .7s var(--ydx-ease); }
+  .wordmark:hover i { transform: rotate(180deg) scale(1.12); }
+
+  /* nav links: the underline is drawn in from the reading start instead of blinking on */
+  .top nav a { position: relative; border-bottom-color: transparent !important; }
+  .top nav a::after {
+    content: ""; position: absolute; inset-inline: 0; bottom: -2px; height: 2px; border-radius: 2px; background: var(--pop);
+    transform: scaleX(0); transform-origin: right; transition: transform .45s var(--ydx-ease);
+  }
+  [dir=ltr] .top nav a::after { transform-origin: left; }
+  .top nav a:hover::after { transform: scaleX(1); }
+
+  /* underlined links: a sauce swipe in the pop colour runs along the rule */
+  .link-down, .link-out { position: relative; }
+  .link-down::before, .link-out::before {
+    content: ""; position: absolute; inset-inline: 0; bottom: -2px; height: 2px; background: var(--pop, var(--saffron));
+    transform: scaleX(0); transform-origin: right; transition: transform .5s var(--ydx-ease);
+  }
+  [dir=ltr] :is(.link-down, .link-out)::before { transform-origin: left; }
+  :is(.link-down, .link-out):hover::before { transform: scaleX(1); }
+  .gallery__word .link-out::before { background: var(--teal); }
+
+  /* paper things lift off the cloth when you reach for them */
+  html.lay-ready [data-rise].step {
+    transition: opacity .7s ease-out, transform .9s var(--ease), translate .5s var(--ydx-ease), rotate .5s var(--ydx-ease), box-shadow .5s var(--ydx-ease);
+    transition-delay: calc(var(--i, 0) * 90ms), calc(var(--i, 0) * 90ms), 0s, 0s, 0s;
+  }
+  .step:hover, .bill:hover { translate: 0 -6px; rotate: 0deg; box-shadow: 0 3px 4px #04141333, 0 34px 44px -20px #041413a6; }
+  .bill { transition: translate .5s var(--ydx-ease), rotate .5s var(--ydx-ease), box-shadow .5s var(--ydx-ease); }
+  .gallery__a { transition: rotate .6s var(--ydx-ease), translate .6s var(--ydx-ease), box-shadow .6s var(--ydx-ease); }
+  .gallery__a:hover { rotate: -1deg; translate: 0 -6px; box-shadow: 0 3px 4px #04141338, 0 30px 40px -18px #041413a6; }
+
+  /* hero experience tabs: the number nudges up */
+  .hero__tabs span { display: inline-block; transition: transform .35s var(--ydx-ease); }
+  .hero__tabs a:hover span { transform: translateY(-3px); }
+
+  /* round arrow buttons fill with a ring pulse */
+  .course__turn a, .foot__up { transition: background-color .25s, color .25s, border-color .25s, translate .35s var(--ydx-ease); }
+
+  /* booking: occasion swatches */
+  .occasions button:hover { border-color: #0a2f2d40; }
+  .occasions i { transition: transform .35s var(--ydx-ease); }
+  .occasions button:hover i, .occasions button[aria-pressed=true] i { transform: translateY(-2px); }
+}
+
+/* ---------------------------------------------------------------------------------------------------------------
+   5. Dialog + FAQ */
+@media (prefers-reduced-motion: no-preference) {
+  /* booking sheet: its contents arrive in order after the sheet lands */
+  @keyframes ydx-sheet { from { opacity: 0; transform: translateY(12px); } }
+  @keyframes ydx-card  { from { opacity: 0; transform: translateY(-20px) scale(1.08); } }
+  .booking > :not(.booking__close) { animation: ydx-sheet .55s var(--ydx-ease) backwards; }
+  .booking > .booking__card { animation-name: ydx-card; animation-duration: .7s; animation-delay: .1s; }
+  .booking > :nth-child(3) { animation-delay: .16s; } .booking > :nth-child(4) { animation-delay: .2s; }
+  .booking > :nth-child(5) { animation-delay: .24s; } .booking > :nth-child(n+6) { animation-delay: .28s; }
+  .booking .occasions button { animation: ydx-sheet .5s var(--ydx-ease) backwards; }
+  .booking .occasions button:nth-child(1) { animation-delay: .26s; } .booking .occasions button:nth-child(2) { animation-delay: .3s; }
+  .booking .occasions button:nth-child(3) { animation-delay: .34s; } .booking .occasions button:nth-child(4) { animation-delay: .38s; }
+
+  /* FAQ answers open and close smoothly where the browser supports animating <details> */
+  .questions details { interpolate-size: allow-keywords; }
+  @supports selector(::details-content) {
+    .questions details::details-content { height: 0; overflow: clip; transition: height .5s var(--ydx-ease), content-visibility .5s allow-discrete; }
+    .questions details[open]::details-content { height: auto; }
+  }
+  @keyframes ydx-turn { from { transform: rotate(-90deg); opacity: .3; } }
+  .questions details[open] summary .minus { animation: ydx-turn .4s var(--ydx-ease); }
+  .questions details[open] > p { animation: ydx-up .6s var(--ydx-ease) backwards .05s; }
+  .questions summary { transition: color .25s; }
+}
+@media (hover: hover) { .questions summary:hover { color: var(--teal); } }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   6. Language wipe (built by enhance.js): the four table cloths of the site sweep across in reading direction. */
+.ydx-wipe { position: fixed; inset: 0; z-index: 2147482000; pointer-events: auto; overflow: hidden; contain: strict; }
+.ydx-wipe__band {
+  position: absolute; top: 0; bottom: 0; left: -25vw; width: 150vw; border-radius: 22vw / 50%;
+  background-image: url(/img/weave.png); background-size: 256px 256px; will-change: transform;
+}
+.ydx-wipe__band--saffron { background-color: #f3b12a; }
+.ydx-wipe__band--pom { background-color: var(--pom); }
+.ydx-wipe__band--linen { background-color: var(--ivory); }
+.ydx-wipe__band--teal { background-color: var(--teal); display: grid; place-items: center; }
+.ydx-wipe__word {
+  font-family: var(--display); font-weight: 900; font-size: clamp(44px, 8vw, 110px); line-height: 1; color: var(--cream);
+  letter-spacing: -.012em; display: flex; align-items: center; gap: .3em; white-space: nowrap;
+}
+.ydx-wipe__word i { font-style: normal; color: var(--saffron); font-size: .6em; display: inline-block; }
+
+/* ---------------------------------------------------------------------------------------------------------------
+   7. Design fixes */
+
+/* Hit areas: the language buttons, the underlined text links and the footer contact links were 28–32px tall on
+   touch screens. The visible design is unchanged; an invisible ::after extends the target to >= 44px. */
+.language-switch button, .link-down, .link-out, .foot__contact a { position: relative; }
+.language-switch button::after, .link-down::after, .link-out::after, .foot__contact a::after {
+  content: ""; position: absolute; inset: -8px -4px;
+}
+.language-switch button::after { inset: -7px -2px; }
+@media (max-width: 800px), (max-width: 1100px) and (orientation: portrait) {
+  .course__turn a { width: 44px; height: 44px; }
+  /* the floating "plan the evening" dock covered the image credit line at the very bottom of the page */
+  .foot { padding-bottom: 92px; }
+}
+
+/* Never let the overlays reach print. */
+@media print { .ydx-ld, .ydx-wipe { display: none !important; } }

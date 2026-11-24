@@ -1,0 +1,125 @@
+/* ydx enhancement layer for PEEL CLUB (Botanical).
+ * Loaded after the app CSS. Loader critical CSS lives inline in index.html (<style data-ydx>).
+ * Palette/type come from the app's own tokens: --tang, --green, --paper, --paper-edge, --pink, --rust, --serif, --type, --ease. */
+
+/* ------------------------------------------------------------------ route peel (View Transitions)
+ * The app calls document.startViewTransition for route changes and styles ::view-transition-old/new(root) with a
+ * fade. We replace that with a label peel: the old page is cut along a "/" line that sweeps from the bottom-right
+ * corner to the top-left, while a cream paper flap (the underside of the label) rides on the line.
+ * --ydx-s: horizontal run of the slanted line (= 100vh * tan 20deg); --ydx-fw: flap width. */
+:root { --ydx-s: 36.4vh; --ydx-fw: clamp(56px, 8vw, 128px); }
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: ydx-vt-peel .68s cubic-bezier(.68, 0, .26, 1) both;
+    z-index: 1;
+  }
+  ::view-transition-new(root) {
+    animation: ydx-vt-settle .72s cubic-bezier(.22, 1, .36, 1) both;
+    transform-origin: 100% 100%;
+  }
+  ::view-transition-group(ydx-flap) {
+    animation: ydx-vt-flap .68s cubic-bezier(.68, 0, .26, 1) both;
+    z-index: 2;
+  }
+  ::view-transition-new(ydx-flap) { animation: none; }
+  ::view-transition-old(ydx-flap) { display: none; }
+}
+@keyframes ydx-vt-peel {
+  from { clip-path: polygon(0 0, calc(100% + var(--ydx-fw) + var(--ydx-s)) 0, calc(100% + var(--ydx-fw)) 100%, 0 100%); }
+  to   { clip-path: polygon(0 0, calc(0px - var(--ydx-fw)) 0, calc(0px - var(--ydx-fw) - var(--ydx-s)) 100%, 0 100%); }
+}
+@keyframes ydx-vt-settle {
+  from { transform: scale(1.04); filter: brightness(.86); }
+  to   { transform: none; filter: none; }
+}
+/* the flap element's right edge sits at x=0 (mid-height) and is rotated to the slant; slide it with the line */
+@keyframes ydx-vt-flap {
+  from { translate: calc(100vw + var(--ydx-fw) + var(--ydx-s) / 2) 0; }
+  to   { translate: calc(0px - var(--ydx-fw) - var(--ydx-s) / 2) 0; }
+}
+.ydx-vt-flap {
+  position: fixed; top: 50%; left: calc(0px - var(--ydx-fw)); width: var(--ydx-fw); height: 160vh; margin-top: -80vh;
+  transform-origin: 100% 50%; transform: rotate(20deg);
+  background: linear-gradient(to left, #fffaf0 0, var(--paper, #f4ebd6) 5px, #efe2c4 55%, #e2d2ae 100%);
+  box-shadow: -18px 0 34px -10px rgba(8, 26, 18, .42), inset -1px 0 0 rgba(255, 255, 255, .7);
+  view-transition-name: ydx-flap; pointer-events: none; z-index: 2147483000;
+  visibility: hidden; /* only ever seen through its view-transition snapshot */
+}
+html.ydx-vt .ydx-vt-flap { visibility: visible; }
+
+/* ------------------------------------------------------------------ tape: paper strips laid behind headline <em>s */
+@media (prefers-reduced-motion: no-preference) {
+  html.ydx-js:not(.ydx-tape-off) .desk-tang :is(h1, h2).display em::before,
+  html.ydx-js:not(.ydx-tape-off) .brand-phrase.desk-tang .display em::before {
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path .8s cubic-bezier(.65, 0, .25, 1) .12s;
+  }
+  html.ydx-js:not(.ydx-tape-off) .desk-tang :is(h1, h2).display em::after,
+  html.ydx-js:not(.ydx-tape-off) .brand-phrase.desk-tang .display em::after {
+    opacity: 0; scale: .4;
+    transition: opacity .25s .72s, scale .45s cubic-bezier(.3, 1.5, .5, 1) .72s;
+  }
+  html.ydx-js .desk-tang :is(h1, h2).display em.ydx-taped::before,
+  html.ydx-js .brand-phrase.desk-tang .display em.ydx-taped::before { clip-path: inset(0 0 0 0); }
+  html.ydx-js .desk-tang :is(h1, h2).display em.ydx-taped::after,
+  html.ydx-js .brand-phrase.desk-tang .display em.ydx-taped::after { opacity: 1; scale: 1; }
+}
+
+/* ------------------------------------------------------------------ fallback reveals (no scroll-driven animations, e.g. Firefox)
+ * Mirrors the app's own `rise` / `plate-in` keyframes, driven by IntersectionObserver instead of view(). */
+@media (prefers-reduced-motion: no-preference) {
+  html.ydx-js.ydx-nosda :is(.manifesto h2, .section-heading h2, .twist-story__heading h2, .company-overlay h2, .faq-preview h2, .story-essay h2, .brand-phrase .display, .notes-heading h2, .fr-heading h2, .footer-top h2) {
+    animation: none; opacity: 0; translate: 0 70px;
+    transition: opacity .9s var(--ease), translate 1s var(--ease);
+  }
+  html.ydx-js.ydx-nosda :is(.plate, .journal-article, .fr-flavor) {
+    animation: none; opacity: 0; translate: 0 60px; rotate: 4deg;
+    transition: opacity .8s var(--ease), translate .9s var(--ease), rotate .9s var(--ease);
+  }
+  html.ydx-js.ydx-nosda :is(.flavor-grid, .journal-grid, .fr-track) > :nth-child(4n+2) { transition-delay: .08s; }
+  html.ydx-js.ydx-nosda :is(.flavor-grid, .journal-grid, .fr-track) > :nth-child(4n+3) { transition-delay: .16s; }
+  html.ydx-js.ydx-nosda :is(.flavor-grid, .journal-grid, .fr-track) > :nth-child(4n+4) { transition-delay: .24s; }
+  html.ydx-js.ydx-nosda .ydx-in { opacity: 1; translate: 0 0; rotate: 0deg; }
+}
+
+/* ------------------------------------------------------------------ micro-interactions */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  /* magnetic: individual `translate` composes with the app's own transform-based hover states */
+  .pill { transition: transform .3s var(--ease), background-color .2s, translate .55s var(--ease); }
+  .carousel-selector button:not(.carousel-current) { transition: background-color .2s, color .2s, transform .25s var(--ease), translate .55s var(--ease); }
+  .fr-controls button { transition: background-color .2s, color .2s, opacity .2s, transform .25s var(--ease), translate .55s var(--ease); }
+
+  /* text links: the underline is pulled away and drawn back on, like a stem growing */
+  .text-link {
+    border-bottom-color: transparent;
+    background: linear-gradient(currentColor, currentColor) 0 100% / 100% 2px no-repeat;
+    background-origin: border-box;
+  }
+  .text-link:hover { animation: ydx-underline .75s var(--ease); }
+  @keyframes ydx-underline {
+    0%   { background-position: 100% 100%; background-size: 100% 2px; }
+    40%  { background-position: 100% 100%; background-size: 0 2px; }
+    41%  { background-position: 0 100%; background-size: 0 2px; }
+    100% { background-position: 0 100%; background-size: 100% 2px; }
+  }
+}
+
+/* fizz: bubbles from "Add to sample bag" (nodes live outside #root) */
+.ydx-fizz { position: fixed; z-index: 60; pointer-events: none; overflow: visible; }
+.ydx-fizz i {
+  position: absolute; top: 30%; border-radius: 50%;
+  border: 1.5px solid var(--paper, #f4ebd6); background: rgba(244, 235, 214, .18);
+  box-shadow: inset -1px -1px 0 rgba(255, 255, 255, .5);
+}
+
+/* ------------------------------------------------------------------ design fixes */
+/* plate captions: no orphaned "USD" / "finish." on narrow plates */
+.plate-caption p { text-wrap: pretty; }
+.plate-caption span { text-wrap: balance; }
+
+/* footer legal link is the only tap target under 44px tall on phones */
+.footer-bottom a { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* the loader wrapper must never catch input once it starts to leave */
+html:not([data-peel-entry=loading]):not([data-peel-entry=recovery]) #ydx-peel { pointer-events: none; }

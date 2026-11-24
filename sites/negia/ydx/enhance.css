@@ -1,0 +1,168 @@
+/* ydx enhancement layer for Negia — design fixes + motion. Loaded after the site's CSS.
+   Hide-before-reveal states only apply under html.ydx-motion (set by enhance.js when motion is allowed). */
+
+/* ---------------------------------------------------------------- utilities */
+.ydx-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ydx-w { display: inline-block; white-space: nowrap; }
+.ydx-c { display: inline-block; }
+
+/* ---------------------------------------------------------------- page wipe (out-transition) */
+#ydx-wipe {
+  position: fixed; inset: 0; z-index: 2147483001; pointer-events: auto;
+  background: #4a0d22;
+  -webkit-mask: url(/ydx/smear-mask.webp) 50% 50% / 0 0 no-repeat;
+  mask: url(/ydx/smear-mask.webp) 50% 50% / 0 0 no-repeat;
+}
+
+/* ---------------------------------------------------------------- reveal states (JS plays WAAPI; this only hides until then) */
+html.ydx-motion [data-ydx-r]:not(.ydx-in) { opacity: 0; }
+/* (clip-path variants also start from opacity:0 — a clipped-away target never intersects, so the hidden state must not clip) */
+@media print { html.ydx-motion [data-ydx-r] { opacity: 1 !important; clip-path: none !important; } }
+
+/* ---------------------------------------------------------------- lipstick-swipe highlights: the pigment band behind <em> paints in when its heading reveals */
+@media (prefers-reduced-motion: no-preference) {
+  .js-ready .s-field [data-reveal] em {
+    background-repeat: no-repeat;
+    background-position: 100% 0;
+    background-size: 0% 100%;
+    transition: background-size 1.1s cubic-bezier(.65, 0, .35, 1) .45s;
+  }
+  .js-ready .s-field [data-reveal].is-in em { background-size: 100% 100%; }
+  [dir="ltr"] .js-ready .s-field [data-reveal] em { background-position: 0 0; }
+
+  /* the smear under "מקום." in the manifesto draws itself after the line rises */
+  .js-ready [data-reveal] .word-smear {
+    clip-path: inset(-10% 100% -10% 0);
+    transition: clip-path 1.1s cubic-bezier(.65, 0, .35, 1) .55s;
+  }
+  .js-ready [data-reveal].is-in .word-smear { clip-path: inset(-10% -5% -10% -5%); }
+}
+
+/* ---------------------------------------------------------------- mobile menu: opens as a burgundy swatch dropping from the header, links follow */
+@media (prefers-reduced-motion: no-preference) {
+  #mobile-menu {
+    transition: clip-path .62s cubic-bezier(.7, 0, .2, 1), display .62s allow-discrete, overlay .62s allow-discrete;
+    clip-path: inset(0 0 100% 0 round 0 0 50% 50%);
+  }
+  #mobile-menu[open] { clip-path: inset(0 0 0 0 round 0); }
+  @starting-style { #mobile-menu[open] { clip-path: inset(0 0 100% 0 round 0 0 50% 50%); } }
+  #mobile-menu::backdrop { transition: opacity .5s, display .62s allow-discrete, overlay .62s allow-discrete; opacity: 0; }
+  #mobile-menu[open]::backdrop { opacity: 1; }
+  @starting-style { #mobile-menu[open]::backdrop { opacity: 0; } }
+  #mobile-menu nav a, #mobile-menu > p, .menu-head {
+    transition: opacity .5s ease, translate .8s cubic-bezier(.16, 1, .3, 1);
+    transition-delay: calc(.18s + var(--ydx-i, 0) * .055s);
+  }
+  #mobile-menu:not([open]) nav a, #mobile-menu:not([open]) > p { opacity: 0; translate: 0 .5em; transition-delay: 0s; }
+  @starting-style {
+    #mobile-menu[open] nav a, #mobile-menu[open] > p { opacity: 0; translate: 0 .7em; }
+    #mobile-menu[open] .menu-head { opacity: 0; }
+  }
+  #mobile-menu > p { --ydx-i: 7; }
+  /* the menu's numbers slide in from the edge, like swatch tabs */
+  #mobile-menu nav a span { display: inline-block; transition: translate .35s cubic-bezier(.16, 1, .3, 1); }
+}
+#mobile-menu { flex-direction: column; } /* keep the column layout while the dialog plays its closing transition */
+#mobile-menu nav a { transition-property: opacity, translate, color; -webkit-tap-highlight-color: transparent; }
+@media (hover: hover) { #mobile-menu nav a:hover span { translate: -6px 0; } #mobile-menu nav a:hover { color: var(--hi); } }
+
+/* ---------------------------------------------------------------- FAQ + journal accordions: real height animation where supported */
+@supports selector(::details-content) {
+  @media (prefers-reduced-motion: no-preference) {
+    .faq-list details, .journal-card details { interpolate-size: allow-keywords; }
+    .faq-list details::details-content, .journal-card details::details-content {
+      block-size: 0; overflow: clip;
+      transition: block-size .55s cubic-bezier(.65, 0, .35, 1), content-visibility .55s allow-discrete;
+    }
+    .faq-list details[open]::details-content, .journal-card details[open]::details-content { block-size: auto; }
+  }
+}
+.faq-list summary span { transition: transform .35s var(--ease), background-color .3s, scale .35s var(--out); }
+@media (hover: hover) {
+  .faq-list summary:hover span { scale: 1.12; background: var(--tint); }
+  .faq-list summary { transition: color .3s; }
+  .faq-list summary:hover { color: var(--hi); }
+}
+
+/* ---------------------------------------------------------------- hover micro-interactions (individual transform props only, so the site's own transforms keep working) */
+.button > span[aria-hidden], .small-cta > span[aria-hidden], .text-link > span[aria-hidden] { display: inline-block; transition: translate .35s var(--out); }
+@media (hover: hover) {
+  .button:hover > span[aria-hidden], .small-cta:hover > span[aria-hidden], .text-link:hover > span[aria-hidden] { translate: -3px 2px; }
+  .shade-continue:hover > span[aria-hidden] { translate: -5px 0; }
+  #apply-compass:hover > span[aria-hidden] { translate: -3px -3px; }
+
+  .journal-art img { transition: scale .8s var(--out), rotate .8s var(--out); }
+  .journal-card:hover .journal-art img { scale: 1.06; rotate: -3deg; }
+  .journal-card { transition: translate .5s var(--out), box-shadow .5s var(--out); }
+  .journal-card:hover { translate: 0 -6px; box-shadow: 0 22px 40px -24px color-mix(in srgb, var(--deep) 55%, transparent); }
+
+  .process-step { transition: translate .5s var(--out); }
+  .process-step:hover { translate: 0 -6px; }
+  .step-number { transition: color .4s, background-color .4s; }
+  .process-step:hover .step-number { color: var(--deep); background: var(--hi); }
+
+  .values-line span { transition: border-inline-start-width .45s var(--out); }
+  .values-line span:hover { border-inline-start-width: 2.6em; }
+
+  .footer-links a, .footer-bottom a { text-decoration-thickness: 1px; transition: text-decoration-thickness .25s, color .25s; }
+  .footer-links a:hover, .footer-bottom a:hover { text-decoration-thickness: 3px; color: var(--hi); }
+
+  .footer-wordmark img { transition: scale .9s var(--out); }
+  .footer-wordmark:hover img { scale: 1.05; }
+
+  .dab { transition: scale .6s var(--out); }
+}
+.intensity input::-webkit-slider-thumb { transition: transform .25s var(--out); }
+.intensity input:active::-webkit-slider-thumb { transform: scale(1.18); }
+.intensity input:focus-visible { outline: 3px solid var(--deep); outline-offset: 6px; border-radius: 999px; }
+
+/* ---------------------------------------------------------------- cursor: a pigment dot in the active shade */
+.ydx-cursor {
+  position: fixed; left: 0; top: 0; z-index: 2147482000; pointer-events: none;
+  width: 0; height: 0; opacity: 0; transition: opacity .3s;
+}
+.ydx-cursor::before {
+  content: ""; position: absolute; left: -6px; top: -6px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--pig); box-shadow: 0 0 0 2px var(--paper);
+  transition: scale .35s cubic-bezier(.16, 1, .3, 1), opacity .3s, background-color .3s;
+}
+.ydx-cursor.is-on { opacity: 1; }
+.ydx-cursor.is-link::before { scale: 3.4; opacity: .38; }
+.ydx-cursor.is-text::before { scale: .5; }
+.ydx-cursor.is-down::before { scale: .7; }
+.ydx-cursor.is-link.is-down::before { scale: 2.8; }
+@media (hover: none), (pointer: coarse) { .ydx-cursor { display: none; } }
+
+/* ---------------------------------------------------------------- design fixes */
+/* style tile: the page background (--tint) was overridden by the shared stylesheet's body{background:var(--field)},
+   which made the pink intro card invisible against a pink page */
+html:has(main.tile) body { background: var(--tint); }
+html:has(main.tile) { background: var(--tint); }
+.tile input::placeholder { color: color-mix(in srgb, var(--deep) 62%, transparent); }
+
+/* hero shade chips: "אפרסק מואר" overflowed its chip at 360–400px */
+@media (width <= 420px) {
+  .hero-chip .chip-label > span { white-space: normal; font-size: .74rem; line-height: 1.15; }
+}
+
+/* touch: lift small links/controls to a 44px target without changing the look */
+@media (pointer: coarse) {
+  .small-cta { min-height: 44px; }
+  .wordmark { min-height: 44px; justify-content: center; }
+  .journal-card summary { min-height: 44px; }
+  .footer-links a, .footer-bottom a, .hero-bottom a, a.text-link { padding-block: 11px; margin-block: -11px; }
+  .contact input, .contact select { min-height: 44px; }
+  .footer-links { row-gap: 18px; }
+}
+
+/* keyboard focus on burgundy panels used currentColor that matched the panel in a few places */
+.shade-stage :focus-visible, .compass-result :focus-visible { outline-color: var(--tint); }
+.compass-result[data-tone] :focus-visible { outline-color: var(--deep); }
+.journal-card summary:focus-visible, .faq-list summary:focus-visible { outline-offset: 6px; }
+
+/* ---------------------------------------------------------------- header: the docked pill swells in from the wordmark instead of only fading */
+@media (prefers-reduced-motion: no-preference) {
+  .site-header::before { transform-origin: 100% 50%; scale: .92 .7; transition: opacity .3s, scale .55s cubic-bezier(.16, 1, .3, 1); }
+  .site-header.is-docked::before { scale: 1; }
+  [dir="ltr"] .site-header::before { transform-origin: 0 50%; }
+}
