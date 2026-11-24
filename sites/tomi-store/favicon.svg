@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex" />
+  <title>TOMI</title>
+  <meta name="description" content="TOMI: ארבעה דגמים, עשרות טעמים. בוחרים דגם, מסובבים את גלגל הטעמים ומזמינים. למבוגרים מעל גיל 18 בלבד." />
+  <meta name="theme-color" content="#6b34b8" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e0d0c'/%3E%3Ccircle cx='32' cy='32' r='19' fill='none' stroke='%23e83e7a' stroke-width='7'/%3E%3Crect x='27' y='15' width='10' height='34' rx='5' fill='%23fff8ef'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;800&family=Karantina:wght@400;700&display=swap" rel="stylesheet" />
+  <script type="module" crossorigin src="/assets/index-Ci-iogGv.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DD8vXL23.css">
+</head>
+<body>
+  <div class="loader" aria-live="polite"><span class="loader-n">0</span><i>%</i></div>
+  <header class="top">
+    <a class="brand" href="#" aria-label="TOMI">TOMI</a>
+    <nav class="nav" aria-label="primary"><a href="#/shop" data-page="shop" data-t="nav.0"></a><a href="#" class="nav-models" data-t="nav.1"></a><a href="#/compare" data-page="compare" data-t="nav.2"></a><a href="#/guide" data-page="guide" data-t="nav.3"></a></nav>
+    <div class="tools">
+      <button class="lang" type="button" data-t="lang"></button>
+      <a class="acct-link" href="#/account" data-page="account" data-t="account"></a>
+      <button class="menu-btn" type="button" data-t="menu"></button>
+      <button class="cart" type="button"><span data-t="cart"></span> (<span class="cart-n">0</span>)</button>
+    </div>
+  </header>
+
+
+
+  <main>
+    <div class="track">
+    <section class="stage" aria-label="TOMI">
+      <div class="flood" aria-hidden="true"></div>
+      <div class="rings" aria-hidden="true"><b class="ripple"></b></div>
+      <div class="sweep" aria-hidden="true"></div>
+      <div class="detail-head" hidden><p class="detail-eyebrow"></p><h2 class="detail-title"></h2></div>
+      <canvas class="gl" aria-hidden="true"></canvas>
+      <div class="dial-host" data-lenis-prevent></div>
+
+      <!-- carousel (hero) UI -->
+      <div class="carousel-ui">
+        <div class="hero-copy">
+          <p class="eyebrow"><span data-t="choose"></span> <span class="hero-index"></span></p>
+          <h1 class="model-name"></h1>
+          <p class="hero-line" data-t="heroLine"></p>
+          <button class="cta" type="button"><span data-t="enter"></span><svg class="cta-arrow" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7h10M8 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <p class="unverified" hidden data-t="unverified"></p>
+        </div>
+        <dl class="hero-stats"></dl>
+        <div class="hero-nav">
+          <button class="arrow prev" type="button" aria-label="previous">←</button>
+          <div class="pips" role="tablist"></div>
+          <button class="arrow next" type="button" aria-label="next">→</button>
+        </div>
+      </div>
+
+      <!-- dial UI -->
+      <aside class="panel" aria-live="polite" hidden>
+        <div class="panel-top">
+          <button class="back" type="button"><span aria-hidden="true">←</span> <span data-t="back"></span></button>
+          <button class="all-btn" type="button"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 1h5v5H1zM8 1h5v5H8zM1 8h5v5H1zM8 8h5v5H8z" fill="currentColor"/></svg><span data-t="all"></span></button>
+        </div>
+        <p class="panel-model"></p>
+        <h2 class="fl-name"></h2>
+        <p class="fl-sub"></p>
+        <p class="fl-notes"></p>
+        <dl class="facts"></dl>
+        <div class="buy">
+          <p class="price"><span class="price-n"></span></p>
+          <button class="add" type="button"><span class="add-label" data-t="add"></span></button>
+        </div>
+        <div class="dial-step">
+          <button class="arrow fprev" type="button" aria-label="previous flavour">←</button>
+          <button class="arrow fnext" type="button" aria-label="next flavour">→</button>
+        </div>
+        <div class="panel-foot">
+          <button class="details-btn" type="button"><span data-t="details"></span> <span class="flip" aria-hidden="true">→</span></button>
+          <p class="hint" data-t="drag"></p>
+        </div>
+      </aside>
+
+      <!-- flavour page -->
+      <div class="detail" hidden>
+        <div class="detail-info">
+          <div class="detail-nav">
+            <button class="detail-back" type="button"><span class="flip" aria-hidden="true">←</span> <span data-t="backDial"></span></button>
+            <button class="all-btn detail-all" type="button"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 1h5v5H1zM8 1h5v5H8zM1 8h5v5H1zM8 8h5v5H8z" fill="currentColor"/></svg><span data-t="all"></span></button>
+          </div>
+          <p class="detail-notes"></p>
+          <dl class="detail-facts"></dl>
+        </div>
+        <div class="detail-buy">
+          <p class="detail-sub"></p>
+          <p class="price"><span class="detail-price"></span></p>
+          <button class="add" type="button"><span class="add-label" data-t="add"></span></button>
+          <div class="detail-step">
+            <button class="arrow dprev" type="button" aria-label="previous flavour">←</button>
+            <span class="detail-count"></span>
+            <button class="arrow dnext" type="button" aria-label="next flavour">→</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+    </div>
+
+    <div class="home"></div>
+
+    <section class="specs" aria-live="off"></section>
+  </main>
+  <div class="pages" hidden></div>
+
+  <!-- simple flavour view -->
+  <div class="sheet" role="dialog" aria-modal="true" hidden data-lenis-prevent>
+    <header class="sheet-head">
+      <div><p class="sheet-model"></p><h2 class="sheet-title" data-t="all"></h2></div>
+      <button class="sheet-close" type="button"><span data-t="close"></span> ✕</button>
+    </header>
+    <div class="sheet-body" data-layout="list"></div>
+  </div>
+</body>
+</html>

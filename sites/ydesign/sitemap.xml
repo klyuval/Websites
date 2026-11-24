@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://ydesign.ydesign.workers.dev/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://ydesign.ydesign.workers.dev/"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://ydesign.ydesign.workers.dev/he/"/>
+  </url>
+  <url>
+    <loc>https://ydesign.ydesign.workers.dev/he/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://ydesign.ydesign.workers.dev/"/>
+    <xhtml:link rel="alternate" hreflang="he" href="https://ydesign.ydesign.workers.dev/he/"/>
+  </url>
+</urlset>

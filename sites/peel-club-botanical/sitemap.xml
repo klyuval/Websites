@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en" data-peel-entry="loading">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5811f" />
+    <meta name="description" content="Meet PEEL CLUB. Bright citrus sodas, a bittersweet little bite, and a taste for good company." />
+    <link rel="icon" href="/favicon.svg" />
+    <title>PEEL CLUB — A little zest for living</title>
+    <style>html{background:#f5811f}#peel-entry{z-index:2147483647;box-sizing:border-box;color:#0f3b2d;text-align:center;background:#f5811f;place-content:center;justify-items:center;padding:24px;font-family:Fraunces Variable,Georgia,serif;display:none;position:fixed;inset:0}html[data-peel-entry=loading] #peel-entry{display:grid}#peel-entry strong{font-variation-settings:"opsz" 144,"WONK" 0;letter-spacing:-.035em;font-size:clamp(52px,10vw,150px);font-style:italic;font-weight:900;line-height:.84;display:block}#peel-entry strong em{display:inline-block;position:relative}#peel-entry strong em:before{content:"";z-index:-1;background:#f4ebd6;position:absolute;inset:.19em -.13em -.075em -.11em;transform:rotate(-1.3deg);box-shadow:0 1px 2px #081a1233,0 16px 28px -20px #081a128c}#peel-entry .entry-caption,#peel-entry p{color:#17251d;background:#f4ebd6;padding:6px 11px 4px;font-family:Courier Prime,Courier New,monospace;font-size:12.5px;line-height:1.4;box-shadow:1px 2px 2px #081a123d}#peel-entry .entry-caption{margin-bottom:34px;transform:rotate(-2deg)}#peel-entry .entry-stem{display:none}#peel-entry p{margin:34px 0 0;transform:rotate(1.5deg)}html[data-peel-entry=recovery] #peel-entry{display:grid}#peel-recovery{max-width:360px;margin:24px auto 0;font:15px/1.5 Georgia,serif;display:none}#peel-recovery p{box-shadow:none;color:#0f3b2d;background:0 0;margin:0 0 18px;padding:0;font:15px/1.5 Georgia,serif;transform:none}#peel-recovery a{color:#f4ebd6;background:#0f3b2d;border-radius:32px;justify-content:center;align-items:center;min-height:46px;margin:4px;padding:0 20px;font:italic 700 16px/1.4 Georgia,serif;text-decoration:none;display:inline-flex}#peel-recovery a:focus-visible{outline-offset:4px;outline:2.5px solid #0f3b2d}</style>
+    
+    <script type="module" crossorigin src="/assets/index-BNQk_vTS.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Bru9Umfv.css" data-peel-style media="print" onload="this.media='all';this.dataset.loaded='true';window.__peelEntry&amp;&amp;window.__peelEntry.stylesReady()" onerror="this.dataset.failed='true';window.__peelEntry&amp;&amp;window.__peelEntry.recover('styles-error')">
+  </head>
+  <body>
+    <div id="peel-entry" role="status" aria-live="polite" aria-atomic="true">
+      <span class="entry-caption">BOTANICAL SPARKLING SODA</span><strong>Good things<br /><em>take a little zest.</em></strong><span class="entry-stem" aria-hidden="true">&#10087;</span>
+      <p id="peel-loading-note">Preparing your first taste</p>
+      <div id="peel-recovery">
+        <p>The page couldn’t finish loading. Check your connection and try again.</p>
+        <a id="peel-retry" href="/">Try again</a>
+        <a id="peel-light" href="/?graphics=off">Open without 3D</a>
+      </div>
+      <noscript><p>Enable JavaScript in your browser to explore PEEL CLUB, then reload this page.</p></noscript>
+    </div>
+    <div id="root"></div>
+    <script>
+      (() => {
+        const html = document.documentElement;
+        const root = document.getElementById("root");
+        const cover = document.getElementById("peel-entry");
+        const recovery = document.getElementById("peel-recovery");
+        const loadingNote = document.getElementById("peel-loading-note");
+        const styles = Array.from(document.querySelectorAll("link[data-peel-style]"));
+        const previousInert = root.inert;
+        const retryURL = new URL(location.href);
+        document.getElementById("peel-retry").href = retryURL.href;
+        retryURL.searchParams.set("graphics", "off");
+        document.getElementById("peel-light").href = retryURL.href;
+        let appReady = false;
+        let requestedReason = null;
+        let deadline;
+        let resolveStyles;
+        const stylesLoaded = new Promise((resolve) => { resolveStyles = resolve; });
+        const entry = window.__peelEntry = {
+          done: false,
+          stylesLoaded,
+          appReady() {
+            appReady = true;
+            if (requestedReason) entry.finish(requestedReason);
+          },
+          stylesReady() {
+            if (styles.every((link) => link.dataset.loaded === "true")) resolveStyles();
+            if (requestedReason) entry.finish(requestedReason);
+          },
+          recover(reason) {
+            if (entry.done) return;
+            html.dataset.peelEntry = "recovery";
+            cover.dataset.reason = reason;
+            recovery.style.display = "block";
+            loadingNote.hidden = true;
+          },
+          finish(reason) {
+            if (entry.done) return;
+            requestedReason = reason;
+            // A deadline may reveal the usable HTML/photo fallback, but never
+            // an empty app root or a page whose styles still haven't arrived.
+            if (!appReady || !styles.every((link) => link.dataset.loaded === "true")) {
+              if (reason === "timeout") entry.recover(reason);
+              return;
+            }
+            entry.done = true;
+            clearTimeout(deadline);
+            html.dataset.peelEntry = reason;
+            root.inert = previousInert;
+            if (reason === "ready" && cover.animate && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+              cover.style.display = "grid";
+              cover.style.pointerEvents = "none";
+              const reveal = cover.animate([{ transform: "translateY(0)" }, { transform: "translateY(-101%)" }], {duration: 550, easing: "cubic-bezier(.76,0,.24,1)", fill: "forwards"});
+              reveal.finished.then(() => cover.remove(), () => cover.remove());
+              setTimeout(() => cover.remove(), 700);
+            } else cover.remove();
+            window.removeEventListener("error", bootError, true);
+          }
+        };
+        const bootError = (event) => {
+          if (!appReady && (event.target?.tagName === "SCRIPT" || event.error)) entry.recover("app-error");
+        };
+        deadline = setTimeout(() => entry.finish("timeout"), 12000);
+        window.addEventListener("error", bootError, true);
+        root.inert = true;
+        entry.stylesReady();
+        if (styles.some((link) => link.dataset.failed === "true")) entry.recover("styles-error");
+      })();
+    </script>
+
+  </body>
+</html>

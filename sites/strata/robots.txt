@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#c6f24e" />
+    <meta name="description" content="STRATA is an independent additive design studio. From first prototype to objects worth keeping. Explore materials, possibilities, and build your project brief." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400..900&family=Martian+Mono:wght@400..600&display=swap" rel="stylesheet" />
+    <link rel="preload" as="image" href="/img/w-physical-graphite.webp" type="image/webp" />
+    <title>STRATA | Ideas, made physical.</title>
+    <script type="module" crossorigin src="/assets/index-CkiVEG1F.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-C1lfMyBM.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

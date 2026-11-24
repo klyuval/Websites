@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://cassata-menu.ydesign.workers.dev/sitemap.xml
