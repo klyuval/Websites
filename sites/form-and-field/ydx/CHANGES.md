@@ -194,3 +194,112 @@ The site is English only and has one route.
 - `index.html`: the inline loader script and CSS, the `--a2`/`--a8` slots on the loader letters, the font preloads
 - `styles.css`: the three `@font-face` `src` lists
 - new `assets/display.woff2`, `assets/editorial.woff2`, `assets/body.woff2`
+
+## Round 3
+
+A line-by-line review of the whole ydx layer (inline boot script and CSS, `enhance.js`, `enhance.css`) for production.
+Each suspected bug got a focused Playwright test first, which failed before the fix and passes after (11/11). The
+scripts are in the round-3 scratch folder: `bugs.mjs`, `prod.mjs`, `bg.mjs`, `back.mjs`, `twice.mjs`, `order.mjs`.
+
+### Bugs found and fixed
+
+- **The loader could trap the page.** enhance.js cancels the inline failsafe as soon as it starts. After that, any
+  exception in the loader's exit (the clone step, `getComputedStyle`, the hero intro) left the sheet at z-index 9999
+  over the page for good. *Repro:* `cloneNode` made to throw for `.ydx-sheet` meant the loader was still up after 7 s.
+  *Fix:* `runLoader()` and the exit are wrapped in try/catch and unlock on error. A last-resort `unlock` timer now runs
+  at HARD + 1.6 s.
+- **The transition plates could lock the page.** `play()` had no error path. A throw left `.ydx-shutter.on`
+  (pointer-events: auto) over the page and `busy` stuck at true. *Repro:* a throwing `ffLenis.scrollTo` meant every
+  later click hit the shutter (Playwright click timed out). *Fix:* try/finally. The shutter is always released and its
+  animations cancelled. On error the page jumps natively with `scrollIntoView`.
+- **A second activation during a transition fell through.** While `busy`, the handler returned without
+  `preventDefault`, so Enter pressed twice (or held) on a nav link set off the native jump (hashchange) and a Lenis
+  glide under the plates. *Repro:* scrollY went 13844 → 3486 → 6088 → 8034 → 13914, with 1 hashchange. *Fix:* while
+  busy, the activation is swallowed.
+- **Transitions did not update the URL.** Short jumps (native anchor plus Lenis) set `#hash` and add a history entry.
+  Long jumps under the plates did neither, so Back left the site and the address could not be shared. *Fix:* the hash
+  is set with `pushState` (or `replaceState` for the same hash). This happens under the plates, just before the jump,
+  so the entry being left keeps its own scroll position. Back and Forward now restore the position, and Lenis stays in
+  sync (a wheel after Back scrolls from the restored spot). If Back or Forward is pressed while the plates are closing
+  (`popstate` while busy), the jump and the push are dropped. Not using `history.scrollRestoration`.
+- **Late scripts replayed the intro over a visible cover.** If enhance.js arrived after the inline failsafe had already
+  lifted the sheet (enhance.js or app.js delayed 8 s, since enhance.js is deferred after app.js), the hero intro ran on
+  a cover that had been on screen for seconds. The headline was clipped away and re-inked. *Repro:* 150 ms after
+  enhance.js ran, `.l1` had a running animation with `clip-path: inset(-30% 98% …)`. *Fix:* if the sheet is still in
+  the DOM but `ydx-loading` is gone, or `ydx-fail` is set, there is no intro and the sheet is just removed.
+- **Footer bars stayed hidden when enhance.js failed to load.** The hide-before-reveal rules keyed on `html.ydx-js`,
+  which the inline script sets. With enhance.js 404 (CSS present), nothing ever added `.ydx-in`, so the footer colour
+  bars stayed at `scaleY(0)`. *Fix:* enhance.css hide states now key on `html.ydx-on`, which enhance.js sets.
+- **Printer's marks stayed hidden when app.js failed to load.** The crop marks, kicker rules, registration marks and
+  foot rules wait for app.js' `.in`. With app.js 404 they stayed invisible (crop opacity 0). *Fix:* those rules key on
+  `html.ydx-app`, which is set only when app.js ran (`'ffLenis' in window`).
+- **enhance.css missing broke the layout.** The unstyled shutter (29 px, with a registration mark and, during a jump,
+  the destination headline) and the progress bar landed in the page flow. The loader's torn-proof clones would also
+  have been unpositioned. *Fix:* enhance.css sets a sentinel, `:root{--ydx-css:1}`, and enhance.js checks for it. This
+  is reliable because the stylesheet is linked before the script, so it has loaded or failed by the time the script
+  runs. Without it, the script adds no shutter or progress bar, the loader just fades, there are no reveals, and
+  anchors behave natively.
+- **Printing before scrolling printed blank.** Content waiting for its reveal printed blank (opacity 0, words shifted
+  out of their masks), and the progress bar printed on page one. *Fix:* the hide-before-reveal block is now
+  `@media screen and (prefers-reduced-motion:no-preference)`, and the loader, shutter and progress bar are
+  `display:none` in print.
+- **Smaller fixes:**
+  - The inline boot script added `ydx-df` (fixed glyph slots) even when the Display font failed. It now requires a
+    loaded face (`f.length`).
+  - A malformed `%` escape in a hash link would throw in `decodeURIComponent`. It is now caught and left to the browser.
+  - `scrollTo({behavior:'instant'})` (the fallback when Lenis is absent) falls back to `scrollTo(0, y)` on engines
+    that reject `'instant'`.
+  - The transition's final wait races a timer, so a hidden tab cannot hold `busy` waiting on WAAPI `finished`.
+  - If reduced motion is switched on mid-session, items still waiting are shown without animating.
+  - enhance.js guards against running twice (`window.__ydxEnh`). Injecting it a second time gives one shutter, one
+    progress bar, no nested word spans and one transition per click.
+
+### Production checks (all pass, zero console errors)
+
+- **Live headers:** `curl -sI` shows only Cloudflare cache and NEL headers: no CSP, X-Frame-Options or COOP. Every run
+  had the live headers applied to the HTML via `page.route`.
+- **Failure and delay cases:**
+  - JS disabled.
+  - enhance.js 404, enhance.css 404, both.
+  - enhance.js +8 s, app.js +8 s, Lenis +8 s.
+  - enhance.js hung forever: app.js still runs at about 250 ms, because enhance.js is the last deferred script in the
+    document, so nothing of the app waits for it.
+  - Fonts 404.
+- **Environments:**
+  - Reduced motion.
+  - iPhone 13 with menu and transition.
+  - Slow 3G with 4× CPU.
+  - Page frozen with `Page.setWebLifecycleState` during the loader and in the middle of a transition.
+  - A background tab, emulated: `visibilityState` hidden, rAF held, timers aligned to 1 s, shown after 1.2 s, 2.5 s
+    and 7 s.
+  - A leave-and-return through history.
+  - The hub iframe at 1440 and 390: mode `frame`, about 0.6–0.7 s wall-clock from start to the sheet being removed.
+- **Pass criteria:** in every case the page ends visible and usable: nothing covers the centre, no `ydx-loading`, the
+  headline unclipped, no reveal item left hidden in view. `tools/shoot.mjs` desktop and mobile logged 0 lines.
+
+### Deliberately kept
+
+- **`defer` (not `async`) on enhance.js.** It sits after app.js, so it never delays the app. Running after app.js is
+  how it knows app.js ran (`ydx-app`), and the stylesheet sentinel depends on the script being blocked by the
+  stylesheet before it.
+- **enhance.css stays render-blocking,** like `styles.css`. It is small and same-origin, and loading it async would
+  make the hide-before-reveal states flash.
+
+### Remaining known limitations
+
+- If a CSP is ever added, the inline `<script data-ydx>` and `<style data-ydx>` blocks need hashes or
+  `'unsafe-inline'`. The loader letters also carry `style=""` attributes (`style-src-attr`).
+- The loader's `--F` uses `svh`. In Safari before 15.4 the wordmark falls back to the inherited size. It still works
+  and is still dismissed.
+- Headless Chromium here did not restore pages from bfcache (`pageshow.persisted` never fired), so the bfcache path is
+  reasoned from the code rather than observed. Restoring mid-loader or mid-transition resumes the same timers, and
+  `unlock` and `finally` release them.
+- Back to a section restored with the browser's fragment scroll (70 px scroll padding) rather than the flush
+  transition landing. The same is true natively.
+- In a background tab the loader's exit plays while hidden, so the reader comes back to the finished cover.
+
+### Files touched in round 3
+
+- `ydx/enhance.js`
+- `ydx/enhance.css`
+- `index.html`: the inline boot script's `fonts.load` check (CRLF kept)
