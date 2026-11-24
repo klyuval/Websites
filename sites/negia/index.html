@@ -38,8 +38,9 @@ html:not(.ydx-loading) .ydx-loader{pointer-events:none}
 /* hold the hero's own entrance until the loader leaves */
 html.ydx-loading .hero-line,html.ydx-loading .hero-lips,html.ydx-loading .hero-smear,html.ydx-loading .hero-smear img,html.ydx-loading .hero-copy,html.ydx-loading .hero-bottom,html.ydx-loading .hero-chips,html.ydx-loading .photo-note,html.ydx-loading .hero-art figcaption,html.ydx-loading .hero-intro,html.ydx-loading .hero-side{animation-play-state:paused!important}
 </style>
-<link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
-<script src="/ydx/enhance.js" defer></script><!-- ydx -->
+<!-- ydx: neither file may hold up the page: the stylesheet loads without blocking render or the app's module script (the loader's own CSS is inline above), and the script is async so it never delays DOMContentLoaded -->
+<link rel="preload" as="style" href="/ydx/enhance.css" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="/ydx/enhance.css"></noscript><!-- ydx -->
+<script src="/ydx/enhance.js" async></script><!-- ydx -->
 </head>
 <body>
 <!-- ydx: loader markup, injected by script so it never shows without JS -->

@@ -136,10 +136,22 @@
   const isDone = (a) => !a || a.classList.contains('arrival-complete');
   const MODE = has('ydx-cont') ? 'cont' : has('ydx-frame') ? 'frame' : has('ydx-quick') ? 'repeat' : 'first';
   const clipOK = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('clip-path', 'path(evenodd, "M0 0H1V1Z")');
-  // r3: enhance.css sets --ydx-css. Without it (404, blocked) the iris, meter, shield and AF brackets would land
-  // unstyled in the page flow, so the layer leaves the site's own arrival alone and skips its overlays.
-  // (The stylesheet is linked before this deferred script, so it has loaded or failed by the time this runs.)
-  const CSSOK = getComputedStyle(html).getPropertyValue('--ydx-css').trim() !== '';
+  // r3: enhance.css sets --ydx-css. Without it (404, blocked, hung) the iris, meter, shield and AF brackets would land
+  // unstyled in the page flow, so the layer then leaves the site's own arrival alone and skips its overlays.
+  // The stylesheet is loaded non-blocking (preload + swap, so a slow file can never hold back the site's first paint
+  // or hydration) and this script is async, so wait briefly for it.
+  let CSSOK = false;
+  function cssReady() {
+    return new Promise((res) => {
+      const s = performance.now();
+      const poll = () => {
+        if (getComputedStyle(html).getPropertyValue('--ydx-css').trim()) return res(true);
+        if (window.__ydxCssFail || performance.now() - s > 2500) return res(false);
+        setTimeout(poll, 30);
+      };
+      poll();
+    });
+  }
 
   /* r3: the single way out of the loader. Whatever throws or stalls, this leaves the page uncovered, unlocked and
      visible: hold classes off, our overlays gone, the arrival unclipped and hidden, timers and listeners dropped. */
@@ -396,7 +408,7 @@
     await Promise.race([Promise.all(anims.map((x) => x.finished.catch(() => {}))), wait(620 + 500)]);
     veil.remove();
     cls.add('ydx-arrival-off');
-    cls.remove('ydx-cont');
+    cls.remove('ydx-cont', 'ydx-quick');
     loose.ended = true;
   }
 
@@ -571,9 +583,10 @@
     });
   }
 
-  function boot() {
+  async function boot() {
     window.__ydxBooted = true;
     mark('boot');
+    CSSOK = await cssReady();
     runLoader().catch(release);
     // r3: features are independent: one failing must not take the others (or the loader) down with it
     const safe = (fn) => { try { fn(); } catch (e) { /* skip this feature */ } };

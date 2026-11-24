@@ -64,10 +64,10 @@ html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paus
   html.lay-ready.ydx-enter [data-lay].is-laid .strip__name { animation: ydx-up .7s var(--ydx-ease) backwards; animation-delay: calc(.35s + var(--n, 0) * 80ms); }
 
   /* handwriting writes itself in, in its own reading direction (signature, scribbles, the quilt hint) */
-  html.lay-ready.ydx-on [data-ydx-write]:not([data-ydx-in]) { clip-path: inset(0 100% 0 0); }
-  html.lay-ready.ydx-on [dir=rtl] [data-ydx-write]:not([data-ydx-in]):not([dir=ltr]) { clip-path: inset(0 0 0 100%); }
-  html.lay-ready.ydx-on [data-ydx-write][data-ydx-in] { animation: ydx-write-ltr 1.15s cubic-bezier(.45,.05,.35,1) backwards var(--ydx-wd, .15s); }
-  html.lay-ready.ydx-on [dir=rtl] [data-ydx-write][data-ydx-in]:not([dir=ltr]) { animation-name: ydx-write-rtl; }
+  html.lay-ready.ydx-enter [data-ydx-write]:not([data-ydx-in]) { clip-path: inset(0 100% 0 0); }
+  html.lay-ready.ydx-enter [dir=rtl] [data-ydx-write]:not([data-ydx-in]):not([dir=ltr]) { clip-path: inset(0 0 0 100%); }
+  html.lay-ready.ydx-enter [data-ydx-write][data-ydx-in] { animation: ydx-write-ltr 1.15s cubic-bezier(.45,.05,.35,1) backwards var(--ydx-wd, .15s); }
+  html.lay-ready.ydx-enter [dir=rtl] [data-ydx-write][data-ydx-in]:not([dir=ltr]) { animation-name: ydx-write-rtl; }
   .signature { --ydx-wd: .55s; }
 }
 

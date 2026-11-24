@@ -34,12 +34,37 @@
     .ydx-count>*{transition:opacity .35s}
     html.ydx-load:not(.ydx-f) .ydx-count>*{opacity:0}
     html.ready .ydx-loader:not(.ydx-ctl){clip-path:inset(0 0 100% 0);visibility:hidden;transition:clip-path .9s cubic-bezier(.22,1,.36,1),visibility 0s .9s}
+    /* loader motion (round 3: moved here from enhance.css so the loader never depends on that file) */
+    .ydx-cap { white-space: nowrap; }
+    html[data-ydx-l="he"] .ydx-cap { letter-spacing: .12em; }
+    @media (prefers-reduced-motion: no-preference) {
+    html:not(.ydx-repeat):not(.ydx-frame) .ydx-wire .w:not(.ydx-surf) {
+    stroke-dasharray: 1 1; stroke-dashoffset: 1;
+    animation: ydx-draw .75s cubic-bezier(.65,0,.35,1) forwards;
+    }
+    html:not(.ydx-repeat):not(.ydx-frame) .ydx-wire .w:nth-child(2) { animation-delay: .08s; }
+    html:not(.ydx-repeat):not(.ydx-frame) .ydx-wire .w:nth-child(3) { animation-delay: .22s; animation-duration: .7s; }
+    html:not(.ydx-repeat):not(.ydx-frame) .ydx-wire .w:nth-child(4) { animation-delay: .3s; animation-duration: .6s; }
+    .ydx-mer .w { animation: ydx-turn 2.6s cubic-bezier(.37,0,.63,1) infinite alternate; }
+    .ydx-mer .w:nth-child(2) { animation-delay: -.65s; }
+    .ydx-mer .w:nth-child(3) { animation-delay: -1.3s; }
+    .ydx-mer .w:nth-child(4) { animation-delay: -1.95s; }
+    .ydx-mark .t { animation: ydx-breathe 2.4s ease-in-out infinite; transform-origin: 100px 100px; }
+    html:not(.ydx-repeat):not(.ydx-frame) .ydx-mark { animation: ydx-in .9s cubic-bezier(.22,1,.36,1) both; }
+    html:not(.ydx-repeat):not(.ydx-frame) .ydx-count,
+    html:not(.ydx-repeat):not(.ydx-frame) .ydx-cap { animation: ydx-up .9s .12s cubic-bezier(.22,1,.36,1) both; }
+    }
+    @keyframes ydx-draw { to { stroke-dashoffset: 0; } }
+    @keyframes ydx-turn { from { transform: translateX(-21px); } to { transform: translateX(21px); } }
+    @keyframes ydx-breathe { 50% { stroke-opacity: .28; transform: scale(1.015); } }
+    @keyframes ydx-in { from { opacity: 0; transform: scale(.92); } }
+    @keyframes ydx-up { from { opacity: 0; transform: translateY(14px); } }
   </style>
   <noscript><style>.loader{display:none}</style></noscript><!-- ydx: no JS, no app: don't cover the static shell with a counter that can never finish -->
   <!-- ydx: loader colour + flags + controller. External, not inline: the live CSP (script-src 'self') blocks inline scripts. Sync on purpose: tiny, and it must run before first paint. -->
   <script src="/ydx/boot.js"></script>
-  <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
-  <script src="/ydx/enhance.js" defer></script><!-- ydx -->
+  <!-- ydx: enhance.css is injected by boot.js (non-blocking); enhance.js is async and waits for the DOM itself -->
+  <script src="/ydx/enhance.js" async></script><!-- ydx -->
 </head>
 <body>
   <!-- ydx: brand loader (TOMI mark: device wireframe filling solid inside the ring). Progress mirrors the app's own .loader-n counter. -->

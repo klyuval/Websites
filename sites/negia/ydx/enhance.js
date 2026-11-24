@@ -44,7 +44,7 @@
 
   /* ------------------------------------------------------------------ 1. loader exit */
   var L = w.__ydxL || { mode: 'full', t0: Date.now() };
-  var loader = d.getElementById('ydx-loader');
+  var loader = null;
   // minimum display, counted from the moment the choreography starts (L.go, set inline once its assets are ready)
   var MIN = { full: 1400, short: 200, frame: 300, nav: 60, reduced: 300 }[L.mode] || 900;
   var released = false;
@@ -80,7 +80,12 @@
     setTimeout(releaseHero, L.mode === 'nav' ? 40 : dur * 0.12);
     if (a) a.onfinish = done; else done();
   }
-  if (loader) {
+  // this file is async: it can run before <body> has been parsed, so wait for the inline script to inject the loader
+  (function waitLoader() {
+    loader = d.getElementById('ydx-loader');
+    if (loader) initLoader(); else if (d.readyState !== 'loading') releaseHero(); else setTimeout(waitLoader, 20);
+  })();
+  function initLoader() {
     var ready = new Promise(function (res) {
       if (L.mode === 'frame' || L.mode === 'nav') return res(); // iframe preview / page transition: never wait for load
       if (d.readyState === 'complete') res(); else w.addEventListener('load', res, { once: true });
@@ -97,7 +102,7 @@
     setTimeout(finishLoader, Math.max(0, (L.mode === 'frame' ? 450 : 4000) - (Date.now() - L.t0)));
     // a keyboard visitor who starts tabbing skips the intro, so focus never lands on controls hidden behind the loader
     d.addEventListener('keydown', function (e) { if (/^(Tab|Enter|Escape| )$/.test(e.key)) finishLoader(); });
-  } else releaseHero();
+  }
   // bfcache restore (style-tile page; the home bundle reloads itself on pageshow.persisted)
   w.addEventListener('pageshow', function (e) {
     if (!e.persisted) return;
@@ -361,5 +366,16 @@
       }
     });
   }
-  if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', boot); else boot();
+  // enhance.css loads without blocking (rel=preload, swapped to a stylesheet on load): the reveal, cursor and wipe styles must be in place
+  // before those parts start, so wait for its sentinel (up to 3s; each part re-checks and skips itself if it never came)
+  function whenCSS(fn) { var t = Date.now(); (function chk() { if (cssOK() || Date.now() - t > 3000) fn(); else setTimeout(chk, 50); })(); }
+  // boot after DOMContentLoaded, i.e. after the app's deferred module has run (an async script can also run between the end
+  // of parsing — readyState 'interactive' — and that event, so readyState alone does not tell)
+  function dclDone() {
+    if (d.readyState === 'complete') return true;
+    if (d.readyState === 'loading') return false;
+    var n = w.performance && performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+    return n ? n.domContentLoadedEventStart > 0 : true;
+  }
+  if (dclDone()) whenCSS(boot); else d.addEventListener('DOMContentLoaded', function () { whenCSS(boot); });
 })();

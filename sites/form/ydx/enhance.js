@@ -276,11 +276,13 @@
       if (r.width === 0 && r.height === 0) return;
       jobs.push([el, nested, r.top < vh * 0.98]);
     });
-    // ... then write (animations, observers)
+    // ... then write (animations, observers). The "pending" hide rule lives in
+    // enhance.css (loaded non-blocking): without it, leave off-screen blocks be.
+    const css = cssOn();
     let i = 0;
     jobs.forEach(([el, nested, onScreen]) => {
       if (onScreen) { if (!nested) enter(el, base + Math.min(i++, 9) * 55); else countIn(el, base + 110); }
-      else if (!nested) { el.setAttribute('data-ydx-rv', 'pending'); pending.add(el); io.observe(el); }
+      else if (!nested && css) { el.setAttribute('data-ydx-rv', 'pending'); pending.add(el); io.observe(el); }
     });
     drawChart(main);
   }

@@ -34,8 +34,9 @@ html:not(.ydx-loading) .ydx-loader{pointer-events:none}
 /* hold the hero's own entrance until the loader leaves */
 html.ydx-loading .hero-line,html.ydx-loading .hero-lips,html.ydx-loading .hero-smear,html.ydx-loading .hero-smear img,html.ydx-loading .hero-copy,html.ydx-loading .hero-bottom,html.ydx-loading .hero-chips,html.ydx-loading .photo-note,html.ydx-loading .hero-art figcaption,html.ydx-loading .hero-intro,html.ydx-loading .hero-side{animation-play-state:paused!important}
 </style>
-<link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
-<script src="/ydx/enhance.js" defer></script><!-- ydx -->
+<!-- ydx: neither file may hold up the page: the stylesheet loads without blocking render or the app's module script (the loader's own CSS is inline above), and the script is async so it never delays DOMContentLoaded -->
+<link rel="preload" as="style" href="/ydx/enhance.css" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="/ydx/enhance.css"></noscript><!-- ydx -->
+<script src="/ydx/enhance.js" async></script><!-- ydx -->
 </head><body>
 <!-- ydx: loader markup, injected by script so it never shows without JS -->
 <script data-ydx>(function(d,w){var l=d.createElement('div');l.id='ydx-loader';l.className='ydx-loader';l.setAttribute('aria-hidden','true');l.innerHTML='<i class="ydx-l-warm"></i><div class="ydx-l-stage"><div class="ydx-l-smear"><img src="/img/smear-a-rose-s.webp" alt="" width="820" height="309"></div><div class="ydx-l-word">נגיעה</div><span class="ydx-l-track"><img class="ydx-l-stick" src="/img/lipstick-rose.webp" alt="" width="237" height="1000"></span><img class="ydx-l-kiss" src="/ydx/kiss-loader.webp" alt="" width="300" height="221"><span class="ydx-l-tag">NEGIA · LIP ATELIER</span></div>';d.body.insertBefore(l,d.body.firstChild);var L=w.__ydxL||{},go=function(x){if(!L.go){L.go=Date.now();l.classList.add('is-go');if(x===1)l.classList.add('is-lite')}};if(L.mode!=='full')return go();var ps=[].map.call(l.querySelectorAll('img'),function(i){return i.decode?i.decode().catch(function(){}):0});try{ps.push(d.fonts.load('900 64px "Negia Display"','נגיעה').catch(function(){}))}catch(e){}Promise.all(ps).then(go);setTimeout(function(){go(1)},1300)})(document,window)</script>

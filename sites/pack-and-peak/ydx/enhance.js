@@ -71,7 +71,7 @@
   // and replay, so the reveals are skipped and everything simply stays visible.
   function onScreen(el) { var r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight && r.width > 0; }
   var late = html.classList.contains('ydx-in') && $$(REVEAL).some(onScreen);
-  var motion = !reduce && !late && hasIO;
+  var motion = !reduce && !late && hasIO && !html.classList.contains('ydx-late-css');
   if (motion) html.classList.add('ydx-motion');
   function scanReveals() {
     $$(REVEAL).forEach(function (el) {
@@ -303,8 +303,13 @@
       if (html.classList.contains('lenis') || lastInput > asked) return;
       var el = document.getElementById(CH[dest].id);
       if (!el) return;
-      var top = dest === 0 ? 0 : el.getBoundingClientRect().top + scrollY;
-      try { scrollTo({ top: top, behavior: 'instant' }); } catch (e) { scrollTo(0, top); }
+      // Chromium keeps the remaining delta of a running smooth scroll after an instant scrollTo, so phones landed
+      // ~100-300px past the chapter (round 3). Stopping it in place first, then landing a frame later, is exact.
+      scrollTo(scrollX, scrollY);
+      raf(function () {
+        var top = dest === 0 ? 0 : el.getBoundingClientRect().top + scrollY;
+        try { scrollTo({ top: top, behavior: 'instant' }); } catch (e) { scrollTo(0, top); }
+      });
     }
     function stop() {
       clearTimeout(landT); landT = 0;
@@ -399,5 +404,6 @@
     var main = $('main.journey') || document.body, t = 0;
     new MutationObserver(function () { clearTimeout(t); t = setTimeout(scanAll, 60); }).observe(main, { childList: true, subtree: true });
   }
+  // Loaded `async` (a slow file must not hold back DOMContentLoaded / load), so it may run before the body is parsed.
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();

@@ -6,7 +6,7 @@
  *  - enhance.js is `defer`, and deferred scripts run in document order AFTER the 870 KB app bundle, so on a slow
  *    connection the loader's controller (caption, progress, safety exit) only started once the bundle had arrived.
  *
- * Parts: 1. flags + loader colour (before first paint)  2. loader controller (starts as soon as the markup is parsed)
+ * Parts: 1. flags, enhance.css, loader colour (before first paint)  2. loader controller (starts as soon as the markup is parsed)
  *
  * Round 3: `ydx-b` (set here and only here) is what shows the brand loader and hides the app's own counter, so if
  * this file fails to load the page falls back to the app's original loader instead of an uncontrolled cover. The
@@ -19,6 +19,13 @@
   c.add('ydx-b', 'ydx-js', 'ydx-load');
   try { if (sessionStorage.getItem('ydx-tomi-seen')) c.add('ydx-repeat'); } catch (e) {}
   try { if (window.self !== window.top) c.add('ydx-frame'); } catch (e) { c.add('ydx-frame'); }
+  // enhance.css, appended after the app's CSS. Script-inserted, so it never blocks first paint or the app's module
+  // (a parser <link> here held both for as long as the file took; enhance.js adds it too if this script failed)
+  if (!document.querySelector('link[data-ydx]')) {
+    var css = document.createElement('link');
+    css.rel = 'stylesheet'; css.href = '/ydx/enhance.css'; css.setAttribute('data-ydx', '');
+    document.head.appendChild(css);
+  }
 
   /* ---------------------------------------------------------------- 1. loader colour = the model in the URL */
   var h = location.hash || '', id = h.indexOf('#/') === 0 ? '' : h.slice(1).split('/')[0];

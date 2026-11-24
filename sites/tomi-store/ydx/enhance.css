@@ -1,33 +1,8 @@
-/* ydx enhancement layer for TOMI (tomi-store). Loaded after the site's CSS so it can override.
- * The loader's critical CSS lives inline in index.html (<style data-ydx>); this file adds its motion and
- * everything else. All motion sits behind prefers-reduced-motion: no-preference. */
-
-/* ---------------------------------------------------------------- loader motion */
-.ydx-cap { white-space: nowrap; }
-html[data-ydx-l="he"] .ydx-cap { letter-spacing: .12em; }
-@media (prefers-reduced-motion: no-preference) {
-  /* wireframe draws itself on the first visit, then the meridians turn like a cylinder rotating */
-  html:not(.ydx-repeat):not(.ydx-frame) .ydx-wire .w:not(.ydx-surf) {
-    stroke-dasharray: 1 1; stroke-dashoffset: 1;
-    animation: ydx-draw .75s cubic-bezier(.65,0,.35,1) forwards;
-  }
-  html:not(.ydx-repeat):not(.ydx-frame) .ydx-wire .w:nth-child(2) { animation-delay: .08s; }
-  html:not(.ydx-repeat):not(.ydx-frame) .ydx-wire .w:nth-child(3) { animation-delay: .22s; animation-duration: .7s; }
-  html:not(.ydx-repeat):not(.ydx-frame) .ydx-wire .w:nth-child(4) { animation-delay: .3s; animation-duration: .6s; }
-  .ydx-mer .w { animation: ydx-turn 2.6s cubic-bezier(.37,0,.63,1) infinite alternate; }
-  .ydx-mer .w:nth-child(2) { animation-delay: -.65s; }
-  .ydx-mer .w:nth-child(3) { animation-delay: -1.3s; }
-  .ydx-mer .w:nth-child(4) { animation-delay: -1.95s; }
-  .ydx-mark .t { animation: ydx-breathe 2.4s ease-in-out infinite; transform-origin: 100px 100px; }
-  html:not(.ydx-repeat):not(.ydx-frame) .ydx-mark { animation: ydx-in .9s cubic-bezier(.22,1,.36,1) both; }
-  html:not(.ydx-repeat):not(.ydx-frame) .ydx-count,
-  html:not(.ydx-repeat):not(.ydx-frame) .ydx-cap { animation: ydx-up .9s .12s cubic-bezier(.22,1,.36,1) both; }
-}
-@keyframes ydx-draw { to { stroke-dashoffset: 0; } }
-@keyframes ydx-turn { from { transform: translateX(-21px); } to { transform: translateX(21px); } }
-@keyframes ydx-breathe { 50% { stroke-opacity: .28; transform: scale(1.015); } }
-@keyframes ydx-in { from { opacity: 0; transform: scale(.92); } }
-@keyframes ydx-up { from { opacity: 0; transform: translateY(14px); } }
+/* ydx enhancement layer for TOMI (tomi-store). Appended after the site's CSS so it can override.
+ * Round 3: it is injected by ydx/boot.js (and enhance.js as a fallback) instead of a parser <link>, so a slow or
+ * missing file can never block first paint or the app (a parser stylesheet also blocks script execution). The
+ * whole loader, motion included, lives inline in index.html (<style data-ydx>), so nothing here is needed before
+ * the app is ready. All motion sits behind prefers-reduced-motion: no-preference. */
 
 /* ---------------------------------------------------------------- language shutter */
 .ydx-shutter {

@@ -9,6 +9,17 @@
   try { frame = W.self !== W.top ? 1 : 0; } catch (e) { frame = 1; }
   var reduce = W.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   d.className += ' ydx-js ydx-hold ydx-loading' + (seen ? ' ydx-repeat' : '') + (frame ? ' ydx-frame' : '');
+  // enhance.css is attached from here so it never blocks: a parser-inserted stylesheet holds back the first paint AND
+  // the app's module scripts (round 3: with the file 8 s slow, nothing painted and React hydrated only after 8 s).
+  // A <noscript> copy in <head> serves visitors without JS. `ydx-css` lets enhance.js's overlays show only once
+  // styled; if the file lands after the loader is gone, `ydx-late-css` skips the intro/reveals instead of replaying.
+  var css = document.createElement('link');
+  css.rel = 'stylesheet'; css.href = '/ydx/enhance.css';
+  css.onload = function () {
+    if (W.__ydxDone) { d.classList.add('ydx-late-css'); d.classList.remove('ydx-motion'); }
+    d.classList.add('ydx-css');
+  };
+  document.head.appendChild(css);
   // Timings (ms). cap = latest release, measured from navigation start.
   var climb = reduce ? 0 : frame ? 260 : seen ? 300 : 1000,
       cap = frame ? 0 : reduce ? 1200 : seen ? 500 : 2400,

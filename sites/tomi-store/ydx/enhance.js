@@ -6,17 +6,30 @@
  * Parts: (1. loader -> ydx/boot.js)  2. header scroll behaviour (+ cart-count pin)  3. language-switch shutter
  *        4. magnetic buttons  5. ring cursor  6. page-title fit (inline font-size on overflowing titles only)
  *        7. route-curtain word mask  8. dial notes clearance (round 2)
+ * Round 3: loaded `async` (it must tolerate any order relative to the app bundle and must not hold
+ * DOMContentLoaded/load), so it waits for the DOM itself; it runs once even if included twice; it adds
+ * enhance.css if boot.js could not; overlays that need enhance.css stay off when that file is missing.
  */
 (function () {
   'use strict';
+  if (window.__ydxTomi) return; // a second copy would stack a second shutter and swallow the language click
+  window.__ydxTomi = 1;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+function run() {
   var html = document.documentElement;
   var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var fine = matchMedia('(pointer: fine)').matches;
-  var EASE_IO = 'cubic-bezier(.76,0,.24,1)';
   var EASE_OUT = 'cubic-bezier(.22,1,.36,1)';
   var EASE_IN = 'cubic-bezier(.55,0,.7,.2)';
   html.classList.add('ydx-js');
-  if (reduced) html.classList.add('ydx-rm');
+  if (!document.querySelector('link[data-ydx]')) { // boot.js failed: still get the stylesheet (no shutter/cursor until it applies)
+    var css = document.createElement('link');
+    css.rel = 'stylesheet'; css.href = '/ydx/enhance.css'; css.setAttribute('data-ydx', '');
+    document.head.appendChild(css);
+  }
+  // enhance.css applied? (overlays below would otherwise render as unstyled blocks at the end of <body>)
+  function styled(el) { return getComputedStyle(el).position === 'fixed'; }
 
   /* 1. loader: moved to ydx/boot.js in round 2 (sync in <head>; it must not wait for the app bundle) */
 
@@ -67,23 +80,32 @@
   /* ------------------------------------------------------------------ 3. language shutter
    * Switching he/en flips the whole layout (RTL <-> LTR). Instead of a hard jump we sweep a panel in the
    * current model colour across the screen in the NEW reading direction, flip the language under cover, and
-   * sweep out. The app's own click handler runs unchanged (we just call it ~300ms later). */
+   * sweep out. The app's own click handler runs unchanged (we just call it ~300ms later).
+   * Round 3: the click is never lost. If the in-sweep cannot finish (tab sent to the background mid-sweep, where
+   * animations stop; a busy main thread), the language still flips: at once when the tab is hidden, else from the
+   * 2.5 s safety timer. Before, the timer hid the shutter without flipping, and the stale onfinish then flipped
+   * the language by itself when the user came back to the tab. */
   (function langShutter() {
     if (reduced || !Element.prototype.animate) return;
-    var passing = false, busy = false;
+    var passing = false, sweep = null;
     var sh = document.createElement('div');
     sh.className = 'ydx-shutter';
     sh.setAttribute('aria-hidden', 'true');
     sh.hidden = true;
     sh.innerHTML = '<b></b>';
     document.body.append(sh);
+    function pass(btn) { passing = true; try { btn.click(); } finally { passing = false; } }
     document.addEventListener('click', function (e) {
       var btn = e.target.closest && e.target.closest('.lang');
       if (!btn || passing) return;
-      if (busy) { e.stopImmediatePropagation(); e.preventDefault(); return; }
+      if (sweep) { e.stopImmediatePropagation(); e.preventDefault(); return; } // one switch per sweep
+      if (document.hidden || !styled(sh)) return; // no stylesheet: plain switch, the app handles it
       e.stopImmediatePropagation();
       e.preventDefault();
-      busy = true;
+      var me = sweep = { flipped: false, end: done };
+      function flip() { if (!me.flipped) { me.flipped = true; pass(btn); } }
+      function done() { if (sweep === me) { flip(); sh.hidden = true; sweep = null; } }
+      setTimeout(done, 2500); // armed first, so nothing below can leave the page covered
       var toEn = (html.lang || 'he') === 'he';
       sh.firstChild.textContent = toEn ? 'English' : 'עברית';
       sh.hidden = false;
@@ -93,16 +115,17 @@
       var inA = sh.animate([{ clipPath: a[0] }, { clipPath: a[1] }], { duration: 340, easing: 'cubic-bezier(.6,0,.3,1)', fill: 'forwards' });
       sh.firstChild.animate([{ transform: 'translateX(' + tx[0] + 'px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 420, easing: EASE_OUT, fill: 'forwards' });
       inA.onfinish = function () {
-        passing = true;
-        try { btn.click(); } finally { passing = false; }
+        if (sweep !== me) return;
+        flip();
         setTimeout(function () {
+          if (sweep !== me) return;
           var out = sh.animate([{ clipPath: a[1] }, { clipPath: a[2] }], { duration: 520, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'forwards' });
           sh.firstChild.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateX(' + tx[2] + 'px)', opacity: 0 }], { duration: 380, easing: EASE_IN, fill: 'forwards' });
-          out.onfinish = function () { sh.hidden = true; busy = false; };
+          out.onfinish = done;
         }, 90);
       };
-      setTimeout(function () { if (busy) { sh.hidden = true; busy = false; } }, 2500);
     }, true);
+    document.addEventListener('visibilitychange', function () { if (document.hidden && sweep) sweep.end(); });
   })();
 
   /* ------------------------------------------------------------------ 4. magnetic buttons (pointer: fine)
@@ -130,7 +153,11 @@
       ty = (e.clientY - (r.top - y + r.height / 2)) * k;
       kick();
     }, { passive: true });
-    document.addEventListener('pointerdown', function () { tx = ty = 0; kick(); }, { passive: true });
+    function rest() { tx = ty = 0; kick(); }
+    document.addEventListener('pointerdown', rest, { passive: true });
+    // the pointer can leave the window while over a button (no further pointermove): let it settle back
+    html.addEventListener('pointerleave', rest);
+    addEventListener('blur', rest);
   })();
 
   /* ------------------------------------------------------------------ 5. ring cursor (pointer: fine)
@@ -142,6 +169,7 @@
     c.className = 'ydx-cursor';
     c.setAttribute('aria-hidden', 'true');
     document.body.append(c);
+    var ok = false; // checked on first use: enhance.css is injected and may still be on its way at this point
     var mx = -100, my = -100, x = -100, y = -100, raf = 0, shown = false;
     var HOT = 'a[href], button:not(:disabled), summary, [role="tab"], label[for], select, .fc, .pc, .chip';
     function loop() {
@@ -151,6 +179,7 @@
     }
     document.addEventListener('pointermove', function (e) {
       if (e.pointerType !== 'mouse') { c.classList.remove('on'); return; }
+      if (!ok && !(ok = styled(c))) return;
       mx = e.clientX; my = e.clientY;
       if (!shown) { shown = true; x = mx; y = my; }
       var t = e.target;
@@ -178,6 +207,7 @@
         h.style.fontSize = '';
         var par = h.parentElement, ps = getComputedStyle(par);
         var col = par.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight);
+        if (col <= 0) return; // pages hidden (home): nothing to measure
         var w = h.scrollWidth;
         // measure the widest line's real ink width
         var r = document.createRange(); r.selectNodeContents(h);
@@ -252,4 +282,5 @@
     new MutationObserver(function () { later(); }).observe(html, { attributes: true, attributeFilter: ['lang'] });
     addEventListener('resize', function () { later(250); });
   })();
+}
 })();

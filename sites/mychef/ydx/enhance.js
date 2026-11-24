@@ -62,6 +62,9 @@
       loaderDone = true;
       try { sessionStorage.setItem('ydx-seen', '1'); } catch (e) { /* storage blocked: fine */ }
       noApp();   // app still missing? show the text before the cloth lifts, not after
+      // enhance.css loads without blocking the first paint; if it is still on its way when the cloth lifts, don't
+      // let its hide-before-reveal rules land on text the guest is already reading.
+      if (!hasCSS()) cls.remove('ydx-enter');
       if (!loader || !loader.isConnected) { cls.remove('ydx-loading'); return; }
       const finish = () => { loader.remove(); cls.remove('ydx-loading'); cls.add('ydx-loaded'); };
       // Round 3: any throw below (an animation the browser refuses, a missing API) used to leave the loader up with
@@ -395,9 +398,7 @@
     }
 
     /* Boot + re-scan when React re-renders (language switch re-mounts the whole page). */
-    const boot = () => { scan(); measure(); onScroll(); };
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
-    else boot();
+    scan(); measure(); onScroll();
     let pending = 0;
     new MutationObserver(() => {
       if (pending) return;
