@@ -88,6 +88,20 @@ dialog.modal[open]::backdrop { animation: ydx-fade .22s ease both; }
 .empty .btn.primary { background: var(--ink); border-color: var(--ink); color: var(--chalk); }
 @media (hover: hover) { .empty .btn.primary:hover:not(:disabled) { background: #2b2b29; } }
 
+/* Library search dead end (round 4): a search with no match left the
+   exercise grid empty (no message at all) and the food table with just its
+   header, while clients and calendar show the app's .empty card. Give the
+   library the same card from CSS only (nothing is inserted into React's
+   tree); copy in the app's tone, Hebrew by default, English under lang=en. */
+.club-page-library .exercise-catalog:empty { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 10px; padding: 34px 20px; border-radius: var(--r-card); background: var(--chalk); color: var(--ink); text-align: center; }
+.club-page-library .exercise-catalog:empty::before { content: "המדף ריק"; max-width: 18ch; font: 900 clamp(26px, 3vw, 38px)/.95 var(--f-display); text-transform: uppercase; }
+.club-page-library .exercise-catalog:empty::after,
+.club-page-library .table-scroll:has(tbody:empty)::after { content: "אפשר לנסות חיפוש אחר או להוסיף תרגיל חדש."; max-width: 46ch; color: var(--ink-2); }
+.club-page-library .table-scroll:has(tbody:empty)::after { content: "לא נמצאו מרכיבים שמתאימים לחיפוש."; display: block; padding: 22px 10px; text-align: center; font-weight: 500; }
+html[lang="en"] .club-page-library .exercise-catalog:empty::before { content: "Nothing on the rack"; }
+html[lang="en"] .club-page-library .exercise-catalog:empty::after { content: "Try another search, or add a new movement."; }
+html[lang="en"] .club-page-library .table-scroll:has(tbody:empty)::after { content: "No ingredients match this search."; }
+
 /* Form labels: show which field is active */
 .field > span { transition: color .15s; }
 .field:focus-within > span { color: var(--ink); }
@@ -151,7 +165,7 @@ dialog.modal[open]::backdrop { animation: ydx-fade .22s ease both; }
   /* empty states (round 4): the card settles in where the list was, and its
      bare barbell "test-loads" once: each empty slot flashes its plate colour
      in loading order and drains again. Plays once per mount, never loops. */
-  .empty, .quiet-note { animation: ydx-up var(--ydx-t-in) var(--ydx-out) both; }
+  .empty, .quiet-note, .club-page-library .exercise-catalog:empty { animation: ydx-up var(--ydx-t-in) var(--ydx-out) both; }
   .empty-bar i { animation: ydx-slot .9s ease-in-out both; animation-delay: calc(.18s + var(--ydx-i, 0) * 90ms); }
   .empty-bar i:nth-child(1) { --c: var(--red, #e3242b); }
   .empty-bar i:nth-child(2) { --c: var(--blue, #1d5fd8); --ydx-i: 1; }
