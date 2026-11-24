@@ -272,7 +272,7 @@
       setTimeout(() => { cls.add('ydx-arrival-off'); cls.remove('ydx-fade'); }, 400);
       return;
     }
-    await irisOut(a, MODE === 'frame' ? 380 : quick ? 560 : 940, lens);
+    await irisOut(a, MODE === 'frame' ? 380 : quick ? 560 : 860, lens);
     mark('end');
   }
 
