@@ -83,9 +83,10 @@
     loaderGone = true;
     try { sessionStorage.setItem('ydx-form-seen', '1'); } catch (e) { /* private mode */ }
     const done = () => { loader.remove(); };
-    const release = () => { html.classList.remove('ydx-loading'); loader.style.pointerEvents = 'none'; };
+    loader.style.pointerEvents = 'none';
     if (reduced()) {
-      release();
+      html.classList.remove('ydx-loading');
+      if (rootEl) rootEl.inert = false;
       loader.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).finished.then(done, done);
       return;
     }
@@ -93,11 +94,25 @@
     const quick = mode === 'repeat' || mode === 'frame';
     const stage = loader.querySelector('.ydx-stage');
     const cur = loader.querySelector('.ydx-cur');
-    // the bar is lifted a touch (a clean pull) before the curtain goes
-    const lift = quick ? 0 : 170;
-    if (lift) stage.querySelector('.ydx-bar').animate([{ transform: 'none' }, { transform: 'translateY(-10px)' }], { duration: lift + 200, easing: EASE_OUT, fill: 'forwards' });
-    setTimeout(() => { release(); pageWindow = performance.now() + 500; choreograph(true); }, lift + 60);
-    slideOff(cur, stage, innerWidth, mode === 'frame' ? 300 : quick ? 380 : 620, lift).then(done, done);
+    const tStart = performance.now();
+    // the bar is lifted a touch (a clean pull) before the curtain goes; the
+    // lift runs on the compositor while we do the heavy work underneath
+    const lift = quick ? 0 : 150;
+    if (lift) stage.querySelector('.ydx-bar').animate([{ transform: 'none' }, { transform: 'translateY(-10px)' }], { duration: lift + 220, easing: EASE_OUT, fill: 'forwards' });
+    // Release the app's paused entrances and set up our choreography while the
+    // floor still covers everything, in two separate frames (each is a big
+    // style pass), and only then pull the curtain. Doing it after the curtain
+    // started let finished content show for a frame and then re-enter.
+    html.classList.remove('ydx-loading');
+    if (rootEl) rootEl.inert = false;
+    requestAnimationFrame(() => {
+      pageWindow = performance.now() + 500;
+      choreograph(true, quick ? 60 : 140);
+      requestAnimationFrame(() => {
+        const wait = Math.max(0, lift - (performance.now() - tStart));
+        slideOff(cur, stage, innerWidth, mode === 'frame' ? 300 : quick ? 380 : 600, wait).then(done, done);
+      });
+    });
   }
 
   if (loader) {
@@ -107,8 +122,14 @@
     loader.addEventListener('touchmove', stop, { passive: false });
     const mode = loader.getAttribute('data-mode');
     // first visit lets the bar finish loading (~1.1s of plates); repeat/iframe/reduced are brief
-    const minShow = reduced() ? 450 : mode === 'repeat' ? 260 : mode === 'frame' ? 260 : 1250;
-    const hardStop = framed ? 420 : 3300; // + exit (~300 / ~800ms) keeps it under 0.8s / 4s
+    // first visit: the bar is loaded and locked at ~1.05s
+    const minShow = reduced() ? 450 : mode === 'repeat' ? 260 : mode === 'frame' ? 260 : 1080;
+    const hardStop = framed ? 420 : 3300; // + exit (~300 / ~750ms) keeps it under 0.8s / 4s
+    // enhance.js owns the exit from here: drop the CSS fallback fade, which
+    // would otherwise fight the curtain on slow connections
+    if (performance.now() - t0 < 14500) loader.style.animation = 'none';
+    // keyboard focus must not land on the (covered) app while the bar loads
+    if (rootEl) rootEl.inert = true;
     const fontsReady = Promise.race([d.fonts ? d.fonts.ready : Promise.resolve(), new Promise(r => setTimeout(r, 1500))]);
     let fontsOk = false; fontsReady.then(() => { fontsOk = true; });
     const tick = () => {
@@ -116,7 +137,9 @@
       const el = performance.now() - t0;
       const st = appState();
       const ready = (st === 'signin' || st === 'app') && fontsOk && d.readyState !== 'loading';
-      if ((ready && el >= minShow) || el >= hardStop) finishLoader();
+      // past the hard stop we still wait while #root is empty (bundle still
+      // downloading): revealing a blank floor is worse than the bar. 15s cap.
+      if ((ready && el >= minShow) || (el >= hardStop && st !== 'none') || el >= 15000) finishLoader();
       else setTimeout(tick, 60);
     };
     tick();
@@ -187,7 +210,7 @@
 
   // page: true when a whole view (re)mounted -> stagger what's on screen,
   // defer the rest to scroll. false: just new nodes (list item added, tab).
-  function choreograph(page) {
+  function choreograph(page, base = 90) {
     const main = d.querySelector('main.workspace');
     if (!main || reduced() || html.classList.contains('ydx-loading')) return;
     if (!io) io = new IntersectionObserver(entries => entries.forEach(e => {
@@ -197,22 +220,23 @@
       enter(e.target, 0);
     }), { rootMargin: '0px 0px -8% 0px', threshold: 0.01 });
     const vh = innerHeight;
-    let i = 0;
+    // read phase: measure everything first (no layout thrash) ...
+    const jobs = [];
     main.querySelectorAll(REVEAL).forEach(el => {
       if (seen.has(el)) return; seen.add(el);
       if (!page) return; // only first-time page content is choreographed
-      // nested reveal targets inherit their parent's motion; skip them
+      // nested reveal targets inherit their parent's motion
       const parent = el.parentElement && el.parentElement.closest(REVEAL);
-      if (parent && main.contains(parent) && parent !== el) { if (parent.getAttribute('data-ydx-rv') === 'pending') return; }
+      const nested = !!(parent && main.contains(parent));
       const r = el.getBoundingClientRect();
       if (r.width === 0 && r.height === 0) return;
-      if (r.top < vh * 0.98) {
-        if (!(parent && main.contains(parent))) enter(el, 90 + Math.min(i++, 9) * 55);
-        else countIn(el, 200);
-      } else if (!(parent && main.contains(parent))) {
-        el.setAttribute('data-ydx-rv', 'pending');
-        io.observe(el);
-      }
+      jobs.push([el, nested, r.top < vh * 0.98]);
+    });
+    // ... then write (animations, observers)
+    let i = 0;
+    jobs.forEach(([el, nested, onScreen]) => {
+      if (onScreen) { if (!nested) enter(el, base + Math.min(i++, 9) * 55); else countIn(el, base + 110); }
+      else if (!nested) { el.setAttribute('data-ydx-rv', 'pending'); io.observe(el); }
     });
     drawChart(main);
   }
@@ -263,7 +287,8 @@
       choreograph(now < pageWindow);
     }
     if (html.dir !== lastDir) {
-      if (loaderGone && lastDir && now > busyUntil) { busyUntil = now + 600; wipe({ duration: 560, z: 80 }); }
+      // language switch: the floor names the language it is switching to
+      if (loaderGone && lastDir && now > busyUntil) { busyUntil = now + 600; wipe({ duration: 560, z: 80, label: html.dir === 'rtl' ? 'עברית' : 'English' }); }
       lastDir = html.dir;
     }
     lastState = st; lastKey = key || lastKey;

@@ -6,10 +6,11 @@
   <!-- ydx: loader critical CSS (paints before the 600KB app bundle runs) -->
   <style data-ydx>
     @property --ydx-kg{syntax:'<integer>';inherits:true;initial-value:0}
-    #ydx-loader{--d:1;--e:cubic-bezier(.2,.7,.2,1);--pop:cubic-bezier(.2,.9,.3,1.25);position:fixed;inset:0;z-index:2147483000;overflow:hidden;pointer-events:auto;contain:strict;animation:ydx-safety .35s 5.2s forwards}
+    #ydx-loader{--d:1;--e:cubic-bezier(.2,.7,.2,1);--pop:cubic-bezier(.2,.9,.3,1.25);position:fixed;inset:0;z-index:2147483000;overflow:hidden;pointer-events:auto;contain:strict;animation:ydx-safety .35s 15s forwards}
+    html:has(#root>*) #ydx-loader{animation-delay:5.2s}
     [dir=rtl] #ydx-loader{--d:-1}
     #ydx-loader .ydx-cur{position:absolute;inset-block:0;inset-inline-end:0;overflow:hidden;width:calc(100% + 72px);background-color:#111;background-image:inherit;background-size:inherit}
-    #ydx-loader .ydx-edge{position:absolute;inset-block:0;inset-inline-start:0;width:72px;display:flex;gap:4px}
+    #ydx-loader .ydx-edge{position:absolute;z-index:1;inset-block:0;inset-inline-start:0;width:72px;display:flex;gap:4px;background:#111}
     #ydx-loader .ydx-edge i{flex:1;background:var(--c)}
     .ydx-edge i:nth-child(1){--c:#e3242b}.ydx-edge i:nth-child(2){--c:#1d5fd8}.ydx-edge i:nth-child(3){--c:#f7c600}.ydx-edge i:nth-child(4){--c:#16a34a}
     #ydx-loader .ydx-stage{position:absolute;inset-block:0;inset-inline:72px 0;display:grid;place-content:center;justify-items:center;gap:clamp(22px,4vh,34px);padding:24px}
@@ -23,16 +24,16 @@
     #ydx-loader .ydx-stop{flex:none;width:14px;height:calc(var(--ph)*.4);border-radius:3px;background:linear-gradient(#f0f1f2,#8a8e94)}
     #ydx-loader .ydx-sleeve{position:relative;flex:none;width:58%;height:100%;display:flex;align-items:center;gap:3px;padding-inline-start:6px}
     #ydx-loader .ydx-sleeve:before{content:"";position:absolute;inset-inline:0 -6px;top:50%;height:22px;margin-top:-11px;border-radius:4px;background:repeating-linear-gradient(90deg,#d8dadd 0 2px,#a9adb2 2px 4px)}
-    #ydx-loader .ydx-sleeve i{position:relative;height:100%;border-radius:calc(var(--ph)*.09);background:var(--c);box-shadow:inset 0 -6px #0000002e,inset 0 4px #ffffff38,inset 0 0 0 2px #0000001f;animation:ydx-plate .42s var(--pop) both}
-    #ydx-loader .ydx-sleeve i:nth-child(1){--c:#e3242b;width:calc(var(--ph)*.27);animation-delay:.28s}
-    #ydx-loader .ydx-sleeve i:nth-child(2){--c:#1d5fd8;width:calc(var(--ph)*.24);animation-delay:.42s}
-    #ydx-loader .ydx-sleeve i:nth-child(3){--c:#f7c600;width:calc(var(--ph)*.21);animation-delay:.56s}
-    #ydx-loader .ydx-sleeve i:nth-child(4){--c:#16a34a;width:calc(var(--ph)*.18);animation-delay:.70s}
-    #ydx-loader .ydx-clip{position:relative;flex:none;width:calc(var(--ph)*.15);height:calc(var(--ph)*.36);margin-inline-start:3px;border-radius:3px;background:repeating-linear-gradient(90deg,#d8dadd 0 2px,#8a8e94 2px 4px);animation:ydx-clip .34s var(--pop) .86s both,ydx-lock .3s 1.06s forwards}
+    #ydx-loader .ydx-sleeve i{position:relative;height:100%;border-radius:calc(var(--ph)*.09);background:var(--c);box-shadow:inset 0 -6px #0000002e,inset 0 4px #ffffff38,inset 0 0 0 2px #0000001f;animation:ydx-plate .4s var(--pop) both}
+    #ydx-loader .ydx-sleeve i:nth-child(1){--c:#e3242b;width:calc(var(--ph)*.27);animation-delay:.24s}
+    #ydx-loader .ydx-sleeve i:nth-child(2){--c:#1d5fd8;width:calc(var(--ph)*.24);animation-delay:.36s}
+    #ydx-loader .ydx-sleeve i:nth-child(3){--c:#f7c600;width:calc(var(--ph)*.21);animation-delay:.48s}
+    #ydx-loader .ydx-sleeve i:nth-child(4){--c:#16a34a;width:calc(var(--ph)*.18);animation-delay:.60s}
+    #ydx-loader .ydx-clip{position:relative;flex:none;width:calc(var(--ph)*.15);height:calc(var(--ph)*.36);margin-inline-start:3px;border-radius:3px;background:repeating-linear-gradient(90deg,#d8dadd 0 2px,#8a8e94 2px 4px);animation:ydx-clip .3s var(--pop) .74s both,ydx-lock .26s .92s forwards}
     #ydx-loader .ydx-cap{display:flex;gap:.7em;align-items:center;font:600 12px/1 "IBM Plex Mono","IBM Plex Sans Hebrew",ui-monospace,monospace;letter-spacing:.09em;text-transform:uppercase;color:#f3f1eaa6;animation:ydx-rise .5s var(--e) .15s both}
-    #ydx-loader .ydx-cap:before{content:"";width:7px;height:16px;border-radius:2px;background:#e3242b}
-    #ydx-loader .ydx-kg{direction:ltr;color:#f3f1ea;font-weight:600;counter-reset:kg var(--ydx-kg);animation:ydx-kg 1s steps(14,end) .2s both}
-    #ydx-loader .ydx-kg:before{content:counter(kg)}
+    #ydx-loader .ydx-cap:before{content:"";width:7px;height:16px;border-radius:2px;background:#e3242b;animation:ydx-wait 1.1s ease-in-out 1.6s infinite}
+    #ydx-loader .ydx-kg{direction:ltr;color:#f3f1ea;font-weight:600;counter-reset:kg var(--ydx-kg);animation:ydx-kg .8s steps(14,end) .2s both}
+    #ydx-loader .ydx-kg:before{content:counter(kg);display:inline-block;min-width:3ch;text-align:end;font-variant-numeric:tabular-nums}
     #ydx-loader .ydx-kg:after{content:attr(data-unit)}
     #ydx-loader.is-quick *{animation-duration:.01ms!important;animation-delay:0s!important}
     @keyframes ydx-o{from{transform:scale(0) rotate(-120deg)}}
@@ -42,9 +43,10 @@
     @keyframes ydx-clip{from{transform:translateX(calc(var(--d)*60px));opacity:0}}
     @keyframes ydx-lock{to{background:#16a34a;box-shadow:0 0 0 3px #16a34a40}}
     @keyframes ydx-kg{from{--ydx-kg:20}to{--ydx-kg:160}}
+    @keyframes ydx-wait{50%{opacity:.25}}
     @keyframes ydx-safety{to{opacity:0;visibility:hidden;pointer-events:none}}
-    @media (prefers-reduced-motion:reduce){#ydx-loader *{animation:none!important}#ydx-loader .ydx-kg{--ydx-kg:160}#ydx-loader .ydx-clip{background:#16a34a}}
+    @media (prefers-reduced-motion:reduce){#ydx-loader *,#ydx-loader .ydx-cap:before{animation:none!important}#ydx-loader .ydx-kg{--ydx-kg:160}#ydx-loader .ydx-clip{background:#16a34a}}
   </style>
   <link rel="stylesheet" href="/ydx/enhance.css"><!-- ydx -->
   <script src="/ydx/enhance.js" defer></script><!-- ydx -->
-</head><body><!-- ydx: boot loader (outside #root, removed by /ydx/enhance.js) --><div id="ydx-loader" aria-hidden="true"><div class="ydx-cur"><div class="ydx-edge"><i></i><i></i><i></i><i></i></div><div class="ydx-stage"><div class="ydx-mark"><b>F</b><span class="ydx-o"></span><b>RM</b></div><div class="ydx-bar"><span class="ydx-shaft"></span><span class="ydx-stop"></span><span class="ydx-sleeve"><i></i><i></i><i></i><i></i><span class="ydx-clip"></span></span></div><p class="ydx-cap"><span class="ydx-msg">מעמיסים את המוט</span><b class="ydx-kg" data-unit=" ק״ג"></b></p></div></div></div><script>/* ydx: boot flags — runs before the app; mirrors the app's own language choice so the loader matches */(function(){var h=document.documentElement,l=document.getElementById('ydx-loader');h.classList.add('ydx-js','ydx-loading');window.__ydxT0=performance.now();try{if(localStorage.getItem('form-language')==='en'){h.lang='en';h.dir='ltr';l.querySelector('.ydx-msg').textContent='Loading the bar';l.querySelector('.ydx-kg').setAttribute('data-unit',' KG')}}catch(e){}var seen=false;try{seen=sessionStorage.getItem('ydx-form-seen')==='1'}catch(e){}var framed=true;try{framed=window.self!==window.top}catch(e){}if(seen)l.classList.add('is-quick');l.setAttribute('data-mode',seen?'repeat':framed?'frame':'first');setTimeout(function(){if(l.isConnected){l.remove();h.classList.remove('ydx-loading')}},6000)})();</script><div id="root"></div></body></html>
+</head><body><!-- ydx: boot loader (outside #root, removed by /ydx/enhance.js) --><div id="ydx-loader" aria-hidden="true"><div class="ydx-cur"><div class="ydx-edge"><i></i><i></i><i></i><i></i></div><div class="ydx-stage"><div class="ydx-mark"><b>F</b><span class="ydx-o"></span><b>RM</b></div><div class="ydx-bar"><span class="ydx-shaft"></span><span class="ydx-stop"></span><span class="ydx-sleeve"><i></i><i></i><i></i><i></i><span class="ydx-clip"></span></span></div><p class="ydx-cap"><span class="ydx-msg">מעמיסים את המוט</span><b class="ydx-kg" data-unit=" ק״ג"></b></p></div></div></div><script>/* ydx: boot flags — runs before the app; mirrors the app's own language choice so the loader matches */(function(){var h=document.documentElement,l=document.getElementById('ydx-loader');h.classList.add('ydx-js','ydx-loading');window.__ydxT0=performance.now();try{if(localStorage.getItem('form-language')==='en'){h.lang='en';h.dir='ltr';l.querySelector('.ydx-msg').textContent='Loading the bar';l.querySelector('.ydx-kg').setAttribute('data-unit',' KG')}}catch(e){}var seen=false;try{seen=sessionStorage.getItem('ydx-form-seen')==='1'}catch(e){}var framed=true;try{framed=window.self!==window.top}catch(e){}if(seen)l.classList.add('is-quick');l.setAttribute('data-mode',seen?'repeat':framed?'frame':'first');var r=document.getElementById('root'),k=setInterval(function(){var e=performance.now()-window.__ydxT0;if(!l.isConnected)return clearInterval(k);if((e>6000&&r&&r.firstElementChild)||e>15000){clearInterval(k);l.remove();h.classList.remove('ydx-loading')}},250)})();</script><div id="root"></div></body></html>
