@@ -214,3 +214,59 @@ Scripts are in the round-3 scratch folder (`t-*.cjs`, `t-bgraw.mjs`).
 - Pre-existing, not ydx: navigating to a non-HTML file (such as an image URL) logs "Transition was aborted because of
   invalid state" from the site's own `@view-transition`. It happens without the layer too, and the site has no such links.
 - Safari and Firefox behaviour was reasoned from the code; only Chromium was available.
+
+## Round 4
+
+A final creative-director pass. I walked every page scroll by scroll at 1440 and on an iPhone 13 (the site is
+English-only, so there is one language), opened the bag and the dialogs, and clicked through the links. After three rounds
+the site is coherent: every section has its own entrance, the loader and the wheel/peel transitions carry the brand, and
+nothing reads as generic. Only a few things still let it down, so this round is small.
+
+### What I judged, and what changed
+
+| Where | What was wrong | Change |
+| --- | --- | --- |
+| `/flavors/`, `/serve/`, `/mix/`, phones (360–700px) | The end-of-page links that lead on to the next page ("Mix things up ↗", "Bring the whole club ↗", "Give them a twist ↗") broke into a ragged stair at the site's 25vw: "Mix / things / up ↗", "Bring the / whole / club ↗", and "Give them / **a** / twist ↗" with a lone "a". It was the weakest typography left on the site. | Sized so that each one keeps the desktop's two-line shape (condensed line over wide line) at every width from 360 to 700px (`19vw`, wide line `.5em`). Line counts were measured at 360, 390, 430 and 700 on all three pages. There is no overflow at any width. |
+| Same pages, desktop | These big links only nudged their arrow on hover. They were the one large display element with no hover gesture, while the footer wordmark right below them squeezes. | On hover and on keyboard focus the condensed line widens a little and the wide line stretches (`font-stretch`, .7s `--out`). This is the same gesture, with the same timing, as the footer wordmark. It causes no layout shift (the section height is unchanged). |
+| Wordmark on `/`, "Build a mix" on `/mix/`, the active nav link, the bag's "Build your mix" on `/mix/` | A link to the page you are already on played the full citrus-wheel transition (labelled with the page you were already on) and then **reloaded the same page** with its loader. From the bag, the dialog closed and you landed back where you started. It was a dead end that looked like navigation. | Now nothing reloads. Any open dialog closes through the site's own handler, which restarts Lenis and returns focus to the trigger. The mobile menu closes through its own toggle, so `aria-expanded` stays correct. The link gives the brand's squash (`scale` 1.05/.95, 460ms) as a "you're here", and the page glides back to the top. The glide waits until Lenis has finished easing a wheel (`lenis-scrolling`), because Lenis would otherwise cancel it. The wait is capped at 1.2s. Under reduced motion there is no squash and the jump is instant. |
+| `enhance.js` motion language | The easings were seven loose cubic-beziers. | They are now named tokens: `OUT` and `IN_OUT` (the site's own `--out` / `--in-out`), `PEEL` (the layer's one signature curve, for everything that peels) and `FLOAT` (fizz only). The kicker wipe now references `IN_OUT` (the value is unchanged), and the wheel spin moved from a near-identical one-off curve to `IN_OUT`. The wheel's flood keeps its own tuned curve, with a comment explaining why. I recorded the transition as a screencast with `PEEL` and with `OUT` on the flood. `PEEL` left the destination label sitting over a half-covered wheel. `OUT` flooded at once and hid the wheel. |
+| `/story/` opener | **Removed as noise:** the mouse-move fizz trail on "A little twist of fate." Nothing on that section invites it. On the home hero it answers "Move a little. Feel the fizz.", and the "It starts with a spark" chapter already floats fizz rings. On the opener it was just decoration. | The trail is now only on the hero and the spark chapter. |
+
+### Looked at and left alone
+
+- **Section hand-offs.** Some sections meet on straight cuts (hero to cream, cream to yellow) and others on the poured wavy
+  edge. That is the site's own rhythm of flat fields, and a wipe added on top would fight the `rise`/`roll` entrances that
+  already play there.
+- **Empty and data states.** The empty bag ("Your next favorite is waiting…" plus a CTA), the empty 0/24 crate and the
+  disclosure lines all read well and are on-brand. Nothing here is fetched from a remote API.
+- The loader, the wheel/peel transitions, the heading squeezes, the magnetic pills and the dialog exits still hold up and are
+  not duplicated anywhere. I added no cursor follower and no fly-to-bag animation (the reasons are in round 2).
+
+### Regression (round-3 suite re-run against the round-4 code: `peel-club-r4/reg/`)
+
+- **Failure matrix** (`t-matrix`, `/` and `/story/`): every mode ends up uncovered, un-held, with the hero visible and nothing
+  left at `opacity:0` after a full scroll. Usable at: normal 2.2–2.4s, js404 4.6s, css404 2.2–2.3s, both404 4.6–4.8s,
+  js +8s 4.6s (DCL 0.06–0.13s), app +8s 2.2s, frozen 5.4s, css +8s 2.1–2.3s. These are the same as round 3.
+- **Click edge cases** (`t-clicks`, `t-vterr`): double click gives one navigation. Ctrl, shift and middle clicks, `_blank`,
+  `download`, `javascript:`, `#`, `/#flavors`, files and SVG links are not intercepted. Enter starts the wheel from the link
+  centre. A link in an open dialog closes the dialog first. The only page error is the known pre-existing view-transition
+  abort on an image URL, and it appears with ydx off too.
+- `t-abort` (204, overlay cleared, next click works), `t-stale` (no stale label), `t-throw` (curtain gone, no hold),
+  `t-frame` (hub iframe curtain gone at about 1.2s; included twice gives one overlay and one wheel), `t-rm`, `t-nojs` and
+  `t-basic`: all pass. The sandboxed-iframe case logs CORS errors for the site's own assets from origin `null`. That comes
+  from the test harness, not from ydx.
+- **bfcache** (headful, Xvfb, live `cache-control`): `t-bf2` restores from bfcache. `t-backmid` passes (back during the wheel,
+  then forward, stays on `/flavors/`, restored from bfcache, no stray navigation). `t-bf` times out on Playwright's
+  `goBack` waiting for `load`, and does so identically with the round-3 files routed in, so it is a harness limitation.
+- **Background tab** (`t-bgraw`, raw CDP under Xvfb): usable 8ms (normal) and 108ms (`enhance.js` late) after the tab comes
+  forward.
+- **CLS** (`t-cls`): 0 on `/`, `/story/` and `/mix/`, desktop and mobile, on first load and on back without bfcache. One run
+  logged 0.0066 on `/mix/` desktop (the site's own disclosure line) while other tests were running in parallel. It did not
+  reproduce in two quiet re-runs, with either the round-3 or the round-4 files.
+- **New behaviour**: the same-page links (desktop nav, the bag on `/mix/`, the mobile wordmark with the menu open, reduced
+  motion, keyboard Enter on the footer mark) do not navigate, close what is open and end at `scrollY` 0. Lenis wheel
+  scrolling still works afterwards, and normal links still transition.
+- **`shoot.mjs` walks**, desktop and mobile, all 5 pages: 0 console errors or warnings, 0 failed requests. No horizontal
+  overflow at 360, 390, 768, 1280 or 1920.
+- **Live headers** (`curl -sI`): `cache-control: public, max-age=0, must-revalidate`, no CSP and no `X-Frame-Options`. This is
+  unchanged, so nothing in the layer can be blocked.
