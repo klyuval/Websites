@@ -200,3 +200,88 @@
 - **Dialog close animations:** still skipped. React unmounts the `<dialog>` and I won't intercept it.
 - **Sign-in poster crop at 360–390 px:** the "FORM" word runs behind the plate photo. This is the app's own art
   direction.
+
+## Round 3
+
+I reviewed every line of the ydx layer (the inline boot `<style>`/`<script>`, enhance.js, enhance.css) and wrote a
+Playwright test for each suspected bug, run before and after the fix (scratch scripts only; the API stubs from round 2
+were never put in the site).
+
+**Bugs found and fixed**
+1. **The inline backstop never fired.** It looked up `#root` once, but the inline script runs *before* `<div id="root">`
+   is parsed, so it held `null` and the "remove the loader at 6 s" branch was dead. Only the 15 s cap was left.
+   - **Effect:** if enhance.js failed (404, or the live worker's SPA fallback serving `index.html` with a 200 for a
+     missing file, which gives "Unexpected token '<'"), `html.ydx-loading` stayed on for 15 s. The page was covered,
+     and the app's CSS entrances (dialogs, toasts) stayed paused.
+   - **Repro:** route `/ydx/enhance.js` to a 404 or to HTML. It became usable at 15.1 s.
+   - **Fix:** look `#root` up on each tick, and lift the loader as soon as the app has mounted and window `load` has
+     fired without enhance.js (it now sets `window.__ydxForm`). The backstop also clears `inert`, and it fades out
+     instead of cutting. Usable at about 1.7 s now.
+2. **A thrown step could leave the page locked.**
+   - **Problem:** `finishLoader()` released `ydx-loading` and `#root.inert` only after the exit animation was set up,
+     so any throw left `#root` inert forever. The loader also stayed until the 15 s cap, because of bug 1.
+   - **Repro:** strip `.ydx-bar` from the loader markup. At 7.6 s it showed loader visible, `inert=true`.
+   - **Fix:** a `release()` step runs first and synchronously, and every animation step is wrapped so a failure only
+     removes the loader. `tick()` is wrapped as well.
+3. **A late enhance.js brought the loader back.**
+   - **Problem:** arriving after the CSS safety fade had started (5.2 s), it set `animation:none`, so the faded
+     loader popped back to full opacity over the visible app and then slid off.
+   - **Repro:** delay enhance.js by 5.6 s. Timeline: opacity 1 → 0.04 → 1 → gone.
+   - **Fix:** if the fade has begun, enhance.js lets it finish and only cleans up.
+4. **enhance.js run twice** gave two observers and two wipes per view switch (repro: `addScriptTag` a second copy).
+   There is now a run-once guard.
+5. **Without enhance.css, the wipes rendered unstyled:** `position:static`, clickable, with the label text in the page
+   flow. enhance.css now sets a `--ydx-css` sentinel, and wipes and scroll-reveal hiding only happen when it is
+   present.
+6. **The view-switch curtain cut the mobile drawer in half.**
+   - **Problem:** the curtain (z 70) sat above the closing drawer (z 50). The drawer showed only over the topbar.
+   - **Repro:** a frozen frame 110 ms after picking a view in the drawer.
+   - **Fix:** view wipes are now z 45, under the drawer. Full-screen wipes are z 55 (they were 80). Toasts (popover)
+     and dialogs are in the top layer either way.
+7. **No JS meant 15 s of loader, then a blank floor.** A `<noscript>` rule now hides the loader.
+8. **A slow enhance.css held up everything** (first paint, the boot script and the app mount: +8 s when delayed by
+   8 s), because it was a render- and script-blocking stylesheet. It now loads non-blocking (`media=print` →
+   `onload` → `all`); the loader's critical CSS is inline anyway. A delayed enhance.js does *not* delay the app: it
+   comes after the module bundle in document order (measured: the app mounted at 64–104 ms either way). So it stays
+   `defer`; `async` could run it before `#root` is parsed.
+9. **Leaks and robustness:**
+   - The IntersectionObserver kept observing blocks that React unmounted before they were scrolled to, which kept
+     detached trees alive. They are now pruned on each view change.
+   - Full-screen wipes use `inset:0` instead of `innerWidth/innerHeight`, which track the visual viewport when
+     pinch-zoomed.
+   - The slide distance comes from the curtain's own width.
+   - The 1001–1120 px overview fix now uses `min/max-width` instead of range syntax, so Safari < 16.4 gets it too.
+
+**Production checks (all pass, no new console errors)**
+- **Live headers:** `form.ydesign.workers.dev` sends no CSP, X-Frame-Options or nosniff, only cache and NEL headers.
+  I replayed them on the local HTML and nothing was blocked. If a CSP is added later, the inline `<style data-ydx>`,
+  the boot `<script>` and the stylesheet's `onload` need hashes or `'unsafe-inline'`.
+- **Time to usable** (no loader, no `ydx-loading`, not inert, centre click reaches the app):
+  - normal: 2.0 s;
+  - enhance.js 404 or HTML-200: 1.7 s;
+  - enhance.css 404, HTML-200 or 8 s late: 2.0 s;
+  - both 404: 1.7 s;
+  - enhance.js 8 s late: 6.2 s (backstop);
+  - app bundle 8 s late: 8.9 s (the loader waits for it rather than show a blank floor);
+  - API hanging: 4.3 s, then the app's own loading screen.
+  - A dialog opened afterwards plays normally in every case.
+- **Background tab:**
+  - Headless Playwright forces pages to be visible, so I emulated hidden visibility (rAF parked, timers clamped to
+    1 s). Shown at 2.5 s: the curtain slides off 670 ms after the tab becomes visible. Shown at 9 s: the backstop
+    had already lifted it.
+  - `Page.setWebLifecycleState` frozen from 0.7 s to 5.7 s: usable within 34 ms of resuming.
+- **Navigation:** back/forward during the loader, and rapid view switching with double clicks, leave no stray wipes
+  or locks.
+- **Other modes:** iframe ("frame" mode, curtain gone in under 1 s including app boot), reduced motion (fade only,
+  no wipes) and the repeat visit all work.
+- **Layout:** CLS 0–0.0001 and no horizontal overflow (1440 coach, iPhone 13 client and sign-in).
+
+**Remaining known limitations**
+- bfcache restore could not be exercised (headless Chromium never restored the page). By reasoning, nothing depends
+  on `pageshow`: a wipe that was mid-flight just finishes, and a loader frozen mid-boot is handled by the timers.
+- If enhance.css arrives *after* the loader lifts (only when it is very slow), its small layout fixes apply late and
+  cause a minor shift. The design itself is unaffected.
+- Firefox < 128 and Safari < 16.4 lack `@property`: the loader's kg counter and ring fills step instead of
+  tweening. Without `:has()`, the CSS-only safety fade waits for its 15 s cap (the JS backstops still apply).
+- The 6 s backstop is a fixed number. On a page that mounts but whose enhance.js is extremely late, the loader lifts
+  without its exit choreography.
