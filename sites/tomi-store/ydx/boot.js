@@ -54,7 +54,7 @@
    *  - Progress: a slow time-based creep to 14% covers the part the app cannot report (bundle + fonts), then the
    *    app's real model progress maps onto 14–100%. Monotonic, so it never sits frozen at 0 on slow networks.
    *  - Minimum display: 1 s on a first visit, 350 ms on a repeat visit in this session, 0 in the hub iframe.
-   *  - Safety: if the app never reports progress nor readiness 4 s after `load`, leave anyway (script failed).
+   *  - Safety: if the app's script has not come alive 4 s after `load`, leave anyway (see the load listener).
    *  - Exit: transform/opacity only, so the compositor keeps it smooth while three.js compiles its shaders on the
    *    main thread right after `ready` (the old clip-path wipe froze there for seconds on slow phones). It starts
    *    from a rendered frame and the panel is hidden only after the lift has had time to finish on screen. */
@@ -143,9 +143,16 @@
       if (c.contains('ready')) { mo.disconnect(); onReady(); }
     }).observe(d, { attributes: true, attributeFilter: ['class'] });
 
-    // safety: the app never reported progress nor readiness 4 s after load -> its script failed; never trap the user
+    // safety: 4 s after load the app has neither reported progress nor finished its init -> its script failed
+    // (bundle missing, or no WebGL: the renderer throws at module top level); never trap the user. Round 3: "no
+    // progress" alone was not proof: models served without Content-Length, and the app's fallback download of the
+    // uncompressed GLBs (taken on the live site, whose CSP blocks the WASM decoder), report none, so on a slow link
+    // the loader left long before the page was ready. The app creates its route curtain right after the WebGL
+    // renderer and just before it starts loading the models, and from then on it always reaches `ready` (its own
+    // try/catch and 90 s cap), so a curtain in the DOM means "alive, keep waiting". Last resort: 100 s after load.
     addEventListener('load', function () {
-      setTimeout(function () { if (!readyAt && real === 0) exit(); }, 4000);
+      setTimeout(function () { if (!readyAt && real === 0 && !document.querySelector('.curtain')) exit(); }, 4000);
+      setTimeout(function () { if (!readyAt) exit(); }, 100000);
     });
     // the tab goes to the background while the exit is pending or running: finish now (see onReady)
     document.addEventListener('visibilitychange', function () { if (document.hidden && (readyAt || exiting)) { exiting = true; finish(); } });

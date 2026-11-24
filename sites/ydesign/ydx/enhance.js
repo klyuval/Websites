@@ -225,24 +225,37 @@
     // step does. Scrolling past step 4 in one jump (a nav link, a fast fling) never activates it, so the hero and the
     // contact preview stayed in the other language (an English preview on the Hebrew page). Put the page's own
     // language back once the process section is out of view, unless the visitor picked a language themselves.
-    // Known trade-off: the only way to switch is a click on the demo's own button, which the site also takes as "the
-    // visitor picked", so after such a restore the step no longer demonstrates the switch for the rest of the visit.
+    // The only way to switch is a click on the demo's own button, and the site takes any click there as "the visitor
+    // picked" and stops its demo for good. So after ydx has had to restore once, ydx runs that demo itself, with the
+    // site's own rule (1.9s after step 3 becomes active switch to the other language; back on any other step), keyed
+    // off the data-step attribute the site sets on each step change. Before that first restore the site runs it alone.
     const seg = $$('[data-seg="lang"] button');
     const proc = $('.proc');
     // The Hebrew page is generated from the English one and kept English's aria-pressed="true", so the switch showed
     // "English" selected over a Hebrew preview until the first change. The demo starts in the page's language.
     seg.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === (rtl ? 'he' : 'en'))));
     if (seg.length && proc && 'IntersectionObserver' in window) {
-      let picked = false, timer = 0;
-      seg.forEach((b) => b.addEventListener('click', (e) => { if (e.isTrusted) picked = true; }));
+      let picked = false, took = false, timer = 0, demo = 0;
+      seg.forEach((b) => b.addEventListener('click', (e) => { if (e.isTrusted) { picked = true; clearTimeout(demo); } }));
       const own = seg.find((b) => b.dataset.lang === (rtl ? 'he' : 'en'));
-      const restore = () => { if (!picked && own && own.getAttribute('aria-pressed') !== 'true') own.click(); };
+      const other = seg.find((b) => b !== own);
+      const on = (b) => b && b.getAttribute('aria-pressed') === 'true';
+      const restore = () => { if (!picked && own && !on(own)) { took = true; own.click(); } };
       new IntersectionObserver(([en]) => {
         clearTimeout(timer);
+        clearTimeout(demo);
         if (en.isIntersecting) return;
         restore();
         timer = setTimeout(restore, 2100); // the demo's own pending switch fires 1.9s after the step activates
       }).observe(proc);
+      if (other && !reduce) {
+        new MutationObserver(() => {
+          if (!took || picked) return;
+          clearTimeout(demo);
+          if (proc.dataset.step === '3') demo = setTimeout(() => { if (!picked && !on(other)) other.click(); }, 1900);
+          else restore();
+        }).observe(proc, { attributes: true, attributeFilter: ['data-step'] });
+      }
     }
 
     // 4b. Hebrew studio text: "ב־ydesign: Why, למה" ran "ydesign: Why" together as one left-to-right run, so "Why" sat

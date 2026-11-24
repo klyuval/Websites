@@ -145,3 +145,72 @@ Checked and fine:
   into it would usually land offscreen. The site already bumps the bag count and drops a can top into the mix slots.
 - "A little twist of fate." overlapping the half orange on phones, and the gap in "A lot   alive." at tablet portrait,
   are the site's own layered art direction.
+
+## Round 3
+
+A line-by-line review of the layer (inline head/body scripts, `enhance.js`, `enhance.css`) for production, plus failure-mode
+testing. Each bug below was reproduced with a focused Playwright (or raw CDP) script before the fix and re-run after it.
+Scripts are in the round-3 scratch folder (`t-*.cjs`, `t-bgraw.mjs`).
+
+### Production conditions
+
+- **Live headers** (`curl -sI https://peel-club.ydesign.workers.dev/`): `cache-control: public, max-age=0, must-revalidate`, no CSP,
+  no `X-Frame-Options`. Nothing in ydx (inline scripts/styles, the `onload` handler on the stylesheet link) can be blocked.
+  Bfcache tests ran headful under Xvfb with the HTML served using the live `cache-control` header, because the preview
+  server's `no-store` disables bfcache.
+- **Failure matrix**, run on `/` and `/story/`. In every mode the page ends up uncovered, un-held, with the hero visible and
+  nothing left at `opacity:0` after scrolling the whole page:
+
+| Mode | Before (usable at, app boot) | After |
+| --- | --- | --- |
+| normal | 2.1–2.3 s, app 0.2 s | same |
+| JS disabled | no curtain, no hold, content visible | same (enhance.css now comes through `<noscript>`) |
+| `enhance.js` 404 / both 404 | 4.6 s (inline safety net) | same |
+| `enhance.css` 404 | 2.2 s | same |
+| `enhance.js` +8 s | 4.7 s, app 0.17 s, **DOMContentLoaded 8.1 s** | 4.5 s, DOMContentLoaded 0.03 s |
+| app bundle +8 s | 4.7 s | 2.1 s (the curtain no longer waits on the bundle) |
+| **`enhance.css` +8 s** | **10.1 s, app boot 8.06 s, blank page 8 s** | 2.1 s, app 0.05 s |
+| page frozen 5 s during load (`Page.setWebLifecycleState`) | 5.4 s | 5.5 s |
+| real background tab (raw CDP, `background:true`), `enhance.js` 404 or +8 s | **4.5 s of loader after the tab is brought forward** | 0.01–0.1 s |
+| hub iframe (cross-origin parent) / sandboxed iframe | frame mode, ~1 s; works sandboxed | same |
+
+### Found and fixed
+
+| # | Where | Bug (and how it was reproduced) | Fix |
+| --- | --- | --- | --- |
+| 1 | Head links | **A slow `enhance.css` blanked the page and held up the site's app.** A parser-inserted stylesheet blocks rendering and every later script: the inline curtain script, and through it parsing and the deferred app module. Delaying the file 8 s pushed the app's boot to 8.06 s. A slow `enhance.js` (`defer`) also delayed `DOMContentLoaded`/`load` to 8.1 s. | `enhance.css` loads non-blocking (`media="print" onload="this.media='all'"`, plus a `<noscript>` link so it still applies without JS). The critical loader CSS is inline anyway. `enhance.js` is `async` and waits for the parsed DOM itself (`readyState`/`DOMContentLoaded`), so it tolerates any arrival order. CLS stays 0 on first load and on back/forward. |
+| 2 | Page transition, back button | **Back pressed during the wheel, then forward, navigated to the clicked page by itself.** The page went into bfcache with the `setTimeout(go, 540)` still pending, and a forward restore fired it. Reproduced headful with bfcache: back at 150 ms, forward, and the page ended up on `/mix/`. | The timers are cancelled on `pagehide`. |
+| 3 | Page transition | **Overlay stuck forever when the navigation does not commit** (204 response, Esc/stop, a download), with every later click swallowed. Reproduced by routing `/mix/` to a 204: the overlay was still up at 8 s and the next click timed out. | `unleave()`: if the page is still alive 5 s after `location.assign`, or on Esc, the overlay fades out and links work again. The hand-off label is also cleared. |
+| 4 | Page transition → next page | **Wrong label on an unrelated page.** The `ydx-nav` hand-off was not tied to its destination. After a navigation that did not happen, any page loaded within 6 s opened in "nav" mode with the wrong label ("Build a mix" over `/story/`) and skipped its loader. The same happens with a new tab, which gets a copy of sessionStorage. | The hand-off stores the destination path. The inline mode script only uses it on that path. |
+| 5 | Inline safety net | **Background tab: the net never started.** It ran from the first `requestAnimationFrame`, which never fires in a hidden tab. With `enhance.js` failing or late, a visitor who switched to the tab got 4.5 s of loader on a page that had loaded long before. Reproduced with raw CDP (Playwright always reports pages as visible). | The net starts on the first frame or, if the document is hidden (now or before the first frame), straight away. The net also marks the session as seen. For the short modes (`nav`/`short`/`frame`) it is 2.5 s instead of 4 s, so a failed `enhance.js` covers an arriving page for less time. |
+| 6 | Curtain exit | **A throw inside `leaveCurtain` left the curtain covering the page.** It had already set `data-out`, so the inline net stood down, and only the CSS failsafe hid it at about 4.9 s. It then stayed in the DOM. Reproduced by making `animate()` throw on the sheet. | The exit is `…then(leaveCurtain).catch().then(done)`: the curtain is always removed and the hold always released. |
+| 7 | Click interception | `href="#"` (and `/#` on the home page) played the full wheel and reloaded the page. A bare `#` gives an empty `URL.hash`, so the in-page check missed it. | Same path + search with any fragment, bare `#` included, is left to the browser. |
+| 8 | Click interception | SVG `<a>`: `a.href` is an `SVGAnimatedString`, so it resolved to `/[object SVGAnimatedString]` and the wheel led to a 404. Latent: there are no SVG links on the site today. | Only `HTMLAnchorElement`s are intercepted or prefetched. The prefetcher now uses the same filter (no files or downloads). |
+| 9 | Reduced-motion transition | Navigation waited on the fade's `finished` promise, which never settles in a background tab. | Timer (170 ms). |
+| 10 | `enhance.js` included twice | Every listener, observer and fizz zone was doubled. The click itself was already safe. | Run-once guard (`window.__ydxPeel`). |
+
+### Checked and fine
+
+- Modifier, middle and shift clicks, `target=_blank`, `download`, `javascript:`, external links and files are not intercepted. A
+  double click gives exactly one navigation. Keyboard Enter starts the wheel from the link's centre. A link inside an open
+  dialog closes the dialog first. Links in the mobile menu work. Reduced motion is a plain fade both ways.
+- No storage access without try/catch (a sandboxed iframe throws on sessionStorage, and the layer still works there).
+  There are no monkey-patches of app globals.
+- The features are guarded or degrade: `animation-timeline` sits under `@supports`. `@starting-style`, `allow-discrete` and
+  `@property` are simply ignored or static where unsupported (Firefox/Safari: the dialog exit and the loader counter just
+  don't animate). Range media queries need Safari 16.4+. The `pageswap` view-transition skip only runs when the event exists.
+- No new console errors on any page (desktop and iPhone 13 scroll-walks, transitions, back/forward, iframe, failure modes).
+
+### Known limitations
+
+- Because `enhance.css` is non-blocking, a late copy can arrive after first paint when there is no curtain: a back/forward
+  visit that misses bfcache and finds the file uncached. Its small layout fixes then snap in. With the file
+  artificially delayed 400 ms this measured 0.0033 CLS on `/story/` desktop (the lifted half orange) and 0 elsewhere. With a
+  normal network it is 0.
+- The 5 s "navigation did not commit" recovery cannot tell a dead navigation from a server that takes more than 5 s to
+  answer. In that case the old page reappears briefly before the new one opens, with its full loader.
+- A page loaded in a background tab skips the loader and peel: they complete unseen, and the page is ready when the tab
+  is shown.
+- Pre-existing, not ydx: navigating to a non-HTML file (such as an image URL) logs "Transition was aborted because of
+  invalid state" from the site's own `@view-transition`. It happens without the layer too, and the site has no such links.
+- Safari and Firefox behaviour was reasoned from the code; only Chromium was available.

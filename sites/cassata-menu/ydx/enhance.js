@@ -46,7 +46,7 @@
   // If the inline failsafe already faded the loader out (this file arrived very late), don't
   // lift it again or replay the entrance on a page the visitor is already reading.
   let lifted = !loader || !!L.failsafe;
-  let pageLive = !loader; // true a moment after the curtain has gone (see register())
+  let pageLive = lifted; // true a moment after the curtain has gone (see register()); at once if it never showed
   let leaving = false, goT = 0, safeT = 0; // page-transition state (section 3)
   let flush = null; // reveals held while the curtain was down (section 4)
 
