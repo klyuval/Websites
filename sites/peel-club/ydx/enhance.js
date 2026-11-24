@@ -54,7 +54,7 @@ function run() {
     Promise.race([gate, cap]).then(() => wait(Math.max(0, minMs - since()))).then(leaveCurtain).catch(() => {}).then(done);
 
     async function leaveCurtain() {
-      if (curtain.dataset.out) return; // the inline safety net is already fading it
+      if (curtain.dataset.out) return wait(320); // the inline safety net is already fading it: let it finish
       curtain.dataset.out = '1';
       ss.set('ydx-seen', '1');
       if (RM.matches) {
@@ -331,4 +331,5 @@ function run() {
       btn.addEventListener('pointerleave', () => { btn.style.translate = ''; });
     });
   }
+}
 })();
