@@ -301,3 +301,93 @@ visible, no leftover ydx overlay nodes, and no console errors beyond the forced 
 - **With a slow `enhance.js`, the first load uses the plain slide-up exit instead of the peel, and the first view gets
   no intro choreography.** This is by design: the page must never wait for the enhancement layer.
 
+
+## Round 4
+
+A creative-director pass over the whole site. Every route was walked scroll by scroll on desktop (1440×900) and
+iPhone 13, along with the menu, the bag (empty and filled), the pairing tabs and the 404. The site is English only, so
+there was no other language to check. Scratch files and screenshots are in the round-4 scratch folder (`walk/`,
+`after/`, `edge/`, `shoot/`, `reg/`).
+
+### What I judged
+- **Strong already, nothing to remove.** The loader, route peel, intro choreography, tape, breeze, fizz, magnetic pills
+  and bag exit each do one job and none of them doubles the app's own motion. On reflection none of it is noise, so
+  nothing was taken out. Hover and focus states, the empty bag ("Good things are waiting."), the menu and the 404 ("A
+  little off the branch.", with its own intro) are all already designed. There is no data-driven part apart from the
+  bag.
+- **The weak spot was the hand-off between sections.** Every colour change between "desks" (tangerine, green, pink)
+  was a flat horizontal cut. Meanwhile the site's one signature motion, the "/" label-peel edge, was used only by the
+  loader and by route changes.
+- **Green into green had no seam.** Where a green desk runs straight into the green footer (`/sodas`, story pages,
+  product pages, `/privacy`), the "Make a little occasion of it." block and "There's always room for one more." read as
+  one block of two stacked headlines.
+- **Inconsistent easing.** The ydx layer used four near-identical "peel" curves and three near-identical overshoot
+  curves.
+
+### Changed
+- **Section hand-off on the peel line** (`enhance.css`, round 4 block).
+  - Where the colour changes from one desk to the next, the new desk's top edge arrives on the same "/" slant as the
+    loader and route peels. It is pressed flat as it scrolls up to mid-viewport, like a label being smoothed down.
+  - **How it is built:**
+    - a `::before` wedge in the previous desk's colour, at `z-index: -1` inside the new desk;
+    - desks are already `isolation: isolate`, so the wedge only covers the desk's own background and never covers
+      content;
+    - a static `clip-path` triangle, animated only by `transform: scaleY` on a named view timeline set on the desk
+      (`view-timeline: --ydx-desk`), from `cover 0` to `cover 50vh`. This is compositor work.
+  - **Where it applies:** the previous colour comes from sibling selectors. For the footer, which sits outside the
+    desks' parent, it comes from `#root:has(...)`.
+  - **Where it is off:** under reduced motion, in browsers without scroll-driven animations (the edge stays straight
+    there), and where both desks share a colour.
+  - Height is `clamp(26px, 5.5vw, 88px)`, about 4°, close to the tilt of the app's paper tags.
+- **Seam between a green desk and the footer.** A 1 px hairline in the footer's own rule colour (`var(--line)`), inset
+  by `--pad`. It draws on from the left as the footer enters. With reduced motion, or without scroll-driven
+  animations, it is static.
+- **Motion tokens.** There is now one set of three curves:
+  - `--ydx-ease-out` is the app's own `--ease`, used for arrivals and settles;
+  - `--ydx-ease-peel`, `cubic-bezier(.65,0,.25,1)`, is used for every wipe, peel and draw: the loader exit, the loader
+    line drawing and label wrap, the route peel and flap, the tape, and the no-`enhance.js` fallback slide;
+  - `--ydx-ease-pop`, `cubic-bezier(.3,1.45,.5,1)`, is used for cut-outs, tags, tape corners and the bag count.
+
+  The tokens are defined in the inline `<style data-ydx>`, so they exist before anything else loads. `enhance.css`
+  reads them with literal fallbacks, and `enhance.js` mirrors them as `EASE` / `PEEL` / `BACK`, because WAAPI cannot
+  take `var()`.
+
+  Two curves stay separate on purpose: the bubbles keep their own rising curves (the loader loop and the fizz burst are
+  physics, not UI), and the bag exit keeps the app's `menu-exit` curve.
+
+### Bug fixed
+- **Tape, all tangerine headings, desktop and mobile.** Before a tape was laid, a 2–3 px cream sliver showed at the left
+  edge of the headline `<em>` ("|kind of pop."). A fully clipped (`inset(0 100% 0 0)`) but rotated strip still painted
+  its edge. The pre-state is now also `opacity: 0`, switched on at the moment the wipe starts.
+  - **Verified:** untaped at 26% visibility, no sliver. Taped, the full strip shows.
+
+### Regression results (round-3 suite, copied to `reg/`, WebGL disabled unless noted)
+- **`t-prod` matrix:** identical to round 3.
+  - Cover gone at: normal 2.19 s, js404 1.80 s, css404 2.55 s, both404 1.74 s, jsDelay8 1.78 s, cssDelay8 2.18 s,
+    appDelay8 9.5 s (safety), jsThrows 1.80 s with no recovery flash, reduced 1.47 s, `/faq` 2.26 s, product 2.17 s.
+  - No-JS shows the noscript note only.
+  - In every case: `#root` is not inert, there is no overflow lock, `#main` is visible and no ghost nodes are left.
+  - The only errors are the forced 404s and the injected test error.
+- **`t-reg`, desktop and iPhone 13:**
+  - 2 of 2 tapes laid and 14 fallback reveals, with no hidden plates;
+  - fizz, bag drawer and drawer exit copy all work, and the copy is removed afterwards;
+  - every route visited with no console errors.
+- **`t-vt`:**
+  - double-click: the skipped transition keeps its flap, and the latest cleans up;
+  - back/forward mid-transition: no stuck `ydx-vt` class or stray flap;
+  - a second evaluation of `enhance.js` is a no-op;
+  - no errors in any of these.
+- **Background tabs, focus, magnetic pills and the hub iframe:**
+  - `t-bg`: the frozen and hidden runs both end clean, with nothing invisible in view.
+  - `t-focus`: focus returns to "Bag (1)", with and without ydx.
+  - `t-mag`: the pill is released when the pointer leaves the window.
+  - `t-iframe`: `ydx-quick` is set and the cover is gone at about 1.0 s.
+- **`shoot.mjs` desktop and mobile (WebGL on, SwiftShader):** only SwiftShader "GPU stall" driver warnings, and no
+  errors or failed requests.
+- **Reduced motion:** no wedges, and the hairline is static.
+- **Page heights:** unchanged on every route, so there is no layout shift.
+- **Scroll cost, 4x CPU throttle, home page, r3 CSS against r4 CSS, alternated:** frame-time p50 was 16.7 ms in both,
+  and the frames-over-50 ms counts overlap (r3: 9 / 6 / 13 / 1 / 0, r4: 0 / 12 / 6 / 2 / 0). So there is no measurable
+  cost.
+- **Live headers (`curl -sI`):** still no CSP or security headers, only `cache-control: public, max-age=0,
+  must-revalidate`.
