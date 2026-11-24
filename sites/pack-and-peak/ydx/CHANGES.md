@@ -205,3 +205,96 @@ there were no console errors or warnings in any run.
   noise (total 0.0008 desktop and 0.0043 mobile, against 0 and 0.0031 for the original).
 - Timings measured here are inflated about 2× by the container (load average around 19 on 4 cores). The design
   timings above are the nominal values.
+
+## Round 3: code review and production hardening
+
+I read every line of `enhance.js`, `enhance.css`, `loader-inline.src.js` and the inline blocks, and wrote a Playwright
+test for each suspected bug. Each test failed before its fix and passed after it. The scripts are in the round-3
+scratch folder (`t-*.cjs`, `prod.cjs`).
+
+### Bugs found and fixed
+1. **Summit pin 04 never appeared** (iPhone 13, 1920×1200, and intermittently at 1440). Its hidden state is
+   `scale:0`, so its IntersectionObserver target collapsed to a point. That point sits exactly on the
+   `overflow:clip` top edge of `#summit`, so it never counted as intersecting. *Repro:* walk the page, then list the
+   reveal targets that have no `data-ydx-in`. *Fix:* pins are now observed through their chapter.
+2. **The desktop footer stayed invisible.** At the bottom of the page the footer fills only the last ~100 px, and that
+   strip lies inside the observer's `-12%` bottom margin. *Repro:* the same walk; the footer's children stayed at
+   opacity 0 at 1440×900 and 1920×1200. *Fix:* a second observer without the margin watches the footer.
+3. **A slow `enhance.css` blocked the whole app.** A parser-inserted stylesheet blocks both rendering and the app's
+   module scripts. With the file 8 s slow, the first paint came at 8.1 s, React hydrated at 8.2 s, and the loader was
+   never seen. *Fix:* the inline boot script now attaches `enhance.css` without blocking. A `<link rel=preload>` keeps
+   the early fetch, and a `<noscript>` copy keeps the CSS fixes for visitors without JS. The page now paints at 0.7 s
+   and hydrates at 0.45 s.
+   - `html.ydx-css` (set on load) gates the ydx overlays (altimeter, tip, reticle, shutter). With the CSS missing (404)
+     they used to render unstyled at the end of `<body>`.
+   - If the CSS arrives after the loader has gone, `html.ydx-late-css` drops the reveals and the hero intro, so the
+     visible content does not blink and replay.
+4. **`enhance.js` changed from `defer` to `async`.** The app's bundles are all `async` modules, so hydration was never
+   blocked. However, a hung deferred file held `DOMContentLoaded` back by 8 s. The file already tolerates running before
+   the body is parsed.
+5. **A late `enhance.js` made visible content blink out and replay.** If the file ran after the loader had uncovered
+   the page and a reveal target was already on screen, adding `ydx-motion` hid it for a frame and then replayed its
+   entrance. *Repro:* delay the file 8 s, scroll to the trails chapter at 5 s, and sample the opacity every frame; it
+   dropped to 0. *Fix:* in that case the reveals are skipped.
+6. **The choose-trail stall fix yanked users back.** After picking a trail, wheeling back up was pulled down to the map
+   about 2 s later. *Repro:* the same test run with and without the fix; without it the user stays at y=0. *Fix:* the
+   fix stands down after any wheel, touch, key or pointer press made after the click.
+7. **The chapter jump on phones landed in the wrong place.** Chromium keeps the remaining distance of a running smooth
+   scroll after an instant `scrollTo`, so the landing under the cover overshot by 100–300 px. This was already present
+   in rounds 1–2; for example, "The good part" landed 295 px into the summit. *Fix:* stop the scroll in place first,
+   then land on the next frame. It now lands exactly on the summit, pack and top.
+8. **A stale landing timer on phones.** Tapping "The good part" and then quickly "Choose a trail" ended on the summit
+   with `#trails` in the URL, and the cover kept naming the first destination. *Fix:* only the latest destination is
+   landed. A second jump while the strata still cover the page retargets the cover (name, pin and colour) instead of
+   restarting it. Landing is skipped once the user has touched or wheeled. `pagehide` drops the cover so it is never
+   kept in a bfcache snapshot. `scrollTo({behavior:'instant'})` has a fallback for older engines.
+9. **The inline loader could dispatch `ydx:ready` twice and leave nodes behind.**
+   - If the exit started just before the 4.5 s safety, both the safety and the exit's `onfinish` ran cleanup. *Repro:*
+     hide rAF until 3.3 s; `ydx:ready` fired twice.
+   - In a tab where rAF never ran, the loader node was only hidden, never removed.
+   - A throw during the exit kept the cover up until the safety fired (4.96 s in the repro).
+   - *Fix:* cleanup is idempotent and looks the node up itself. The tick and the exit are wrapped so that an error
+     clears the cover immediately (1.48 s in the same repro).
+10. **Running `enhance.js` twice duplicated every overlay and listener.** *Fix:* a `window.__ydxEnhance` guard.
+11. **Printing.** Content that had not been scrolled into view printed blank, and the fixed altimeter and tip would
+    repeat on every page. *Fix:* print CSS shows every reveal target and hides the overlays.
+12. **Small fixes:**
+    - The kit stagger was a global `animation-delay … !important` on `.kit-grid .pack-object`. It is now scoped to the
+      reveal.
+    - The map reticle now also hides on a key press (for example, opening the packing list from the keyboard while the
+      mouse rests on the map) and on window blur.
+    - Comments that said the loader script sits "at the top of `<head>`" now give its real position.
+    - Loose shutter rules were moved into their section.
+
+### Production-condition matrix (all passed after the fixes)
+The live site sends no CSP or security headers (`curl -sI`). Static, non-hashed files are served
+`max-age=0, must-revalidate`, so updates to `/ydx/*` propagate. I still tested a strict policy applied with
+`page.route`:
+
+```
+default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:
+```
+
+together with `nosniff`, `X-Frame-Options: SAMEORIGIN` and a Referrer-Policy. Nothing in ydx was blocked.
+
+I also ran these scenarios:
+- normal load, mobile, reduced motion and a repeat visit;
+- no JS (the noscript CSS applies, and the same 17 opacity-0 nodes appear as in the stripped original);
+- `enhance.js` 404, `enhance.css` 404, and both;
+- `enhance.js` delayed 8 s, `enhance.css` delayed 8 s, and the app bundles delayed 8 s;
+- a background tab (rAF withheld and `visibilityState` hidden until 2 s, 4.3 s and 8 s);
+- a frozen page (`Page.setWebLifecycleState`) for 5 s;
+- the hub iframe (loader gone in about 1.2 s).
+
+In every scenario the page ended up visible and usable: the hero was at opacity 1 and running, there was no leftover
+`ydx-loading` or `ydx-hold`, no overflow lock, `ydx:ready` fired exactly once, and there were no console errors.
+
+### Known limitations
+- bfcache could not be exercised here, because Playwright's Chromium never restored from it, even with the feature
+  forced on. The reasoning: timers and animations resume, the loader re-checks its cap against `performance.now()`
+  and exits, and the shutter is dropped on `pagehide`.
+- Safari and Firefox were reasoned about from the code only. The following are behind `@supports` or degrade to
+  static: `:has()` (the pack tag simply never shows), container units, scroll timelines (no hero sink, no PEAK climb,
+  no tip marker) and `text-wrap`.
+- If `enhance.css` arrives during the 0.8 s exit itself (as opposed to after it), the hero intro starts a little late.
+  It does not replay.
