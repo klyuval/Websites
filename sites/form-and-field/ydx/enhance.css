@@ -109,7 +109,7 @@ span.ydx-wi.ydx-wi{display:inline-block}
 
 /* ---------- loader exit: each paper strip carries its own slice of the printed proof (see enhance.js) ---------- */
 .ydx-cols>i{position:relative;overflow:hidden}
-.ydx-cols>i>.ydx-clone{position:absolute;top:0;bottom:0;right:auto;width:500%}
+.ydx-cols>i>.ydx-clone{position:absolute;top:0;bottom:0;right:auto;width:500%;font-style:normal}   /* the strips are <i>: without this the proof turned oblique the moment it tore */
 .ydx-clone,.ydx-clone *,.ydx-clone *::before,.ydx-clone *::after{animation:none !important;transition:none !important}
 
 /* ---------- landscape phones (short viewports) ----------

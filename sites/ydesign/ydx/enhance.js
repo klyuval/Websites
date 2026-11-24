@@ -54,9 +54,13 @@
     const probe = d.createElement('span');
     probe.setAttribute('aria-hidden', 'true');
     probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;pointer-events:none;inset:auto auto 0 0';
+    // (a stylesheet rule, not an inline style: the site's open animation ends with clearProps:'all' on these nodes)
+    const rule = d.createElement('style');
+    rule.setAttribute('data-ydx', 'case-name');
+    d.head.append(rule);
     const fit = () => {
       if (!dlg.open) return;
-      name.style.fontSize = '';
+      rule.textContent = '';
       const avail = name.clientWidth;
       if (!avail) return;
       const cs = getComputedStyle(name);
@@ -73,7 +77,7 @@
         widest = Math.max(widest, probe.getBoundingClientRect().width);
       }
       probe.remove();
-      if (widest > avail) name.style.fontSize = Math.max(26, Math.floor(parseFloat(cs.fontSize) * avail / widest * 0.97)) + 'px';
+      if (widest > avail) rule.textContent = `.case__info h2{font-size:${Math.max(26, Math.floor(parseFloat(cs.fontSize) * avail / widest * 0.97))}px}`;
     };
     new MutationObserver(fit).observe(name, { childList: true, characterData: true, subtree: true });
     new MutationObserver(fit).observe(dlg, { attributes: true, attributeFilter: ['open'] });
