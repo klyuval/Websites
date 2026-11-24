@@ -298,3 +298,73 @@ In every scenario the page ended up visible and usable: the hero was at opacity 
   no tip marker) and `text-wrap`.
 - If `enhance.css` arrives during the 0.8 s exit itself (as opposed to after it), the hero intro starts a little late.
   It does not replay.
+
+## Round 4: final creative-director pass
+
+I walked the whole page again, scroll by scroll, at 1440×900 and on an iPhone 13 (plus 1920×1200, reduced motion and
+the trail-2 journey). The site has one language (English, LTR). It no longer feels flat anywhere in the middle: every
+chapter has its own moment, and the hard colour blocks between chapters stay, as an art-direction choice (round 1).
+I found three things still worth doing, and nothing that I judged to be noise.
+
+### What I judged
+- **The ending was the one flat spot.** The hero route starts at a trailhead that pings, and the loader climbs to a
+  summit with a flag. But the last route, on the summit rock, just stopped at the cross. Below it the footer was two
+  plain lines of caps, and the altimeter pill slid away at that point without handing over to anything.
+- **The motion language had drifted.** Things of the same kind used slightly different values: arrivals ran at .8,
+  .9, .95 and 1 s, pops used four overshoot curves (1.4, 1.5, 1.6 and 1.7), and the stamp and draw easings were mixed.
+  None of it was wrong on its own, but together it was not one system.
+- **A real bug in the altimeter.** The altimeter pill read the elevation gain from the readout card's text, and while
+  the card's counter is running that text is an in-between number. The pill could therefore aim at the wrong summit,
+  and the new summit label showed 2,060 m, 1,995 m and 2,080 m on three runs, when the real answer was 2,380 m.
+- **Hover, focus and active states:** checked against the site's CSS. The site already covers every control (pills,
+  CTAs, boards, kit, dock, text button, checkboxes), and ydx adds magnetic pull and the dock labels. No gaps were worth
+  filling.
+- **Removal review:** I looked again at the altimeter pill, the progress-tip marker, the map reticle, the trailhead
+  ping, the breathing target and the magnets. Each is quiet, on-motif and does one job, so none was removed.
+
+### What changed
+1. **Trail's end (end-of-page moment).** When the footer arrives, the summit route's end point (the app's own path
+   end, 67.3% / 36.6% of the rock image) is stamped with the hero's trailhead marker. The marker pings twice, and the
+   final altitude of the chosen trail writes itself in, in the hero's map-label italic: for example
+   "Summit · 2,380 m", or "Summit · 1,840 m" for the forest trail. As the altimeter pill hides over the footer, this
+   label takes over its number, so the climb that the loader started ends on the rock.
+   - It is built from the `::before` and `::after` pseudo-elements of the app's `.route` box, plus a `data-ydx-summit`
+     attribute that `enhance.js` keeps in step with the chosen trail. Nothing is inserted into the React tree.
+   - With no attribute (no JS, or `enhance.js` missing) nothing is drawn. Under reduced motion it is static. It is
+     behind `@supports selector(:has(a))`.
+2. **The footer's leave-no-trace line carries the red-white-red trail blaze**, the same mark that every eyebrow on the
+   page uses. CSS only (an absolutely positioned `::before`), so it also works without JS through the noscript CSS.
+3. **Motion tokens.** `:root` now defines `--ydx-out`, `--ydx-write`, `--ydx-draw`, `--ydx-pop` and `--ydx-sweep`. The
+   out, write and draw easings are copied from the site's own `letter-up`, `write` and route-walk easings. Durations
+   are `--ydx-s` (.45 s), `--ydx-m` (.8 s) and `--ydx-l` (1.1 s). Every ydx reveal, pop and transition now uses them,
+   and `enhance.js` mirrors the easings in an `EASE` table for its Web Animations (shutter, pin, profile, stamp, dock
+   label, count bump).
+   - Deliberate exceptions, each commented: the compass needle's 1.6 s damped swing, the trailhead ping, the pack tag
+     swing, the dialog's ease-in close, and the inline loader, which was left untouched.
+4. **Altimeter fix.** `countUp` records the value it is counting to (`__ydxFinal`, cleared when it ends or when React
+   takes over), and the altimeter and the summit label read that value. Now 3/3 runs give 2,380 m, and 1,840 m after
+   picking the forest trail.
+
+`index.html` and the inline loader were not changed. The loader was rebuilt from `ydx/loader-inline.src.js` with
+esbuild 0.24.0 and is still byte-identical to the inline block.
+
+### Regression results (round-3 suite, re-run from `pack-and-peak-r4/reg/`)
+- `t-misc`: no dialog z-fight, no yank after choosing a trail, a second run makes no duplicates, and print shows
+  everything. `t-reveal`: no unrevealed targets and the footer is visible at 1440, 1920×1200, phone and landscape.
+  `t-pins`: all four pins stamp.
+- `t-shutter` and `t-shutter2`: they land exactly on the summit, the top and the pack with mouse, keyboard and touch.
+  The stale-tap case ends on trails.
+- `t-land`: the phone landing is exact (5077). `t-yank` passes. `t-bfcache` and `t-bfcache2` leave nothing covering.
+- `t-loader`: `ydx:ready` fires once, and an exit throw clears the cover at 1.6 s.
+- `t-order`: hydration is never held back by a slow ydx file. `t-nojs`: the noscript CSS applies and 16 nodes are
+  hidden, the same as the stripped original.
+- `prod.cjs`, all 18 scenarios: normal, CSP, no JS, JS/CSS/both 404, JS late, app late, mobile, reduced, repeat,
+  background, hidden 2/4/8 s, frozen, iframe and bfcache.
+  - Each ended visible and usable, with `ydx:ready` firing once and no console errors apart from the intended 404s.
+  - In the first full run, `bfcache` was probed while its repeat loader was still up (the container load average was
+    24). Re-run alone, it passed, and so did `repeat`.
+- New: `t-end.cjs` (the end marker on desktop, phone, 1920 and reduced motion; no overflow, no errors) and
+  `t-trail.cjs` (the label follows the trail on desktop and phone).
+- The `shoot.mjs` walks on desktop and mobile have 0 log lines.
+- Live headers (`curl -sI`): still no CSP or security headers. `/ydx/*` is not deployed live yet, which is the
+  `both404` case and passes.
