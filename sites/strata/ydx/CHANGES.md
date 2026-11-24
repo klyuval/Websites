@@ -102,3 +102,88 @@
   compete with that and with the hover states.
 - **Google Fonts are render-blocking** in this container, where they are slow. The loader paints as soon as they
   arrive. This is the same for the original page.
+
+## Round 2
+
+### What was audited
+
+- **Loader and hand-off**, recorded as CDP screencast frame sequences (about 60–80ms apart) on desktop (1440×900) and
+  iPhone 13. Timeline probes cover first paint, `load`, `is-out`, removal and long tasks for first visits, repeat
+  visits, the hub iframe, reduced motion, a deep link, a keypress during the build and a 404 on `enhance.js`.
+- **Throttled run:** 400kbps with 400ms RTT through CDP `Network.emulateNetworkConditions`, plus CPU ×4.
+- **CLS and long tasks with and without the layer.** The "without" run routes `/ydx/*` to a 404 and strips the
+  inline loader. A CPU profile of a full wheel-scroll walk attributes long tasks.
+- **Keyboard:** a 70-step Tab walk recording focus order, focus-ring style, visibility and whether the loader was up.
+  Escape on the project sheet, with focus returning to the card.
+- **Viewports:** 360×740, 390×844, 844×390 (landscape phone), 768×1024, 1024×768, 1280×800, 1440×900 and 1920×1080.
+  Each was scroll-walked with an overflow scan.
+- **States:** the shutter (nav jump), mobile menu open/close, the project sheet open/close, the brief generator
+  (filled and generated) and the FAQ.
+
+### What was found and fixed
+
+- **Double entrance at the loader hand-off (all viewports).** When the main thread was busy at hand-off (the
+  bundle's ~150–250ms long task), the `release()` timer ran late. The hero copy, CTAs and nav then showed under the
+  retracting layers, snapped invisible and animated in a second time. Fix: the inline script now sets `ydx-intro`
+  together with `ydx-hold` at first paint. All intro animations wait in their first frame
+  (`animation-play-state: paused`) until the hold is released, so a late timer only delays the entrance and never
+  repeats it.
+- **Blank white screen before the loader.** Google Fonts were render-blocking, so the loader first painted at about
+  870–920ms on a normal line and about 4.7s throttled. The font stylesheet now loads non-blocking (preload plus
+  `media="print"` swap, with a `<noscript>` fallback; `index.html`, marked `ydx`), and the loader covers the swap.
+  First paint is now about 250–370ms.
+- **Loader cut off on slow lines.** All loader times counted from navigation start, so on a slow line the 4s cap had
+  already passed when the loader first appeared, and it left at once to an empty page. Times now count from the
+  later of navigation start and the first paint (MIN = T0 + 0.7s, HARD = T0 + 2.6s). Past HARD the cover stays only
+  while `#root` has not rendered, up to an absolute ceiling of T0 + 4.2s. Throttled result: the loader paints at
+  5.5s, builds and leaves at 9.2s. The rAF loop and a timer backstop follow the same rules, so the loader is never
+  stuck. Layer progress now runs from when the build becomes visible.
+- **Loader silhouette popped in.** The ghost STRATA is a CSS mask, so its image was found late and appeared about
+  300ms after the plate. It is now preloaded (with `crossorigin` to match the mask's CORS fetch, so there is no
+  console warning) and fades in when it loads.
+- **The failsafe could kill a healthy loader.** The inline failsafe ran at 4.5s, which a slow line could reach before
+  `enhance.js` executed. A failed load is now caught at once by `onerror` on the script tag (adding `ydx-fail`, which
+  drops the loader and the hero hold through CSS). The hang failsafe moved to 8s.
+- **Keyboard during the loader.** Pressing Tab during the build used to focus the skip link under the cover for
+  about 1s. A keypress now hurries the build (5 layers a frame, as soon as the app has rendered) and uses the short
+  exit.
+- **Hero kicker clipped (844×390 landscape phone).** "INDEPENDENT 3D PRINTING & DE…" was cut off for the whole
+  2.4s intro, because the marquee's `both`-filled clip kept the box's insets and the kicker is wider than the box
+  there. The marquee now uses `backwards` fill. The generic stepped print clip also has negative horizontal insets,
+  so outlines and overhangs are never shaved at rest.
+- **Typing labels showed line 2 before line 1 finished (360px).** Example: "A COLLABORATION, NOT JUST A PRINT JOB."
+  The single-line check ran against the fallback font. Labels are measured again on `document.fonts.ready` and right
+  before they reveal, and any that now wrap switch to the lift reveal.
+- **Scroll cost.** The end-of-page reveal read `scrollHeight` (and later `scrollY`) on every scroll event. Each read
+  forced a layout: about 240–300ms of JS over one full scroll walk, the largest ydx cost. It is replaced by an
+  IntersectionObserver on the footer's last row. The scroll-fx frame now reads all geometry before writing (it
+  previously interleaved slab writes with the next slab's `getBoundingClientRect`) and uses a ResizeObserver-cached
+  page height. The Z-readout tone sampling (`elementsFromPoint`) ran every 30px and now runs once the scroll
+  settles. ydx JS over a full scroll walk went from about 470ms to about 15ms. Remaining long tasks in headless runs
+  are raster or compositing work (software GL), not JS.
+- **Project sheet re-laid out while closing (desktop).** Its two-column grid existed only on `[open]`, so during the
+  pass 1 fade-out it collapsed to one column and the vase jumped. The columns are now kept on `:not([open])`.
+- **Nav focus ring nearly invisible on bone and lime sections.** The site's ring is `currentColor` (bone) on the
+  brand, the nav links and the menu button. It is now two-tone: a 2px bone line inside a 6px ink halo, legible on
+  every section colour.
+- **CLS:** desktop 0.0005–0.0009 with the layer against 0.006 without. Mobile 0.0009 against 0.020 without (the
+  loader hides the app's own early hero shift). No new console errors or warnings on desktop or mobile.
+
+### What was toned down or removed
+
+- **Magnetic pull** cut from ±10/7px to ±6/4px. The buttons are physical layer stacks, and a big float fought the
+  site's own "top layer lifts 3px" hover.
+- **Dead rule** `#ydx-loader.no-img`, which no code ever set, was removed.
+
+### What was added
+
+- **Text-link hover in the buttons' layer language.** On hover the underline drops from .28em to .42em and takes a
+  layer colour: violet on light fields, lime on the ink footer. It applies to pointer:fine devices without reduced
+  motion.
+
+### Left as is, and why
+
+- The shutter's timing (about 690ms in total, with the label held about 40ms), the mobile menu print-down and the
+  slab sink read well in the frame sequences, so they were not changed.
+- Loader images (about 160KB) still compete with the bundle on very slow lines. They are the same files the footer
+  and hero use, so no bytes are wasted, and the loader degrades to the rail, nozzle and readout until they arrive.
