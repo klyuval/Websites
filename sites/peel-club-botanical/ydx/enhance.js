@@ -10,7 +10,7 @@
  *  5. fallback       IntersectionObserver reveals for browsers without scroll-driven animations
  *  6. theme-color    the browser chrome follows the section colour under the header
  *  7. magnetic       pills and carousel arrows lean toward a fine pointer
- *  8. fizz           bubbles rise out of "Add to sample bag"
+ *  8. fizz           bubbles rise out of "Add to sample bag"; the header bag count pops when it goes up
  */
 (() => {
   'use strict';
@@ -155,27 +155,23 @@
   const noSDA = !(window.CSS && CSS.supports && CSS.supports('animation-timeline: view()')) || /[?&]ydx-nosda\b/.test(location.search);
   if (noSDA) html.classList.add('ydx-nosda');
 
-  let io = null;
+  let io = null, ioReveal = null;
   const seen = new WeakSet();
   function scan() {
     if (!io) return;
-    document.querySelectorAll(TAPE + (noSDA ? ',' + SDA_HEAD + ',' + SDA_PLATE : '')).forEach((el) => {
-      if (seen.has(el)) return;
-      seen.add(el);
-      io.observe(el);
-    });
+    document.querySelectorAll(TAPE).forEach((el) => { if (!seen.has(el)) { seen.add(el); io.observe(el); } });
+    if (ioReveal) document.querySelectorAll(SDA_HEAD + ',' + SDA_PLATE).forEach((el) => { if (!seen.has(el)) { seen.add(el); ioReveal.observe(el); } });
   }
   function startObservers() {
-    if (io || !('IntersectionObserver' in window)) { html.classList.add('ydx-tape-off'); return; }
-    io = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (!e.isIntersecting) continue;
-        const el = e.target;
-        if (el.matches('em')) el.classList.add('ydx-taped');
-        else el.classList.add('ydx-in');
-        io.unobserve(el);
-      }
-    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.4 });
+    if (io) return;
+    if (!('IntersectionObserver' in window)) { html.classList.add('ydx-tape-off'); html.classList.remove('ydx-nosda'); return; }
+    const once = (cls) => (entries, obs) => {
+      for (const e of entries) if (e.isIntersecting) { e.target.classList.add(cls); obs.unobserve(e.target); }
+    };
+    // tapes wait until most of the word is on screen
+    io = new IntersectionObserver(once('ydx-taped'), { rootMargin: '0px 0px -8% 0px', threshold: 0.4 });
+    // fallback reveals fire as soon as any part enters (tall headings may never reach a ratio threshold)
+    if (noSDA) ioReveal = new IntersectionObserver(once('ydx-in'), { rootMargin: '0px 0px -6% 0px', threshold: 0 });
     scan();
   }
   // wait until the loader has started to leave, so the first tapes are laid where people can see them
@@ -245,13 +241,25 @@
     setTimeout(() => box.remove(), 1600);
   }
 
+  /* ---------------------------------------------------------------- bag count pops when it goes up */
+  let bagCount = null;
+  function checkBag() {
+    const btn = document.querySelector('.bag-button');
+    if (!btn) return;
+    const n = parseInt((btn.textContent.match(/\d+/) || ['0'])[0], 10);
+    if (bagCount !== null && n > bagCount && !reduced()) {
+      anim(btn, [{ scale: '1', rotate: '0deg' }, { scale: '1.16', rotate: '-4deg', offset: 0.35 }, { scale: '1', rotate: '0deg' }], { duration: 560, easing: 'cubic-bezier(.3,1.4,.5,1)', fill: 'none' });
+    }
+    bagCount = n;
+  }
+
   /* ---------------------------------------------------------------- wiring */
   function boot() {
     whenRevealed(startObservers);
     // React re-renders on every route: rescan for new headings/plates (debounced)
     let pending = 0;
     const root = document.getElementById('root');
-    if (root) new MutationObserver(() => { if (!pending) pending = requestAnimationFrame(() => { pending = 0; scan(); queueTone(); }); })
+    if (root) new MutationObserver(() => { if (!pending) pending = requestAnimationFrame(() => { pending = 0; scan(); queueTone(); checkBag(); }); })
       .observe(root, { childList: true, subtree: true });
     addEventListener('scroll', queueTone, { passive: true });
     addEventListener('resize', queueTone, { passive: true });

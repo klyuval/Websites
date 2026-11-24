@@ -109,8 +109,8 @@ html.ydx-vt .ydx-vt-flap { visibility: visible; }
 .ydx-fizz { position: fixed; z-index: 60; pointer-events: none; overflow: visible; }
 .ydx-fizz i {
   position: absolute; top: 30%; border-radius: 50%;
-  border: 1.5px solid var(--paper, #f4ebd6); background: rgba(244, 235, 214, .18);
-  box-shadow: inset -1px -1px 0 rgba(255, 255, 255, .5);
+  border: 1.5px solid var(--green, #0f3b2d); background: rgba(245, 129, 31, .22);
+  box-shadow: inset -1.5px -1.5px 0 rgba(255, 255, 255, .7);
 }
 
 /* ------------------------------------------------------------------ design fixes */
