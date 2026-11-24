@@ -205,3 +205,52 @@ English switch, keyboard navigation, back mid-transition. Zero console errors in
 - If `enhance.js` is very slow (>3s) the site's own arrival is used for that page, without the iris.
 - A real background tab could not be produced in headless Chromium; it was emulated (rAF stubbed, lifecycle freeze).
 - Safari/Firefox behaviour was reasoned from the code (only Chromium is available here).
+
+## Round 4 (creative-director pass)
+
+### What was judged
+
+Walked all 15 routes scroll by scroll at 1440 and iPhone 13 (EN everywhere; HE and RU on the routes whose layout
+changes), plus the frame sequences of the hand-offs. The first screens are strong (hero film, poster, folio, the
+loader and shutter from earlier rounds). Below the first screen, two things still read flat:
+
+1. **Hard cuts between paper and darkroom.** The site alternates olive-black and paper sections, and every switch was a
+   plain horizontal edge: home folio to "What do you have in mind?", events/restoration hero to their paper editorial,
+   the work archive to "Browse by service", and the olive "On land. In the air. At sea." band inside the paper About
+   page.
+2. **Static section headings.** The site's own type moves only at mount time (hero h1s, page intros) or inside its
+   GSAP scenes; every display h2 further down (home brief, "Photography. Prints & products.", "Try a frame.", the
+   closing "Let's discuss your project.", service capability/studies titles, the services directory cards, "Browse by
+   service.", About's craft heading) was simply there when scrolled to, so the bottom half of most pages had no motion
+   moment at all.
+3. **Motion vocabulary.** ydx used nine different cubic-beziers; the site itself mostly uses three.
+
+### Changed
+
+| What | How |
+| --- | --- |
+| Paper laid on the darkroom table (`enhance.css`) | `.project-brief`, `.event-editorial`, `.restoration-editorial`, `.work-index`, `.biography-field` enter inset 5% at the sides and widen to full bleed as they scroll in. CSS scroll-driven animation (`animation-timeline: view()`, range `entry 0%`-`entry 75%`), so it is scrubbed and reversible like the site's own poster entry, costs no JS and is ignored where unsupported. `fill: backwards` only: once the section is in, nothing is clipped. Under `prefers-reduced-motion: no-preference` only. |
+| Section headings rise (`enhance.js` `riseScan`, `enhance.css`) | `main h2`s that start below the first screen and that the site does not animate (own animation, GSAP inline transform, `data-reveal`, folio, poster, workbench, archive, dialogs) get `data-ydx-rise`; an IntersectionObserver plays the site's optical-type-in (clip from below + 26px, 0.9s, its own curve) once, then the clip is dropped (`data-ydx-done`). Whole element, so Hebrew/Russian are never split. Never hides something already on screen (position check), re-checked after in-place navigation once the router has reset the scroll, revealed on `beforeprint`, skipped with reduced motion, no enhance.css, no IO or no WAAPI. 1-7 headings per route. |
+| Motion tokens | `--ydx-out` (.16,1,.3,1), `--ydx-soft` (.2,.8,.2,1), `--ydx-inout` (.65,0,.15,1), `--ydx-in` (.7,0,.84,0), all taken from the site's own CSS. Every ydx CSS curve now uses them (shutter label develop, light sweep, menu blind and items, meter, AF pulse, footer develop, credits). The loader's aperture keeps its own tuned curve. |
+
+### Removed / kept
+
+Nothing removed: re-judged the light meter, aperture, shutter develop + sweep, language iris, AF brackets, menu blind,
+footer and credits develop; each is in the site's darkroom/camera language and none overlaps another. Hover and focus
+states were re-checked on the walk (round 2's keyboard pass still holds); nothing new to fix. A "missing" brief photo
+seen in one desktop walk shot was a decode-timing artefact of the loaded container (image loaded and painted in
+repeated probes), not a site bug.
+
+### Regression (round-3 suite, copied to `scratchpad/luma-atelier-r4/reg/`, `runall.sh after`)
+
+- `bugs.mjs` B1-B10: all PASS. `prod.mjs`: all 13 scenarios end usable (normal, repeat, no-JS, js/css/both 404,
+  js/css/app delayed 8s, rm, repeats), console output identical to round 3 (404s and the preload warning only in the
+  failure scenarios). `flow.mjs`: all 24 steps OK on hard and in-place (RSC as `text/x-component`) paths, desktop and
+  iPhone 13, EN/HE, zero errors. `hyd.mjs`: FCP/hydration unaffected. `iframe.mjs`: done at ~590ms, navigation works.
+  `freeze.mjs`: clean. `nojs.mjs`: unchanged. `bf2.mjs` (headless): same result as round 3 (bfcache needs headed).
+- New: `marked.mjs` (every route, desktop EN, mobile HE, desktop RU: every marked heading ends revealed with no clip
+  or offset, zero console errors), `sparise.mjs` (in-place navigation: no hidden heading in view, all end revealed),
+  frame recordings of the laydown (home, work, About in HE). `shoot.mjs` desktop + mobile on home, about, work,
+  events: 0 log lines.
+- Live headers re-checked (`curl -sI`): still no CSP / X-Frame-Options / cache-control; `.rsc` served as
+  `text/x-component`.
