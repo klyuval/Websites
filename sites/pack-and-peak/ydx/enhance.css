@@ -368,7 +368,6 @@ html.ydx-topo .intro-kicker { position: relative; z-index: 3; }
 #ydx-lab .ydx-lab-go { transition: translate .25s var(--ydx-out); }
 #ydx-lab:hover .ydx-lab-go { translate: 3px -3px; }
 @media (max-width: 1279px) { #ydx-lab .ydx-lab-t small { display: none; } #ydx-lab { padding-right: 14px; } }
-@media (max-width: 999px) { #ydx-lab { bottom: 25px; } }   /* no altimeter pill below 1000px */
 @media (max-width: 760px) {
   #ydx-lab { left: 50%; right: auto; bottom: 74px; translate: -50% calc(100% + 90px); font-size: .82rem; gap: 8px; padding: 4px 12px 4px 5px; }
   #ydx-lab.is-on { translate: -50% 0; }

@@ -152,7 +152,7 @@
     gl = null;
   }
   try {
-    var attrs = { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: true,
+    var attrs = { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: false,
       powerPreference: 'low-power', failIfMajorPerformanceCaveat: !allowSW };
     gl = cv.getContext('webgl', attrs) || cv.getContext('experimental-webgl', attrs);
     if (!gl) throw new Error('no webgl');

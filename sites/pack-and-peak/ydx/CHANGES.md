@@ -436,8 +436,9 @@ shadows drifting over, the map grid, a north arrow, a 1 km scale bar and the she
 
 ### 3. Entry point and the page change (`ydx/enhance.js`)
 - **Chip:** "Route lab · Plot your own line" with a contour-ring icon, styled like the dock and the altimeter pill.
-  It is a real link appended to `<body>`, shown while the map sheet or the summit is mid-screen (bottom-left on
-  desktop, above the dock on phones; `visibility:hidden` otherwise, so it is never an invisible tab stop). Hover/focus
+  It is a real link appended to `<body>`, shown while the map sheet or the summit is mid-screen (bottom-right above
+  the altimeter pill on desktop, over the decorative relief rather than the readout card's CTA; on phones only at the
+  summit, centred above the dock; `visibility:hidden` otherwise, so it is never an invisible tab stop). Hover/focus
   makes its rings breathe; it has the magnetic pull of the other pills.
 - **Transition:** clicking it plays the chapter-jump strata (vermilion, then a paper band with the route pin,
   "ROUTE LAB", "Plot your own line"), freezes them while the paper band covers the screen, and navigates. The lab

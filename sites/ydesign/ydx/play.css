@@ -113,3 +113,4 @@ html.pl-gl .pl-still { opacity: 0; }
 @media (prefers-reduced-motion: no-preference) {
   .pl-cursor { transition: opacity .5s; }
 }
+html.pl-nogl .pl-tools { display: none; }

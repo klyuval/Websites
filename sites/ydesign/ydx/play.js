@@ -84,6 +84,7 @@
   const noGl = () => {
     if (hint) hint.textContent = hint.dataset.nogl || hint.textContent;
     if (cv) cv.style.display = 'none'; // (a refused or lost context can paint white under the still)
+    html.classList.add('pl-nogl');      // (Splash and Clear have nothing to act on)
     if (cursor) cursor.remove();
   };
   if (!fx) { noGl(); return; }
