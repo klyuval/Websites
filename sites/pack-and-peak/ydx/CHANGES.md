@@ -505,4 +505,14 @@ so they reinforce each other. The static topo texture is no longer drawn while t
 - `prod.cjs`, 18 scenarios: every one ends visible and usable with `ydx:ready` once and no console errors besides
   the intended 404s. `bfcache` is still probed while its repeat loader is up (Playwright never restores from
   bfcache; the same artefact as round 4) and then ends clean.
-- `shoot.mjs` walks: see the final report.
+- `shoot.mjs` walks (desktop and mobile journey, desktop lab): no page errors; the only log lines are Chromium's
+  "GPU stall due to ReadPixels" performance warnings, which the screenshot capture itself causes by reading back the
+  WebGL canvas (2 per walk). The page never reads pixels back.
+- After the final chip and engine changes I re-ran `t-misc` (a second copy of the scripts still makes no
+  duplicates), `t-shutter2`, `t-reveal` and `flow.cjs` (chip → lab → back lands on `#terrain` at 0 px): all pass.
+
+### Best "after" captures
+`scratchpad/pack-and-peak-r5/`: `bgseq2/sheet.png` (the summit following the cursor across the pack chapter, then the
+summit chapter), `look2/trails.png` and `look2/pack.png` (the field per chapter), `lab3/5-surprise.png` and
+`lab2/4-walk.png` (the route lab), `lab-msheet.png` (the lab on phones), `frames/sheet.png` (strata into the lab),
+`after-d-sheet-s.jpg` / `after-m-sheet-s.jpg` (full walks).
