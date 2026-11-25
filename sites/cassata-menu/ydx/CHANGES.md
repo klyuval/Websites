@@ -350,3 +350,110 @@ reduced-motion view. Scripts and shots are in `scratchpad/cassata-menu-r4/`.
   scope for a visual pass that can't be seen.
 - **The app shows "Checking the counter…" in the menu box even when its notice says the connection failed.** That
   is app copy in the bundle.
+
+## Round 5
+
+The owner's note was "still too boring": the site needed living, reactive backgrounds and at least one real
+interactive experience. Inputs: `BRIEF5.md`, `PLAYBOOK.md` (techniques 1, 3, 4, 21, 22 and the lean WebGL reference),
+and this file's rounds 1–4. Scripts and shots are in `scratchpad/cassata-menu-r5/`.
+
+### Built
+
+1. **The living gelato field** (`ydx/field.js`, new; linked from `index.html` only, never from `/host`).
+   The hero's flat flavour field (`--field`, recoloured by the app every 5s) is now a WebGL surface:
+   - **Gelato surface.** Domain-warped simplex noise (PLAYBOOK §1.1, two-octave fbm) is read as broad, soft folds,
+     like gelato sculpted in the vitrine. It churns slowly on its own, and scroll velocity stirs it.
+   - **Variegato ribbon** (a cheap variant of technique 3, no FBOs). The pointer drags a lighter ribbon through the
+     gelato. The ribbon is the distance to the last 32 pointer points, bent by the same flow as the folds, with a sheen
+     line inside. It heals back in about 1.9s. The site's red scoop cursor rides at its head like a spoon tip.
+     - On touch, a tap twists a small spoon swirl where the finger landed.
+     - When nobody has touched it for 4.5s, a "ghost spoon" slowly churns a figure-eight in the empty band above the copy.
+   - **The pour** (technique 21, in the site's own language). When the app features the next flavour, the new colour
+     no longer cross-fades. It pours out of the coupe as a sticker blob with drips on its edge, the site's 2.5px ink
+     outline and its hard offset shadow, the same vocabulary as the loader's drip curtain. The blob grows with an
+     ease-out, so it reaches the copy before the app's own 0.5s text recolour.
+   - **Contrast by construction.** Every effect only pushes the field *away* from the hero's text colour: lighter on
+     light fields and darker on dark ones, gentler on dark ones. The app's own field/ink pairs were chosen for
+     contrast, so they can only gain contrast and never lose it, in any frame. The only exception is the pour's moving
+     ink rim, which is there for a split second.
+   - **How it is mounted.** One canvas in `<body>`, outside the React tree, absolutely positioned over the hero's box
+     (from a ResizeObserver), so it scrolls natively with the page and needs no scroll syncing. It sits at
+     `z-index:-1`, and `body`'s paper is moved to the root, which already paints the same colour.
+     - The hero only turns transparent (`html.ydx-gl`) after the first frame is drawn. The hero's own 0.7s
+       `background-color` transition then hands over without a flash.
+     - Pointer coordinates come from that cached box, so there are no per-frame layout reads.
+2. **The Scoop Lab: `/play/`** (new standalone page: `play/index.html`, `ydx/play.js`, `ydx/play.css`).
+   *"בנו גביע. אל תפילו." / "Stack it. Don't drop it."*
+   - **What you do.** Today's flavours come from the live `/api/menu`, with the full 18-flavour collection and a note
+     as the fallback. Tapping one drops a sticker scoop (the loader's scoop shape, flavour colour, gloss and flecks)
+     onto a waffle cone, where it lands with a squash.
+   - **The physics.** Drag the cone with a mouse or finger, move it with the arrow keys, or turn on phone tilt (iOS
+     permission is asked inside the tap). The stack is a chain of damped springs that feels the cone's acceleration
+     and gravity. Lean too far and the scoops above the broken joint fly off, with the cone's velocity, and **splat**
+     on the counter: an ink-outlined puddle with droplets that squashes in. A hand-written "On the counter: 3" keeps
+     count. A scoop dropped while you move the cone away misses and splats too.
+   - **The ticket.** It stamps in with the live prices (₪19 / ₪26), or the site's "Ask at the counter" for 3 or 4
+     scoops, and lists the combo.
+   - **The background** is the same living field in the top scoop's colours. Every scoop that lands *pours* its
+     colour out from the stack, and every splat swirls the field where it landed.
+   - **Native to the site.** It uses the site's own CSS, tokens and components: header stickers, `.brand`, the
+     language pill, chips and tickets. It also gets the same loader and drip page transitions, because `enhance.js`
+     and the inline loader blocks are included, and the language switch gets the same View Transition scoop.
+     Hebrew/English follows `cassata-language`, and RTL is mirrored.
+   - **Accessibility.** Keyboard order is skip, brand, back, language, stage (arrows), chips, reset. There is a
+     polite live region ("Pistachio is on." / "Oops! Mango hit the counter."), and all tap targets are at least 44px.
+     Haptics: an 8ms tick on landing and 25ms on a splat (Android).
+3. **The way in.** On the home page only, a cream sticker pill with a tiny wobbling two-scoop cone,
+   "בנו גביע / Stack a cone", is added outside the app root by `enhance.js`. It appears once the hero has scrolled
+   away, and hides over the flavour sheet and the footer. It is a real link, so it gets the drip pour to `/play/`.
+   Every `/play/` link back ("← Back to the menu", the brand) pours back.
+
+### Removed / changed from earlier rounds
+- The hero's flat cross-fade on every flavour change was replaced by the pour. It is still the app's own transition
+  when the field is not running.
+- Nothing else competed: the cursor became the ribbon's spoon tip, and the drips, seals and ticker stay as they were.
+  `/host` is untouched: no field, no chip, no new motion.
+- `enhance.js`: the language View Transition now **holds the field still** (`__ydxField.hold`) while the page is
+  snapshotted. With a canvas still drawing, the capture stalled badly on software GL (25s in one run).
+
+### Fallbacks and safety
+- **No WebGL, or a software rasteriser** (`failIfMajorPerformanceCaveat`, plus a renderer check for
+  SwiftShader/llvmpipe/"software", since headless Chromium hands out SwiftShader without flagging it): no canvas, and
+  the original flat field with its CSS transition. `/play/` keeps its CSS `--field` background, which follows the top
+  scoop.
+- **A GPU that can't keep up:** adaptive quality drops the render scale ×0.75 down to 0.35. Three or more frames in a
+  row under 10fps (more than 2s in total) give the page back its CSS field for good (state `slow`). Tested: released
+  after 5–12s on SwiftShader with the test override that skips the renderer check.
+- **Reduced motion:** the field is still drawn, but as static frames (redrawn on each flavour change, no pour, ribbon
+  or ghost). On `/play/` scoops appear without dropping, the stack never sways or falls, and the builder still works.
+- **Other cases:**
+  - No JS: the home page is the original site; `/play/` shows a `<noscript>` invitation back to the menu, and its
+    stage and panel are hidden.
+  - Context loss and restore are handled.
+  - Hidden tab or offscreen hero: paused.
+  - bfcache is handled.
+  - Hub iframe: render scale 0.5 at DPR 1.
+  - `field.js` missing: the original site.
+- **CSP:** external files only, no eval, inline style only through CSSOM.
+
+### Performance (headless, SwiftShader: GPU cost not representative, so JS cost was measured)
+- **Render size:** DPR cap 1.5 on desktop and 1.25 on phones, render scale 0.85 on desktop and 0.7 on phones.
+- **Shader cost per pixel:** 3 two-octave fbm (6 simplex) plus a 31-segment ribbon loop. `field.js` is 8.8KB gzip and
+  `play.js` 9.0KB gzip.
+- **JS per frame, field running vs paused.** These were measured with a 16×16 render target, so the numbers include
+  GL-call overhead but no rasterisation:
+
+  | Viewport | CPU | Field running | Paused |
+  | --- | --- | --- | --- |
+  | Phone | 1× | 0.35–0.47ms | 0.07ms |
+  | Phone | 4× | 1.0–1.5ms | 0.2–0.3ms |
+  | Desktop | 1× | 1.5–1.9ms | 0.1ms |
+
+  A CPU profile shows that most of the desktop number is native time blocked on SwiftShader. `field.js`'s own
+  functions are a small share.
+- **Scroll at 4× CPU** (the production path here, where software GL is refused, against `field.js` blocked):
+  p50 16.7ms both ways, p95 233 vs 133ms. The machine was shared, at load ~35 during the first runs. The field is
+  paused as soon as the hero leaves the viewport.
+
+### Regression (round-3/4 suite copied to `scratchpad/cassata-menu-r5/suite/`, live CSP, stubbed `/api/menu`)
+RESULTS_PLACEHOLDER

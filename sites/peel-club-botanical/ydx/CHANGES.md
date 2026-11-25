@@ -391,3 +391,168 @@ there was no other language to check. Scratch files and screenshots are in the r
   cost.
 - **Live headers (`curl -sI`):** still no CSP or security headers, only `cache-control: public, max-age=0,
   must-revalidate`.
+
+## Round 5
+
+The owner's request for this site: "PEEL CLUB Botanical looks bad with that orange; I want a moving background for it."
+The flat tangerine, green and pink desks now carry a living, botanical light. On top of that there is one new interactive
+experience, the Fizz Lab. Scratch files, tests and screenshots are in the round-5 scratch folder
+(`peel-club-botanical-r5/`).
+
+### 1. Komorebi: the moving background (`ydx/komorebi.js`, wired in `enhance.js` §11, CSS in `enhance.css` round 5)
+- **What it looks like.** Dappled sunlight falls through swaying leaves onto each desk (komorebi), over a softly
+  domain-warped colour field. A caustic shimmer plays inside the light pools, and fine soda bubbles rise.
+  - The tangerine stays tangerine, but deeper (a saturated orange in the leaf shadows) with golden sun pools.
+  - The green gets real leaf shadow and a soft green light.
+  - The pink stays rose, with pale pools.
+  - References: PLAYBOOK §1 techniques 1 (domain warp) and 5 (caustics and fizz), and §4 "Botanical".
+- **What it reacts to:**
+  - **Pointer or finger:** the canopy parts around it and a pool of sun opens. Leaves are pushed outward, and dragged
+    a little along with the pointer's velocity.
+  - **Tap or click:** a ring of light runs out through the leaves. "Add to sample bag" also sends one from the button.
+  - **Scroll speed:** works as wind (the leaves sway harder) and as fizz (the bubbles rise faster).
+  - **The flavour in play:** this retints the light, eased over about 650 ms:
+    - the carousel's active can (`.gpu-product-scene[data-active-flavor]`, or `.carousel-current` text);
+    - the selected pairing tab;
+    - a hovered or focused flavour plate;
+    - the product page's flavour;
+    - the Fizz Lab blend.
+  - **Sections:** each desk keeps its own palette. The r4 slanted "label edge" seam between colours is now drawn in the
+    shader, with the same geometry and the same scroll progress. The CSS wedges are hidden only while the field is on.
+- **How it is built:**
+  - One raw WebGL 1 context and one full-screen triangle, with no libraries and no eval. The base is the playbook's
+    ShaderBG pattern; the shader body is new.
+  - Per pixel: 2D simplex noise (MIT, Ashima), about 7 calls; two leaf layers (3×3 cells of lens-shaped leaves);
+    one bubble cell.
+  - Fallback buffer at 0.6 of CSS px (0.5 on touch), DPR cap 1.5, adaptive quality down to 0.3.
+- **Document-locked canvas, not fixed.**
+  - The app's Lenis has `syncTouch:false`, so phones scroll on the compositor, ahead of the main thread. A fixed
+    canvas would let the colour seams lag behind the sections.
+  - So the canvas sits in a body-sized clipping wrapper (`body{position:relative}`, wrapper `z-index:-1`), and every
+    frame it is moved to the scroll position with 15% overscan above and below. It scrolls with the page between
+    frames, and the seams stay glued to the desks.
+  - `body` and desk backgrounds turn transparent only after the first frame has drawn (a 0.9 s crossfade).
+  - Context loss hands the flat colours back until the context is restored and draws again (tested).
+- **Sharing the GPU with the app's three.js scene** (its renderer is bundled and not exposed, so this is a separate,
+  light context):
+  - `komorebi.js` loads lazily: after the loader leaves, after the app's scene has **settled** (`gpu-products-ready`,
+    its fallback, or no scene on the route), and when the browser is idle.
+  - The settle wait was added after a SwiftShader run showed two contexts competing: the app's first frame never came
+    while the field rendered.
+  - It is **held (no draws)** while the carousel is being driven (drag, wheel or arrow keys on the hero, a click on its
+    controls) and during route view transitions.
+  - It is capped at **30 fps** while a 3D section (hero or product) is on screen (IntersectionObserver plus the
+    scene's `data-mode`).
+  - It pauses in hidden tabs.
+- **Contrast (WCAG).** Palettes are built in JS at target relative luminances:
+  - Tangerine and pink only ever get lighter than the brand token (their text is dark green).
+  - Green stays dark enough for the large tangerine display type.
+  - An audit (`t-contrast.js` plus `contrast.py`) hid the app, captured 126 frames of the bare field (pointer, bursts,
+    flavours; home, story, two product pages) and measured per desk:
+    - tangerine L min 0.331 (needs ≥ 0.329 for green body text at 4.5:1);
+    - pink L min 0.54 (needs ≥ 0.49 for rust display type at 3:1);
+    - green p99.9 0.081. The single brightest pixel under the cursor's sun core was 0.085, so the green sun was then
+      lowered to 0.078 (needs ≤ 0.084 for tangerine display at 3:1).
+- **Fallbacks:**
+  - The **hub iframe**, save-data, software GL (`failIfMajorPerformanceCaveat`), no WebGL, or a shader error all get
+    `html.ydx-field-css`: a designed static version with soft pools of sun per desk (lighter only).
+  - If `komorebi.js` is missing, the desks simply stay flat.
+  - With **reduced motion** there is no clock, pointer, wind or parallax. It is a static komorebi frame, locked to the
+    page and redrawn only on scroll.
+  - Print restores the flat desks.
+- **A visible "Pause the moving light" button** (WCAG 2.2.2, PLAYBOOK rule 19) sits in the dock. It sets
+  `html[data-ydx-still]`, is remembered in `localStorage` and is shared with the lab.
+
+### 2. The Fizz Lab: interactive experience (`/fizz-lab/index.html`, `ydx/fizz-lab.js`, `ydx/fizz-lab.css`)
+- **What it is:** a page of its own, "Mix your own bright side."
+  - There are 14 of the site's own cut-outs on the shelf: citrus, orchard fruit and botanicals.
+  - Drag one into the glass (mouse or pen), or tap / press Enter to drop it in. It splashes, sinks, bobs back up and
+    colours the soda (a linear-light blend).
+  - Bubbles nucleate on the bottom and on the fruit, and pop at the surface (a spring-chain surface).
+  - **Drag the glass sideways to shake it:** pressure builds (a gauge arc), and on release it pops in a foam
+    eruption. **"Shake it"** does the same for keyboard and switch users.
+  - Other controls: a Fizz slider (Still → Wild), "+ Ice" and "Empty the glass".
+- **The recipe card:**
+  - It names the blend ("Pineapple, Blood Orange & Mint") and finds the **closest club soda**, with its can and a link.
+  - **"Add a six-pack to your bag"** writes the app's own basket (`peel-club-agrumea:sample-basket:v1`, `{id,
+    quantity}` 1..12). Back on the site the header reads "Bag (1)" (tested end to end).
+- **The light behind the page:** the komorebi field takes the blend's colour, and its fizz follows the glass's fizz
+  and pressure. A pop sends a ring through the light.
+- **Look and system:**
+  - It uses the app's own stylesheet (tokens, Fraunces and Courier, `.display`, `.tag`, `.pill`, `.sheet`, `.header`,
+    `.footer`) and the line-art style of the round-1 loader for the glass.
+  - The same label-peel cover peels away on arrival (short on repeat visits).
+  - The same tangerine label is wiped on along the "/" edge before leaving.
+  - bfcache restores clear the cover.
+- **Accessibility:**
+  - The canvas is `aria-hidden`. A polite live region announces each change ("Added mint. Your blend: …, sparkling.
+    Closest club soda: Pineapple & Mint.").
+  - Every action is a real button or input with a visible focus ring.
+  - Reduced motion: the ingredients settle at once and the fizz is a seeded still life; everything still works.
+  - "Pause light" pauses the background only, not the toy.
+  - No JS: the intro plus "The Fizz Lab needs JavaScript", with a link to the sodas. The dead controls are hidden.
+- **Layout:**
+  - Wide screens: intro and shelf on the left, the sticky glass in the middle, the card on the right.
+  - Phones: intro, glass, then a single swipeable shelf row right under the glass (a tapped ingredient is seen
+    landing), then the controls and the card. A compact header (← Back, wordmark, pause).
+- **Entry point (`enhance.js` §12):** a small taped paper tag with a glass icon, bottom-left, outside `#root`.
+  - Hidden over the home hero and while reading (scrolling down). It comes back on scroll up and on keyboard focus.
+  - Next to the footer it opens into "Fizz Lab · mix your own", then steps aside at the footer's legal line. That
+    collision was caught in testing and fixed.
+
+### Removed or replaced
+- The r4 CSS hand-off wedges are now drawn by the shader while the field runs. They remain the fallback (CSS / no
+  WebGL).
+- Nothing else competed: the loader, route peel, tape, breeze, fizz and magnetic pills are all kept.
+
+### Performance (4× CPU throttle, 30 wheel steps on home, field on vs off, alternated)
+- **Software GPU.** SwiftShader makes any full-screen shader cost about 1 s per frame here, so those numbers measure
+  the software GPU, not the layer.
+- **Main-thread cost was isolated** with a debug 0.04 render scale (`?ydx-q=`):
+
+  | Viewport | JS per drawn frame | Frame p50 | Frames over 50 ms |
+  | --- | --- | --- | --- |
+  | Desktop, field off | n/a | 16.7 ms | 6 / 0 |
+  | Desktop, field on | 0.14–0.46 ms | 16.7 ms | 6 / 5 |
+  | iPhone 13, field off | n/a | 16.7 ms | 4 / 8 |
+  | iPhone 13, field on | 0.57–0.78 ms | 16.7 ms | 10 / 8 |
+
+  Script time over the run rose by about 0.1–0.5 s.
+- **Buffers:** 864×702 on desktop 1440×900, 293×647 on iPhone 13.
+- **Sizes (gzip):** `komorebi.js` 9.6 KB and `fizz-lab.js` 12.1 KB. Neither loads on the critical path.
+
+### Regression results (round-3/4 suite, copied to `peel-club-botanical-r5/reg/`, WebGL disabled, so the CSS
+fallback path is exercised)
+- **`t-prod` matrix:** every condition ends clean.
+  - Cover gone at: normal 2.9 s, js404 1.9 s, css404 2.6 s, both404 1.8 s, jsDelay8 1.8 s, cssDelay8 2.3 s,
+    appDelay8 9.5 s (safety), jsThrows 1.9 s with no recovery flash, reduced 1.5 s, `/faq` 2.3 s, product 2.2 s.
+  - No JS shows the noscript note.
+  - In every case: `#root` is not inert, there is no overflow lock, nothing is left hidden and there are no ghosts.
+- **`t-reg`, desktop and mobile:** tapes, the 14 fallback reveals, add-to-bag fizz, the bag drawer and its exit copy,
+  and focus returning to "Bag (1)". No errors.
+- **`t-vt`:** the double click and back/forward mid-transition both keep or clean the flap, and the latest transition
+  cleans up. No errors.
+- **`t-bg`:** both the frozen and hidden runs end clean, with nothing invisible in view.
+- **`t-focus`:** focus returns to the bag button. **`t-mag`:** the pill is released when the pointer leaves the
+  window. **`t-iframe`:** `ydx-quick` is set and the cover is gone at 1.26 s.
+- **Field-on checks (`t-fieldui*.js`, SwiftShader allowed):**
+  - bag open and close, Escape, focus, and the menu;
+  - the pause toggle (animation off, shared attribute);
+  - context loss (desks get their colour back), then restore (the field returns);
+  - a route change through the app's view transition;
+  - the dock → cover → `/fizz-lab/`;
+  - reduced motion (`data-anim=off`, redraws only on scroll);
+  - no errors in any of these.
+- **Real three.js plus the field (`t-gl.js`):** the app reaches `gpu-products-ready` first and the field starts after
+  it. The flavour follows the carousel (blood-orange → mandarin → yuzu-ginger on wheel). Route to `/faq` works. No
+  errors.
+- **Lab (`t-lab.js`, desktop and iPhone 13):** add, ice, shake to pop, the match, and add to bag, then back to the club
+  showing "Bag (1)". No errors.
+- **`shoot.mjs` desktop, mobile and `/fizz-lab/`:** only the SwiftShader "GPU stall" driver warnings, and no errors or
+  failed requests.
+
+### Known limits
+- **Timing tested under software GL only.** The GPU cost on real devices is estimated from the shader's size, not
+  measured. The adaptive scaler (0.6 → 0.3) and the 30 fps cap with 3D on screen are the guard rails.
+- **The dock does overlap content briefly.** On a short page it is visible at load until the first scroll down; it
+  has a small footprint (46 px).
