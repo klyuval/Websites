@@ -290,9 +290,12 @@ Both are variations on the site's own motif (proof, exposure, safelight, paper),
   `ydx-bg-live` is never set: the page is exactly the original design. Reduced motion → not started (and removed live if
   the setting changes): the original static design is the "beautiful still frame". Hub iframe → not started (light
   version). Context loss → original backgrounds back at once; restored → rebuilt. Print → hidden, colours restored.
-- **Performance:** DPR cap 1.25 (1 on touch) × quality 0.8 (0.6 on touch), adaptive down to 0.36 when frames are
-  slow, never steps back up more than once; paused in hidden tabs, and no draw at all while opaque content covers the
-  viewport (home hero, full paper sections). JS cost per frame: see the numbers below.
+- **Performance:** DPR cap 1.25 (1 on touch) × quality 0.8 (0.6 on touch); frame-time EMA steps the buffer down
+  (never back up more than once); a 1s wall-clock check halves the buffer when a device cannot hold ~24fps while it
+  draws, and if even the smallest buffer is too slow the layer **retires for the session** (`sessionStorage
+  ydx-bg-off`: the original design, nothing else changes). It draws nothing while opaque content fills the viewport
+  (home hero, full paper sections) or while the loader iris, route shutter or language plate is up, and stops in
+  hidden tabs.
 
 ### 2. The Darkroom — `/darkroom/` (new standalone page: `darkroom/index.html`, `ydx/darkroom.js`, `ydx/darkroom.css`)
 
@@ -323,10 +326,11 @@ An interactive darkroom session that makes a real black-and-white print from one
   left, labelled "Darkroom") opens here; leaving, the shutter closes here and the site's page continues it through the
   existing `ydx-route` record (hard navigation and in-place live navigation both verified). Direct visits get a short
   door-sign loader (the red bulb flickers on), 1s min first visit / 0.42s repeat / 0.3s in the hub iframe, 4s safety,
-  plain fade-free under reduced motion; the inline bootstrap gives up after 3.5s if the script never arrives.
+  skipped under reduced motion; the inline bootstrap gives up after 3.5s if the script never arrives.
 - **Entry point:** a small "Darkroom · Develop a print" chip with a breathing safelight dot, appended outside the app
-  root on every page; it appears only once the visitor has scrolled 60% of a screen (never over the hero), hides while
-  the mobile menu or a dialog is open or the shutter runs, localised (EN/HE/RU), `data-no-transition` so the site's
+  root on every page; it appears once the visitor has scrolled 60% of a screen (never over the hero), tucks away
+  while they scroll down through content (back on pause, scroll-up or near the end of the page), hides while the
+  mobile menu or a dialog is open or the shutter runs, not shown in the hub iframe, localised (EN/HE/RU), `data-no-transition` so the site's
   own router/shutter leaves it alone; ours closes the shutter, then navigates.
 - **Fallbacks:** no WebGL → the same four steps with a CSS print that develops with filters (the timer, verdict, drying
   line and download still work, computed on the CPU). Reduced motion → no caustics/ripples/sway, instant state changes.
@@ -337,3 +341,41 @@ An interactive darkroom session that makes a real black-and-white print from one
 Nothing from rounds 1–4 competes with these, so nothing was removed: the loader, shutter continuation, language iris,
 AF brackets, menu blind, heading rises and paper laydown are all still in place. The background deliberately does not
 run under the hero film (the hero already is the moving light there) and stays out of the paper sections.
+
+### Measurements (headless Chromium, SwiftShader software GL in this container)
+
+- **Background JS cost:** 0.3–0.8 ms per frame including the per-frame rect sampling (0.3 ms) at 4× CPU throttle
+  (`perf.mjs`, /services/, wheel scrolling). Script time per second was *lower* than without the layer (the page
+  itself did less work at the lower frame rate), so the JS side is not the cost.
+- **GPU side:** SwiftShader renders the full-screen shader on the CPU, so with the layer *forced on*
+  (`__ydxBgKeep`) scrolling fell from a 16.7 ms to a 67–83 ms median frame at 4× throttle. This is exactly the device
+  class the self-retirement is for: in the default mode the layer retired itself within ~3 s of drawing on this
+  machine and the median frame went back to 16.7 ms (p90 50–67 ms vs 33–50 ms baseline, same long-task range). On a
+  real GPU the shader is two simplex layers + 6 ripple terms at ≤1.25 DPR × 0.8, i.e. ~1–2 ms.
+- **Darkroom page:** 0.25–0.47 ms JS per frame (the 64×64 exposure update only runs while the lamp burns); the final
+  print is computed once on the CPU (~30–60 ms, after the white light is up).
+- **Contrast over the moving field** (text hidden, brightest pixel over 6 pointer/ripple frames, /services/): max
+  background luminance 0.027 (base 0.010) thanks to a soft cap on the added light (~+23/255): cream text 11:1, proof
+  gold #b8a67d 5.7:1 (was 7.3:1). The muted #8d805f captions were 4.3:1 on the flat ground before and are 3.4:1 at the
+  brightest filament; they are 10–11px uppercase labels the site already used at that contrast; left as is.
+- **Console:** no errors. In this container any WebGL canvas (the site's own hero film too, even a bare canvas on
+  `about:blank`) can log `GL Driver Message … GPU stall due to ReadPixels` performance *warnings* from SwiftShader's
+  software compositing; nothing in ydx reads pixels back (the print is computed on the CPU for that reason).
+
+### Regression (round 3/4 suite copied to `scratchpad/luma-atelier-r5/reg/`, with the background enabled on SwiftShader)
+
+- `bugs.mjs` B1–B10: all PASS. `prod.mjs`: all 13 scenarios end usable; console output identical to round 4 (only the
+  expected 404s / preload warnings of the failure scenarios). `hyd.mjs`: FCP/hydration unaffected. `iframe.mjs`: hub
+  version done at ~780–840 ms (baseline 746 ms); found and fixed: after a hard navigation *inside* the hub iframe the
+  mode was "continuation", so the background would have started there; now keyed on `ydx-frame`/`self !== top`.
+  `freeze.mjs`, `nojs.mjs`: unchanged. `bf2.mjs` (headless): same as round 4.
+- `flow.mjs` (24 steps, hard and in-place `text/x-component` paths, desktop + iPhone 13, EN/HE): first run with the
+  background had 6 BAD steps (the language plate and loader iris still up at the check, because the software GPU was
+  saturated). Fixed by pausing the background under those overlays and by the self-retirement above; re-run: 24/24 OK,
+  no errors. Baseline without the background (`YDX_NOBG=1`): 24/24 OK.
+- r4 `marked.mjs` (heading rises, every route) and `sparise.mjs` (in-place): unchanged, all revealed, no errors.
+- New: `drflow.mjs` (services → chip → darkroom → "Back to the studio" → /prints/, hard + in-place, desktop + mobile:
+  shutter closes, darkroom opens it, site page continues it, nothing left covering, no errors), `dr1.mjs` (full
+  session desktop + iPhone 13 HE), `drvar.mjs` (no WebGL, reduced motion, no JS), `contrast.mjs`, `perf.mjs`,
+  `frames.mjs` (frame sheets), and `shoot.mjs` walks of home, services, prints and darkroom on desktop + mobile (only
+  the SwiftShader ReadPixels warnings in the logs).
