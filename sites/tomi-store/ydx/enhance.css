@@ -171,7 +171,14 @@ html[dir="rtl"] .ydx-lab { padding: 0 12px 0 16px; }
 }
 @keyframes ydx-ping { 0% { opacity: .9; transform: scale(.6); } 70%, 100% { opacity: 0; transform: scale(1.6); } }
 @keyframes ydx-pop { 40% { transform: scale(1.25); } }
-@media (max-width: 760px) { .ydx-dock { font-size: 12px; } .ydx-lab { padding-inline: 10px 13px; } }
+@media (max-width: 760px) {
+  .ydx-dock { font-size: 12px; }
+  .ydx-lab { padding-inline: 10px 13px; }
+  .ydx-dock:not(.end) .ydx-lab { padding: 0 11px; }
+  .ydx-dock:not(.end) .ydx-lab .t { display: none; }   /* icons only while reading; the label returns at the end */
+}
+/* reading downwards (the header is tucked away): the pill steps aside too */
+html.ydx-hdr-hide .ydx-dock.on:not(.end) { opacity: 0; visibility: hidden; translate: 0 18px; transition-delay: 0s, 0s, .45s; }
 
 /* leaving for the lab: the curtain's ring-motif panel in the current model colour, rising */
 .ydx-wipe {

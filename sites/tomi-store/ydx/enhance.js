@@ -350,7 +350,8 @@ function run() {
    * (round 5) A small pill outside the app root, at the bottom inline-end corner, shown once the hero is scrolled
    * away (on the home) and on pages. It invites to /play/ (TOMI Ring Lab, a standalone toy page owned by ydx) and
    * carries a visible "background motion" switch for the ripple field (remembered; the field also honours
-   * prefers-reduced-motion). It dodges the footer's last line, and hides while the menu, cart, sheet, age gate or
+   * prefers-reduced-motion). It rides up on the footer's top edge at the end of a page, steps aside while the
+   * header is tucked away (scrolling down), on phones shows only its icons until the page end, and hides while the menu, cart, sheet, age gate or
    * the 3D dial are up. Leaving for the lab plays the store's ring-motif wipe in the current model colour. */
   (function dock() {
     var M = { x: [23, 166, 115], xl: [107, 52, 184], 'xl-plus': [242, 140, 15], ultima: [224, 38, 44] };
@@ -416,8 +417,10 @@ function run() {
       var page = body.classList.contains('in-page');
       var show = !blocked() && (page || (track && scrollY > track.offsetHeight * 0.9));
       el.classList.toggle('on', !!show);
-      var left = document.documentElement.scrollHeight - scrollY - innerHeight;
-      el.style.setProperty('--dodge', Math.max(0, 84 - left).toFixed(0) + 'px');
+      // at the end of a page the pill rides on the footer's top edge instead of sitting on its links
+      var foot = document.querySelector(page ? '.pages .foot' : '.home .foot'), ft = foot ? foot.getBoundingClientRect().top : 1e9;
+      el.style.setProperty('--dodge', Math.max(0, innerHeight - ft + 14).toFixed(0) + 'px');
+      el.classList.toggle('end', ft < innerHeight * 1.6);
     }
     function kick() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
     addEventListener('scroll', kick, { passive: true });

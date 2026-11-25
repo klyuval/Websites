@@ -445,3 +445,187 @@ route curtain, the loader and the language shutter. So the bar was "few changes,
 - `ydx/enhance.css`: the round-4 block (section domes, seam skirts, RTL footer wordmark).
 - `ydx/enhance.js`: §9 footer wordmark rise, and the header comment.
 - No change to `index.html`, `boot.js` or any app file.
+
+## Round 5
+
+Brief: make it immersive. Add reactive, moving backgrounds and at least one interactive experience. The 3D hero
+stays the centre of the site, and commerce must be untouched. TOMI's one idea is the **ring**: the logo ring, the
+stage's concentric ripple and the loader's progress ring. Everything below is a variation on it. Sources: the round-5
+playbook (§1 technique 1/5 shader fields, technique 3 fluid/flowmap, §2.1 reference background, §3 perf/a11y), Inigo
+Quilez on domain warping, the Stable Fluids method (Jos Stam) as popularised by Pavel Dobryakov's WebGL fluid (MIT).
+The code was written new for this site; no Shadertoy code was used.
+
+### 1. Ripple field: the living background (`ydx/field.js`, new, ~11 KB unminified)
+
+- **What you see.** Below the hero, on every home section and on every sand page, the flat colour fields now move.
+  - Each section's own ring centre (the app's `--rx/--ry`, the same centre as its static `.hs::before` rings) keeps
+    sending slow ripples outward over drifting light pools.
+  - The pointer carries a soft light.
+  - Moving the pointer, or a tap or click, drops a ripple into the page. The ripple is anchored in document
+    coordinates, so it scrolls with the content.
+  - Scroll speed makes the rings rush.
+  - The light takes the current model's colour, or the product colour while a shop tile is hovered (`--hc`).
+  - In practice: purple or green halos glow on the ink numbers section, and deeper magenta and deeper green pools
+    swell on the pink and green sections.
+  - Touch: taps and finger drags drop ripples (`touchmove`, passive), and scroll velocity stirs the field.
+- **How.** One raw WebGL 1 canvas, fixed, `z-index: 15`, which sits under the header, menu, drawer, sheet, gate and
+  curtain. It has `pointer-events: none` and `aria-hidden`, and is blended with `mix-blend-mode: soft-light`.
+  - The shader outputs neutral grey (no change), plus a per-section light or shade around it.
+  - Bands are measured from the real sections (doc offsets cached, re-measured on mutations, route changes and
+    resizes, and every 3 s), and are cross-faded over 80 px at section edges.
+- **Contrast rule** (built in, then measured). Soft-light never moves pure black or white, and the field may only push a
+  background *away* from its text colour.
+  - Sand with ink text: light, or a light tinted shade.
+  - Pink and green with cream text: only deeper.
+  - Ink: only lifted.
+  - Sampled from real frames, field-vs-text contrast (min / max over 4 frames, field off → on):
+
+    | Section | Field off | Field on |
+    | --- | --- | --- |
+    | Pink builder | 3.50 / 4.22 | 3.57 / 4.95 |
+    | Green deliver | 2.70 / 4.20 | 2.88 / 6.06 |
+    | Ink numbers | 12.5 / 17.6 | 8.2 / 16.5 |
+
+  - On the pink and green sections the field only ever improves contrast. On ink, the worst case is still above AAA.
+  - The low pink and green values themselves are the app's own colours, which existed before this round.
+- **The 3D always comes first.** The bundle draws its scene only while `scroll <= .track height` on the home (its own
+  render guard), and not at all on pages. The field mirrors that guard.
+  - It sleeps (no rAF, `visibility: hidden`) over the hero, the dial and the flavour page.
+  - It wakes only once the 3D has stopped, and on pages.
+  - It also sleeps under the age gate and the open menu, in hidden tabs, and after context loss.
+  - It is loaded late: enhance.js §10 injects it 900 ms after the app's `ready`, in an idle slot, so it never competes
+    with the loader exit or three.js's shader compile.
+  - Measured draw calls: the app draws 0/s whenever the field is awake.
+- **Cost.**
+  - It renders at 0.5× CSS pixels (0.4 on touch, 0.33 in the hub iframe). It is a soft field, so DPR is ignored.
+  - It runs at 30 fps when nothing is happening.
+  - Adaptive quality: a sustained frame EMA above 26 ms steps the resolution down by 0.75 (floor 0.2), and it never
+    steps back up.
+  - Main-thread JS per field frame:
+
+    | Device | CPU throttle | JS per frame |
+    | --- | --- | --- |
+    | iPhone 13 emulation | none | 0.23–0.25 ms |
+    | iPhone 13 emulation | 4× | 1.1–2.6 ms |
+    | Desktop 1440 | 4× | 1.3–4.5 ms |
+
+  - The shader is one triangle, 2D simplex and two tiny constant loops.
+  - Under SwiftShader the 1440-px soft-light composite is CPU-rendered and slows whole frames. GPU compositing does
+    not have that cost, so it was not tuned for. On mobile emulation, frame medians were the same or better with the
+    field on: 16.7 vs 33 ms, which is within noise.
+- **Fallbacks.**
+  - No WebGL, or a context error: nothing is added (`html.ydx-nofield`), and the original flat sections stay.
+  - `failIfMajorPerformanceCaveat` is set for software GL. Note: this headless Chromium's SwiftShader does not trip
+    it, so tests also set `sessionStorage['ydx-sw']`.
+  - Reduced motion, or the dock's motion switch: no autonomous motion and no ripples. One static frame is redrawn only
+    when the page scrolls. Measured: 0 frames in 2 s idle, 1 per scroll.
+  - Missing enhance.css: the canvas styles itself through CSSOM, so it does not depend on that file.
+  - JS off: the original site.
+  - CSP: an external file, no eval, and no style attributes.
+
+### 2. TOMI Ring Lab: the interactive page (`/play/`, new: `play/index.html`, `play/boot.js`, `play/lab.js`)
+
+- **The toy.**
+  - Press and hold to charge: the loader's pink progress ring fills around your finger. Let go to send a ring of
+    vapour in the model's cream tint across the stage's colour flood.
+  - Drag to stir the air. On desktop the cursor alone nudges it.
+  - The four model chips (X / XL / XL PLUS / ULTIMA) retint the flood, the rings and the next puffs. The palette eases
+    between models, and the next ring "announces" the new colour.
+  - A Karantina counter tallies your rings. There are "Send a ring" and "Clear" buttons (keyboard and screen readers;
+    a polite live region announces each ring sent from the button).
+  - "Shop TOMI <model>" leads to `/#/shop/<model>`.
+  - After 6 quiet seconds the lab sends a ring of its own every few seconds (never under reduced motion).
+- **How.** A GPU stable-fluids solver in WebGL 1 with half-float textures: advection, vorticity confinement, a Jacobi
+  pressure projection and manual bilinear filtering where half-float linear is missing.
+  - A puff stamps an elliptical ring of dye across the direction of travel, plus a jet through its middle. The jet
+    rolls the ring's ends into a vortex pair, so it travels and curls like a real ring (frame sheet below).
+  - The display pass draws the stage flood and the store's terraced rings, *refracted* by the moving air, and lights
+    the vapour from the density gradient.
+  - The vapour thins to about 28% over the copy block and the counter, so the type stays readable.
+  - Grid sizes:
+
+    | Context | Simulation | Dye | Pressure iterations | DPR cap |
+    | --- | --- | --- | --- | --- |
+    | Desktop | 128 | 640 | 18 | 1.5 |
+    | Phone | 96 | 384 | 12 | 1.25 |
+    | Hub iframe | 72 | 256 | 8 | 1 |
+
+  - Slow frames step down to fewer iterations and a 0.75× canvas, at most twice.
+  - It pauses in hidden tabs, and handles context loss and restore.
+- **Site look and system.**
+  - The same fonts, palette, ring motif, favicon and theme colour.
+  - A header-like bar: the TOMI wordmark, "Back to the store" and he/en.
+  - The store's language key (`localStorage['tomi-lang']`), with full RTL/LTR.
+  - The **same TOMI loader** (device fill inside the ring, then the lift). Its controller is in `play/boot.js`, with a
+    minimum of 800 / 300 / 0 ms for first visit / repeat / iframe and a 4 s safety exit.
+  - The page is 18+ like the store: without the store's age-gate answer, `boot.js` sends you to `/`, where the gate is.
+- **Transitions.** The dock link (see below) plays a rising panel in the current model colour with the curtain's
+  ring motif. The model you were looking at is passed as `?m=`, so the lab's loader paints in the same colour and the
+  hand-off is seamless.
+  - "Back" and the wordmark play the same wipe and return to the route you came from (`sessionStorage
+    ['ydx-tomi-ret']`). There the store's repeat-visit loader picks up.
+  - bfcache restores remove a stale wipe.
+- **Fallbacks.**
+  - No WebGL, or no renderable half floats: a canvas-2D version (rings that rise and fade over the CSS flood). Tested
+    with `--disable-webgl`.
+  - JS off: the static designed page (CSS flood + rings + copy + a he/en note).
+  - Reduced motion: the air only moves while you interact (2.5 s after each input), there are no idle rings, the
+    palette switches instantly and a hint says so.
+
+### 3. Motion moments in the store (enhance.js §11, §12; enhance.css round-5 block)
+
+- **Dock (§11).** A small ink pill at the bottom inline-end corner, outside the app root.
+  - **Ring Lab** entry: the pink ring with a slow ping.
+  - A **background-motion switch**: playbook rule 19. `html[data-ydx-motion=off]`, remembered in localStorage. It is
+    hidden when the OS already asks for reduced motion.
+  - It appears once the hero is scrolled away and on pages.
+  - It steps aside while you read downwards (with the header's tuck), and shows icons only on phones until the end of
+    the page.
+  - At the end of a page it rides on the footer's top edge instead of covering the footer links.
+  - It hides under the menu, cart, sheet, age gate and dial.
+- **Add to cart (§12).** The app already flies the product photo into the cart from shop cards and model pages. The
+  3D dial, the flavour page and the box builder only bumped the count.
+  - There, a small TOMI device silhouette with the pink ring now hops in a parabola into the header cart and leaves a
+    pink ripple on it.
+  - It is honest: it flies only when the count actually goes up within 900 ms of a press outside the drawer.
+  - It is skipped whenever the app's own `.fly` clone is in flight, so the two never double up. Verified: shop card
+    fly frames = 0 (the app's own), flavour page = ours.
+  - Transform and opacity only; off with reduced motion.
+- **Nothing removed.** The round 1–4 pieces were reviewed again, and none competes with the field. The cursor, magnets
+  and domes are small and on-motif.
+
+### Regression (round 3/4 suite rerun from `…/scratchpad/tomi-store-r5/`, live headers applied)
+
+- **`r4-flow.cjs`** (desktop he/en, mobile he/en): **72/72 OK**.
+  - Covered: add to cart, drawer, qty +, checkout, a language switch on checkout and back, mobile menu, 8 routes,
+    header hide/show and no overflow.
+  - Rerun after the last dock and fly changes: mobile 19/19 and desktop en 17/17.
+- **`r4-scen.cjs`** (13 production scenarios): every end state is identical to round 4. The two
+  "boot.js + bundle dead" cases are the documented original behaviour.
+- **`r4-bugs.cjs`**, all as in round 4:
+  - exit throws;
+  - css404 + language;
+  - twice-loaded (1 shutter, 1 cursor, 1 flip);
+  - lang keys;
+  - frozen-page resume 175 ms;
+  - iframe exit 469 ms;
+  - the magnet resets.
+- **`shoot.mjs`**, desktop and mobile: only the SwiftShader "GPU stall" driver warnings.
+- **New `store5.cjs`** (desktop and mobile), all OK:
+  - the field sleeps over the hero and wakes below it and on pages;
+  - the canvas is decorative and hit-tests through;
+  - the motion switch works;
+  - the dock hides under the menu;
+  - the cart fly is honest;
+  - dock → lab with the wipe → back to `#/shop`.
+- **New `lab2.cjs`** (ui, nogl, rm, nojs, mobile, noage, under the live CSP): all OK and overflow 0.
+  - The only console line is the store's pre-existing "Error creating WebGL context" after navigating back without
+    WebGL.
+
+### Files (round 5)
+
+- New: `ydx/field.js`, `play/index.html`, `play/boot.js`, `play/lab.js`.
+- `ydx/enhance.js`: §10 field loader, §11 dock and §12 cart fly, plus the header comment.
+- `ydx/enhance.css`: the round-5 block (dock, wipe and fly).
+- No change to `index.html`, `ydx/boot.js` or any app file.
+- QA handles: `window.__ydxFieldState()` and `window.__lab()`, both read-only.
