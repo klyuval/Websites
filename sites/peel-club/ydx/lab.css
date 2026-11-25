@@ -66,6 +66,8 @@
   .lab h1{font-size:clamp(54px,19vw,120px)}
   .lab__stage{--canw:clamp(130px,34vw,220px)}
   .lab__pop{font-size:clamp(46px,15vw,110px)}
+  .lab__pop .wide{font-size:.44em}
+  .lab__hint{white-space:normal;width:92%;text-align:center;justify-content:center}
   .lab__swatches{justify-self:stretch}
 }
 @media (width<=900px) and (orientation:portrait){

@@ -238,8 +238,9 @@ html.ydx-field-css #root .desk-pink {
   opacity: 0; translate: 0 18px;
 }
 .ydx-dock.is-ready { opacity: 1; translate: 0 0; }
-.ydx-dock.is-ready.is-hidden, .ydx-dock.is-ready.is-away { opacity: 0; translate: 0 calc(100% + 24px); }
-.ydx-dock.is-ready:not(.is-hidden):not(.is-away) > * { pointer-events: auto; }
+/* away while reading, except at the footer, where it opens into the invitation */
+.ydx-dock.is-ready.is-hidden, .ydx-dock.is-ready.is-end, .ydx-dock.is-ready.is-away:not(.is-open) { opacity: 0; translate: 0 calc(100% + 24px); }
+.ydx-dock.is-ready:not(.is-hidden):not(.is-end):is(:not(.is-away), .is-open) > * { pointer-events: auto; }
 .ydx-dock:focus-within { opacity: 1 !important; translate: 0 0 !important; }
 .ydx-dock:focus-within > * { pointer-events: auto; }
 .ydx-dock__lab {

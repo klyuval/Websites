@@ -265,7 +265,7 @@
     function onHide() { try { sessionStorage.setItem('ydx-soda', JSON.stringify({ t: t, r: rise })); } catch (e) {} }
 
     inst.setColors = function (field, on) { pal = palette(field, on); requestDraw(); };
-    inst.setIntensity = function (v) { intenT = v; if (!raf) { inten = v; requestDraw(); } };
+    inst.setIntensity = function (v) { if (Math.abs(v - intenT) < 1e-3) return; intenT = v; if (!raf && !degraded) { inten = v; requestDraw(); } };
     inst.setFizz = function (v) { fizzT = v; };
     inst.lens = function (x, y) { client = [x, y]; lastMove = performance.now(); };
     inst.trail = function (x, y, size) {

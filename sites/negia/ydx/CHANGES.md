@@ -371,3 +371,232 @@ site has one language (Hebrew), so there was no second language to check; see ro
 
 `curl -sI` on the live site still shows only `cache-control`, `report-to`/`nel` and Cloudflare headers. There is no CSP
 and no frame restrictions.
+
+## Round 5
+
+The owner's note: "Negia looks bad: the components don't add up." So this round starts with art direction (composition),
+then adds the living background and the interactive piece from BRIEF5. Scratch files and test scripts are in
+`scratchpad/negia-r5/`.
+
+### 1. Composition (the priority)
+
+**What was wrong at 1440** (`before/` shots, contact sheets `ba-<width>.jpg`):
+- The hero headline collided with the lips image.
+- A cramped vertical rail of shade chips sat on the left edge, and four small notes floated around the hero.
+- Most chapters pushed a 14–16vw headline hard to the right, with small copy and small images floating in large empty areas.
+- Six different display sizes (8.4–14.4vw) were used for what are only two kinds of heading.
+- Each section had its own grid (`.86fr/1.14fr`, `1.32fr/.68fr`, 12 columns with a 20px gap, plain flex). There was no
+  shared margin or gutter, and image scale changed from section to section.
+- The 01–04 steps had 12px of padding.
+- The material and compass sections read as widgets stacked one on another.
+
+**The system** (`ydx/compose.css`):
+- **Grid:** 12 columns.
+  - Page margin `--ydx-m = max(--gutter, (100vw − 1760px)/2)`, so content caps at 1760px on very wide screens.
+  - One column gap, `--ydx-cg` (14–28px).
+  - One section rhythm, `--ydx-sec`, and one heading gap, `--ydx-hg`.
+- **Type:** two display tiers.
+  - `--ydx-h2` (7.3vw, capped at 8.8rem) for chapters.
+  - `--ydx-h2x` (10.2vw) for the two bookend statements, the manifesto and the contact section.
+  - One lead size for all intro copy.
+- **Chapter opener:** every chapter, and now the hero too, opens on the same **ruled meta row**: the Hebrew eyebrow on the
+  right, the Latin aside on the left, and a 1.5px rule under them. Elements beside that row line up with the rule: the
+  first FAQ rule and the top of the contact form card sit level with it.
+- **Breakpoints:** desktop uses the app's own 1001px breakpoint. 761–1000px gets its own tablet compositions. Phones keep
+  the original single column, which already worked, plus one fix (see below).
+
+**How it is delivered:**
+- `compose.css` is the source file. It is **inlined into `index.html`** between the `<!-- ydx:compose -->` markers by
+  `scratchpad/negia-r5/inline.py`, so the layout paints on the first frame. As a late, non-blocking stylesheet it would
+  have caused a layout shift.
+- It contains CSS only. I changed no structure the bundle reads: `#chapters > section`, every id and class the app
+  queries, and `[data-tone]` are all untouched.
+- `display: contents` is used on three wrappers the app never touches: `.compass-intro`, `.material-copy` and
+  `.journal-heading > div`. This lets their children sit on the section grid.
+
+**Section by section (desktop):**
+- **Hero.**
+  - Meta row on top.
+  - Headline in columns 1–7, at `--F = min(13.4vw, 21svh)`.
+  - The lips sit in their own cell (columns 7–12), sized with container query units, and no longer collide with the type.
+    The glossy smear starts under the lips and runs under "בנגיעה.". This is now the one deliberate overlap that ties
+    image and type together, and it ends above the base band.
+  - The base band has three ruled segments: copy and CTAs (columns 1–5), the scroll cue (6–7), and the shade chips as a
+    horizontal row of four (8–12).
+  - The redundant "פשוט. את." note and the duplicate Latin tagline are hidden on desktop. The tagline still closes the
+    page in the footer.
+  - Below 1200px the chips drop their Latin labels.
+- **01 Manifesto.**
+  - The statement takes columns 1–7.
+  - The portrait takes columns 8–12, top-aligned with the statement.
+  - The note sits under the statement.
+  - The stray `<br>` that left an empty line before "רק לתת לו מקום." is hidden at every width.
+- **02 Atelier.**
+  - Heading in columns 1–8, aside in 9–12.
+  - The stage takes 7 columns, the controls 5.
+  - The controls are spread to the stage's height: the description at the top, then the slider, the CTA and the new lab
+    link at the bottom.
+- **Compass.**
+  - The intro takes columns 1–5.
+  - The instrument takes columns 7–12: the two questions sit side by side (four chips in one row) with the answer panel
+    under them. The result reads as one tool, not stacked widgets.
+- **Material.**
+  - Meta row with the Bodoni line.
+  - The heading overlaps the dabs on purpose.
+  - The dabs fill columns 5–12, with the copy and index bottom-right against them. Before, the copy had a 300px
+    top margin and sat on top of the dabs.
+- **03 Approach.**
+  - Heading, then the lead and the signature as a pair.
+  - The four steps sit on 3-column spans with 8px frames, 18–28px inner padding, shorter number blocks and 1rem/1.62 copy.
+  - The brush sits under the cards, not across them.
+- **Journal.**
+  - Heading 8 columns + aside 4.
+  - One frame for all the art: `aspect-ratio: 4/3` with clipping. The compact used to burst out of its frame while the
+    other two cards stayed inside theirs.
+  - On tablet the cards turn horizontal (art beside text). Before, a 560px column was pushed to the right.
+- **04 Questions, 05 Contact, footer.** Same margins and gutters. The FAQ and the form align to the meta rule.
+
+**Tablet (761–1000px):**
+- A 6-column hero: lips interlocked between the lines, copy and scroll cue on a rule, chips in a row.
+- The compass questions sit side by side.
+- The material section is one column, so the copy no longer overlaps the dabs.
+
+**Checked:**
+- Widths: 1440, 1280, 1920, 1024, 768, 390 and 360. No horizontal overflow, no console errors.
+- Contact sheets: `scratchpad/negia-r5/ba-<width>.jpg` (before | after, section by section) and `after-<width>.jpg`.
+
+### 2. Reactive moving background: "liquid pigment" (`ydx/pigment.js`; PLAYBOOK §1.3 + §1.4, §4 Negia)
+
+**What it does:**
+- One fixed WebGL canvas sits behind `.page`, as a body child with `pointer-events: none` and `aria-hidden`.
+- The pink (`s-field`) scenes become transparent over it: hero, atelier, approach and contact. The tint and burgundy
+  scenes stay paper, so the living field shows exactly where the site's pink used to be.
+
+**Two passes per frame:**
+1. **Flowmap.** A ping-pong flowmap about 208px wide (128px on touch, low-power devices and the hub iframe). Velocity is
+   stored in rg and pigment density in b. It self-advects and decays. It also **scrolls with the page**, so a smear stays
+   where it was painted.
+2. **Display.** A slow, domain-warped satin field (2D simplex fbm) in the active family. The flow drags it. Pigment is laid
+   down where the density is, with a specular gloss from the flow-derived normal and a light grain.
+
+**Inputs:**
+- Pointer strokes paint.
+- Touch: a tap lays a dab and drags paint.
+- When nobody paints (phones, keyboard, idle), an autonomous brush makes slow right-to-left lipstick swipes. Scroll speed
+  hurries it and stirs the field. An opening swipe plays when the layer arrives.
+
+**Colour:**
+- It follows `html[data-family]`, the app's shade change, easing over 600ms, inside the app's own circle view transition.
+- Hovering or focusing any swatch previews that family.
+
+**Energy by section:** the hero runs at full energy, and the reading sections run calmer (atelier .7, contact .75).
+
+**Contrast:** safe by construction.
+- For rose, nude and peach (dark text), the field only lifts toward `--hi`/gloss, and the pigment body is at most 22%
+  toward `--pig`.
+- For berry (light text), it only darkens toward `--deep`.
+- Measured worst pixel against the text colour over a whole painted frame: rose 4.63, nude 4.82, peach 5.43,
+  berry 7.92 (p1: 4.82 / 4.99 / 5.64 / 8.07). Script: `contrast.py`.
+
+**Fallbacks:**
+- **No WebGL, a software rasteriser, or a lost context:** the `.ydx-bg` CSS gradient stays. It is two soft radial pools
+  in `--hi` over `--field`, and a darker variant for berry, so the fallback still looks designed.
+  - Software rasterisers (SwiftShader, llvmpipe, WARP) are detected from the renderer string, plus
+    `failIfMajorPerformanceCaveat`. On those, the context is released and the gradient is used.
+  - `?ydx-gl=sw` forces GL, for tests only.
+- **Reduced motion:** one composed still frame with a pre-painted stroke. Two screenshots 1.5s apart are identical.
+- **No JS, or `enhance.js` missing:** no layer, and the pink stays solid. It is loaded by `enhance.js` only after `load`,
+  once the loader has gone, in an idle slot, so it never competes with LCP or the loader exit.
+- **Print:** hidden.
+
+**Performance:**
+- DPR is capped at 1.5, and the render scale is 0.7 (0.5 on touch and low-power devices, 0.45 in the hub iframe).
+- Adaptive quality uses an EMA of frame time: it drops ×0.75 down to 0.35, and steps back up once.
+- If it is still over 34ms per frame at the floor for about 90 frames, it gives up the motion and keeps a still frame.
+- One rAF loop. It pauses when no pink scene is on screen (IntersectionObserver), on a hidden tab, and on
+  `pagehide`.
+- JS cost per frame is about 0.06–0.2ms (measured as `__ydxPigCost` with GL forced).
+- SwiftShader cannot judge GPU cost: with GL forced and the CPU throttled 4×, frames take hundreds of ms in this
+  container. In the same conditions the layer is off by default, because of the software-GL detection, and scroll
+  matched the no-layer run (`perf.cjs`).
+- Size: 22KB, 8.7KB gzip.
+
+### 3. Interactive experience: the shade lab, `/lab/` (`lab/index.html`, `ydx/lab.js`, `ydx/lab.css`)
+
+A lipstick shade mixer that tints a lips photo.
+
+**Mixing:**
+- Tap a pigment (rose, nude, peach, berry: the lipstick bullets) and a drop falls into a porcelain dish. The drops are
+  DOM drops under an SVG goo filter, so they merge into a pool, like wet pigment.
+- Drag in the dish to stir: the satellite drops swirl, with inertia.
+- Set the depth (20–100%) and the finish (matte, satin or gloss).
+
+**The mirror:**
+- The mix is painted onto `lips-rose-s.webp` and the smear by a per-pixel recolour on a 2D canvas. The photo's own
+  luminance becomes the shading and its highlights become the gloss; the finish changes the contrast curve and the
+  specular.
+- It shows a generated name in Hebrew and Latin ("ורד־אפרסק", "ROSE × PEACH"), the N° and hex, and a live recipe
+  ("3 טיפות · 67% ורד · 33% אפרסק · עומק 70% · סאטן").
+- Pigments mix like paint, not light: a weighted geometric mean of linear reflectances.
+
+**The whole page takes the mix:**
+- Page colour, ink, buttons, and the liquid-pigment background all follow the mix, through `setCustom`.
+- The ink is chosen by searching for a field that keeps at least 5.2:1 for dark ink or light ink.
+
+**"קחי את הגוון לשיחה":**
+- Hands the closest family and a recipe note to the home page.
+- `enhance.js` sets `#chosen-shade` there, dispatching `change`, so the app recolours the page. It fills `#note` if it
+  is empty.
+- The hand-off is read once, from sessionStorage, and expires after 10 minutes.
+
+**The page carries the site's look:**
+- The site's stylesheet, the same grid tokens and the ruled meta row.
+- The wordmark links home, and "חזרה לאטלייה" leads back.
+- The same loader, smear page wipe and cursor, through the same inline boot and `enhance.js`.
+- Phones get a compact mirror docked at the top, so the lips stay in view while you mix.
+
+**Entry points:**
+- A link with a four-family dot under the atelier CTA.
+- "מעבדת הגוונים" in the footer links.
+- Item 07 in the mobile menu. The wipe now closes an open menu dialog first, because the dialog sits in the top layer
+  above the wipe.
+
+**Accessibility:**
+- Real buttons, a range input and radios, all keyboard-tested.
+- The canvas is `role=img` with a live `aria-label`, and the recipe is a polite live region, debounced.
+- Haptic tick on coarse pointers.
+- Reduced motion: no falling drops and no stir inertia.
+- Without JS: the untinted lips, the controls and a `<noscript>` note.
+
+### Other fixes this round
+- **Manifesto, all widths:** the empty line before the coda (the `<br>` inside block lines) is gone.
+
+### Regression results (round 3/4 suite rerun, plus shoot.mjs)
+
+| Test | Result |
+|---|---|
+| `races` normal / js404 / css404 / both404 / jsslow / appslow | Loader leaves at about 2.6s normally and at 4.2–4.8s when a file is missing or slow. The hero is visible in every case. Only the injected 404s are logged. |
+| `nav` dblenter / popstate / bfcache / twice | One transition; Back cancels it; restore is clean; one cursor. Same as round 4. |
+| `nav2` pageshow / css404 / late / hiddenwipe | Same as round 4. |
+| `hidden 7000` | Gone at 4.5s; hero shown. |
+| `frametime` (cross-origin hub iframe) | Removal at 744–1445ms, under load from parallel agents. The exit code is unchanged. |
+| `xo /` | Frame mode; the transition inside the frame works. |
+| `bottom` (8 viewports, both pages) and `rotate` (4 rotations) | All ok. |
+| `details` | Height animation intact. |
+| `order` | FCP about 0.14–0.32s with js+8s or css+8s. |
+| `bootorder` | Boot always follows `js-ready`. |
+| `frame` (no-JS, live headers) | No loader, nothing hidden; headers replay clean. |
+| `shoot.mjs` desktop + mobile on `/`, `/style-tile.html` and `/lab/` | 0 log lines, 0 failed requests. |
+
+**Note on the first suite run.** It ran while the layer still used SwiftShader GL in headless Chromium. Under that CPU
+load, `popstate`, `dblenter` and `jsslow` flaked. After adding the software-GL detection, all three pass, twice each, with
+the same results as round 4.
+
+**Test-only console noise.** "GPU stall due to ReadPixels" driver warnings appear only when screenshotting a forced
+SwiftShader canvas (`?ydx-gl=sw`). The page never calls `readPixels`.
+
+### Known limitations
+- GPU timing was judged only from code and JS cost; there is no real GPU in this container.
+- With GL forced on SwiftShader, the first frame right after a large wheel jump can be captured black while the software
+  rasteriser is about 650ms per frame. Real software-GL devices get the CSS field instead.
+- The lab's recolour is an illustration. As on the atelier, a disclaimer says it does not simulate a result.

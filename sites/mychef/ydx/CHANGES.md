@@ -437,9 +437,12 @@ yourself.** (Playbook §4 MyChef: "warm candle-light field" + "booking delight";
   30 fps when still (phones/iframe 30/20); adaptive step-down from a frame-time EMA; packed uniforms (5 WebGL calls per
   frame); stopped in hidden tabs; **no drawing while a cloth covers the page** (loader, language wipe, leaving for
   /play/: `html.ydx-covered`); `webglcontextlost/restored` handled.
-- **Fallbacks.** No WebGL, a failed shader, or a **software rasteriser** (SwiftShader/llvmpipe/"Basic Render", read
-  from `WEBGL_debug_renderer_info`; it would draw the shader on the CPU and starve the site's own animations) → the
-  wrapper's static CSS light (a warm pool high on the table and a vignette, also soft-light) and `html.ydx-nogl`.
+- **Fallbacks.** No WebGL or a failed shader → the wrapper's static CSS light (a warm pool high on the table and a
+  vignette, also soft-light) and `html.ydx-nogl`. A **software rasteriser** (SwiftShader/llvmpipe/"Basic Render",
+  read from `WEBGL_debug_renderer_info`) → **no layer at all** (`html.ydx-swgl`): it would draw the shader on the CPU,
+  and such machines composite in software too, where even a static full-screen blended layer is re-blended on every
+  frame of the page's own animations. Measured A/B under identical load: the language wipe took ~1.7s with the
+  static layer vs ~1.2s for round 4; without the layer it is back to round-4 timing (1.2–1.5s vs 1.1–1.3s, noise).
   Reduced motion → one still frame (no loop, not coupled to scroll; on scroll end the cloth's light is applied as a
   state change). `light.js` blocked or slow → the site exactly as in round 4. Print → hidden.
 
@@ -507,8 +510,9 @@ the table" pill, the language switch, and the shared light layer (`/ydx/light.js
 - **GPU**: this container only has SwiftShader (the GPU emulated on the CPU, shared with other agents), where the
   full-screen pass plus the full-screen blend dropped a 4×-throttled scripted scroll from p50 16.7 ms frames to
   100–166 ms (blend alone with the shader paused: 50 ms). That is exactly the case the software-renderer check now
-  catches: **on a software GPU the page gets the static CSS light and is back to its round-4 frame times**. On a
-  hardware GPU the cost is one quarter-pixel-count noise pass (≈0.32 MPix at 1440×900) plus one compositor blend.
+  catches: **on a software GPU there is no light layer and the page is back to its round-4 frame times** (A/B above).
+  On a hardware GPU the cost is one quarter-pixel-count noise pass (≈0.32 MPix at 1440×900) plus one compositor
+  blend; the layer is `visibility:hidden` (not composited) while a cloth covers the page.
 - Layout/style: unchanged (no layout properties animated; the layer is `contain: strict`). CLS 0.
 
 ### Checks

@@ -520,6 +520,10 @@
     const footerIO = 'IntersectionObserver' in window ? new IntersectionObserver((es) => {
       dock.classList.toggle('is-open', es.some((x) => x.isIntersecting));
     }, { threshold: 0.35 }) : null;
+    // ...and steps aside at the very end, where it would sit on the footer's legal line
+    const legalIO = 'IntersectionObserver' in window ? new IntersectionObserver((es) => {
+      dock.classList.toggle('is-end', es.some((x) => x.isIntersecting));
+    }, { rootMargin: '0px 0px -10px 0px' }) : null;
     let watchedFooter = null;
     const update = () => {
       rafD = 0;
@@ -530,7 +534,11 @@
       dock.classList.toggle('is-hidden', heroish || html.dataset.peelEntry === 'loading');
       lastY = y;
       const f = document.querySelector('#root > .footer');
-      if (footerIO && f !== watchedFooter) { if (watchedFooter) footerIO.unobserve(watchedFooter); if (f) footerIO.observe(f); watchedFooter = f; }
+      if (footerIO && f !== watchedFooter) {
+        if (watchedFooter) { footerIO.unobserve(watchedFooter); const l = watchedFooter.querySelector('.footer-bottom'); if (l && legalIO) legalIO.unobserve(l); }
+        if (f) { footerIO.observe(f); const l = f.querySelector('.footer-bottom'); if (l && legalIO) legalIO.observe(l); }
+        watchedFooter = f; dock.classList.remove('is-end');
+      }
     };
     const queue = () => { if (!rafD) rafD = requestAnimationFrame(update); };
     addEventListener('scroll', queue, { passive: true });

@@ -272,7 +272,7 @@
       if (e.pointerType !== 'mouse') lastTouch = lastMove;
     }, { passive: true });
     addEventListener('pointerdown', function (e) { cx = e.clientX; cy = e.clientY; lastMove = performance.now(); if (e.pointerType !== 'mouse') lastTouch = lastMove; }, { passive: true });
-    D.addEventListener('pointerleave', function () { lastMove = -1e9; });
+    addEventListener('mouseout', function (e) { if (!e.relatedTarget) lastMove = -1e9; }, { passive: true });   // left the window
     // Phones: tilt moves the summit where the browser allows it without a permission prompt (Android); iOS keeps the drift.
     if (coarse && W.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission !== 'function') {
       addEventListener('deviceorientation', function (e) { if (e.gamma != null) tilt = [e.gamma, e.beta]; }, { passive: true });
@@ -306,7 +306,7 @@
       if (Math.abs(v) > .05) lastActive = now;
       // pointer summit: mass-spring follow; it rises while the pointer rests, flattens a little while it moves fast
       var vw = innerWidth, vh = innerHeight;
-      if (cx >= 0 && now - lastMove < 3500 && !(coarse && now - lastTouch > 2500)) {
+      if (cx >= 0 && lastMove > 0 && (lastTouch < lastMove ? true : now - lastTouch < 2500)) {   // a resting mouse keeps its summit
         speed += (Math.hypot(cx - tx, cy - ty) / Math.max(dt, 1) - speed) * k(160);
         tx = cx; ty = cy; ts = .6 + .4 * Math.exp(-speed * .9);
         lastActive = now;
@@ -316,7 +316,7 @@
         tx = vw * (.56 + .3 * Math.sin(t * .13)); ty = vh * (.45 + .25 * Math.cos(t * .11)); ts = .5;
       }
       var kk = .085 * dt / 16.7;
-      vx = (vx + (tx - ptrX) * kk) * .8; vy = (vy + (ty - ptrY) * kk) * .8;
+      var dmp = Math.pow(.8, dt / 16.7); vx = (vx + (tx - ptrX) * kk) * dmp; vy = (vy + (ty - ptrY) * kk) * dmp;
       ptrX += vx; ptrY += vy; ptrS += (ts - ptrS) * k(450);
       seed[0] += (seedT[0] - seed[0]) * k(520); seed[1] += (seedT[1] - seed[1]) * k(520);
       rip[2] += dt / 1000;

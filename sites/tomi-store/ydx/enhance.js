@@ -430,8 +430,10 @@ function run() {
   })();
 
   /* ------------------------------------------------------------------ 12. add to cart: a device drops into the cart
-   * (round 5) The cart count bump was the only feedback for "added". Now a small TOMI device (the loader's
-   * silhouette) with the pink ring arcs from the button you pressed into the header's cart. It is honest: it only
+   * (round 5) The app flies the product photo into the cart from the shop cards and model pages, but the 3D dial,
+   * the flavour page and the box builder only bumped the count. There a small TOMI device (the loader's
+   * silhouette) with the pink ring now arcs from the button you pressed into the header's cart (skipped whenever
+   * the app's own `.fly` clone is in flight, so the two never double up). It is honest: it only
    * flies when the cart count actually goes UP within 900 ms of a press outside the cart drawer (the drawer's own
    * qty buttons change the count too, and there the count is already in view). Transform/opacity only; nothing in
    * the app's cart logic is touched; off with reduced motion, without WAAPI, and when the cart button is not on screen. */
@@ -464,6 +466,7 @@ function run() {
     function fly(s) {
       var r = cart.getBoundingClientRect();
       if (r.bottom < 0 || r.top > innerHeight || !styledFly()) return;
+      if (document.querySelector('.fly')) return; // the app flies its own product image from shop cards / model pages
       var tx = r.left + r.width / 2, ty = r.top + r.height / 2;
       var p = document.createElement('div');
       p.className = 'ydx-fly'; p.setAttribute('aria-hidden', 'true');
