@@ -187,3 +187,109 @@ Only the studio had a rounded top (40px, 26px on phones), so the three hand-offs
 - `shoot.mjs` desktop + mobile, HE + EN: same page heights as before, no console errors beyond the GL warnings.
 - A scrollY trace during a wheel scroll is monotonic with and without ydx.
 - `t-bg2` needs a headed browser (no X server here). It was superseded by `t-bg3` in round 3.
+
+## Round 5: immersive pass (living ink, the ink lab)
+
+### Signature: the work as one fluid canvas (playbook techniques 3 + 19, 11, 22)
+The hub showcases the other eleven, so its signature is the most literal one: **the studio's palette is a real
+fluid**. Behind the two ink scenes (the work wall + index, and the contact) a GPU fluid simulation runs. This is
+Stam's "stable fluids": semi-Lagrangian advection, vorticity confinement, a Jacobi pressure solve and gradient
+subtraction, all on half-float ping-pong textures. It is written from scratch in raw WebGL in `ydx/fluid.js`
+(about 6 KB gzip). References: Stam (1999), GPU Gems ch. 38, Dobryakov's WebGL fluid (MIT, used only as a reference
+for the pass order), and Codrops' flowmap articles from the playbook.
+
+- **Everything replies.** Moving the pointer pours ink, and the strokes carry the pointer's velocity. **Hovering a
+  site on the wall, or a row in the index, pours in that site's own two key colours** (keyboard focus on an index row
+  does the same). A tap drops ink. Scroll speed drags the ink along with the page (the advection gets a shift equal to
+  the page's velocity relative to the sticky canvas), and a flick on a phone smears it. Typing the brief makes ink
+  seep from behind the form card. Typing "ydesign" anywhere outside a field spills all twelve palettes.
+- **It is alive when nobody is moving.** Two slow currents follow Lissajous paths and pour in the current "mood". The
+  moods are analogous pairs of the bench's step colours (orange+yellow, pink+orange, blue+mint, mint+yellow) and turn
+  every 12s. Mixing complementary inks turned the first version grey. The fix uses one colour per stroke and a
+  hue-preserving tonemap: the strength is tonemapped and the hue is kept, so thick ink stays orange instead of
+  washing out to white.
+- **Look:** soft relief lighting from the dye gradient with a small wet glint, a 1/255 dither against banding, and a
+  fade at the scene's top and bottom edges so the ink never cuts against the paper sections.
+- **Layering without scroll syncing:** a holder `div.ydx-fluid` is the first child of `.work` and of `.contact`
+  (absolute, `z-index:-1` inside the section's own `isolation`). The canvas inside it is `position: sticky; height:
+  100vh`, so it scrolls natively with its section and sits above the flat ink and below all content. There is one
+  WebGL context. The canvas moves (DOM move, the context survives) to whichever ink scene is on screen. The wall's
+  `#0d0a08` ground becomes transparent while the ink runs, so the colours glow through the gaps between the tilted
+  tiles. The shader paints the wall's darker tone itself, and during the dive the wall keeps its solid ground.
+- **Contrast is guaranteed per pixel.** The display shader receives up to six feathered boxes measured from the DOM
+  (cached relative to the section, re-measured every 600ms and on resize). It caps the WCAG relative luminance of the
+  ink under each one: .2 under display headings, .06 under body copy, and .014 under the index, the "next" list and
+  the lab invitation (their numbers are cream at 55% opacity). Outside the boxes the cap is .3. Four refinement steps
+  account for the ground's own luminance. So the ink glows freely in empty space and between tiles, and only a hue
+  shows under the copy, "flowing around" the text.
+
+### Interactive experience: the ink lab (`/play/`, `/he/play/`, new standalone pages)
+"Paint with the portfolio." Pick one of the twelve sites (a radio group of "paint pots" showing each site's swatches)
+and drag across the dark. That site's palette pours out as fluid, and **wherever the ink is thick, the site itself
+shows through it** (its 1280px screenshot, cover-fitted, bent and RGB-split by the flow velocity). Switching sites
+turns what is already painted into the next site through a liquid sweep, whose edge is bent by the ink and which runs
+in the reading direction. While nobody paints, **the designer's cursor from the hub's loading screen ("Yuval"/"יובל")
+paints on its own**. It steps aside the moment you touch the canvas and comes back after 5s idle. There are Splash and
+Clear buttons, a "Now pouring" card (name, sector in the page's language, a link to the live site) whose offset shadow
+takes the site's colour, and a polite live region. Arrow keys follow the reading direction (RTL swapped), with
+Home/End.
+- **Look:** built on the site's own stylesheet (fonts, tokens, `.btn`, `.kick`, `.link`, the grain), with the nav
+  mark, the language switch and "Back to the work". The copy sits on an ink glass panel (82% ink + blur, solid
+  fallback), so its contrast never depends on the painting.
+- **Loader + transitions:** the lab's loading screen is the hub's yellow with the designer's cursor. It pops in,
+  clicks, and the yellow closes into the click (pure CSS, so it always leaves on its own, also without JS: 1.4s first
+  visit; 0.5s on repeat or inside a frame via `sessionStorage`; hidden under reduced motion, because the site's own
+  reduced-motion rule kills all animations). The hub's invitation and the footer link open the lab with a **yellow
+  circle wipe from the click point** (0.43s), which lands on the lab's yellow loader. "Back to the work" wipes in ink
+  and lands on the hub's own dark deck loader for `#work`. The logo goes to the top in yellow, onto the hub's yellow
+  loader. Modifier and new-tab clicks are left alone, and bfcache back removes the wipe.
+- **Entry points:** an end-of-section invitation under the index ("The ink lab / Paint with all twelve.", twelve
+  palette dots that hop on hover, an orange arrow disc in the site's offset-shadow style; it reveals with the index),
+  and a footer link.
+- The two HTML files come from one template (`scratchpad/ydesign-r5/gen/make-play.py`); `noindex`, hreflang pair.
+
+### Supporting motion
+- **Index preview** (playbook 11): hovering an index row floats that site's screenshot by the pointer, with weight.
+  It trails, tilts with the pointer's horizontal speed and springs in with an orange offset shadow. Mouse only, and
+  never with reduced motion or the motion switch.
+- **"Reduce motion" switch** in the footer (playbook rule 19): `html[data-motion=reduce]`, remembered in
+  `localStorage`, `aria-pressed`, a 44px touch target. It turns the ink into one still frame and stops the index
+  preview and the lab's painting cursor. It is pressed and disabled when the OS already asks for reduced motion.
+- Nothing from rounds 1-4 competed with this, so nothing was removed. The hero (which already has its own WebGL dot
+  field and colour wash), the bench, the arc and the studio stay as they were: the new energy lives in the ink scenes
+  that were flat before.
+
+### Fallbacks
+- **No WebGL, no renderable half-float targets, or a software rasteriser:** SwiftShader/llvmpipe/WARP do not always
+  set `failIfMajorPerformanceCaveat` (here it did not), so fluid.js also checks the renderer string. The holders
+  then show a still CSS glow of the studio's colours, placed away from the copy. The lab keeps working as a still
+  gallery: the pots swap a masked screenshot.
+- **Too slow:** adaptive quality by time. After 1.2s of frames over 26ms (EMA), it steps one tier down (sim
+  128→96→64→48, dye 512→384→256→192, Jacobi 14→10→6→4, canvas DPR 1.5→1→0.75→0.6). Slow at the last tier → it fades to
+  the still look. It never steps back up. Phones start at tier 1 and weak devices (Save-Data, ≤2 GB, ≤4 cores on
+  touch) at tier 2.
+- **Reduced motion** (OS or the switch): one still, marbled frame, simulated once with fixed seeds. On scroll it
+  redraws with the display pass only, so the dark boxes stay under the text. In the lab there is no autonomous
+  painter, and the fluid only moves while you paint (and settles for 2.5s).
+- **Hub iframe:** the fluid is never loaded (the light version). **Loader:** the fluid loads only after the site's
+  loader has handed over (`is-loading` removed), in idle time. **Hidden tab, offscreen, case dialog open, wall
+  diving:** paused. **Context loss:** handled (rebuild on restore). **bfcache:** resumes on `pageshow`. **JS off:** the
+  original site; the lab shows a designed still. CSP-safe (no eval, no inline handlers in the new files).
+
+### Measured
+- **Contrast** (`ctr.cjs`): it fills each scene with ink, hides the text, samples the ground under every text box over
+  several frames and composites the text colour with its opacity. Every text block passes over the ink in HE and EN
+  desktop and HE mobile. The worst real cases are the index numbers at 5.35:1 (needs 4.5), the work body copy at
+  9.1:1 and the contact body copy at 5.7:1. The only "fails" are text sitting under the fixed nav's orange button,
+  and they happen identically without the fluid. The lab kicker was changed from orange to cream with an orange dot:
+  13.5px orange on ink sits at 4.4:1 even without ink.
+- **JS per frame** (the fluid's own tick, including GL command submission, CPU throttled 4×, SwiftShader): 3.7-4.9ms
+  on desktop at tier 0 and 1.7-2.9ms on mobile. Unthrottled it is about 1-1.3ms. GPU time can't be measured here:
+  SwiftShader renders on the CPU, so with the fluid forced on at 4× throttle the frame rate collapses. That is why
+  software renderers are excluded in production. With adaptation on, the mobile run stepped down to tier 3 and then
+  gave up to the still look within the scroll, as designed.
+- **Scroll with 4× throttle, fluid off** (what headless and software users get): the same as the page without ydx,
+  within this machine's noise (load average 30+ from parallel agents). Median frame 16.7ms on both; mobile 331
+  frames with 6 long tasks for ydx, against the earlier clean run.
+- **Weight:** fluid.js 6.1 KB, immersive.js 7.3 KB, play.js 5.6 KB gzip. The lab adds about 8 KB of CSS and
+  lazy-loads its screenshots (60-140 KB each, the neighbours prefetched).

@@ -11,7 +11,8 @@
    Soft-light with 0.5 grey is an identity, so the output is kept to a narrow band around it (0.41-0.60), and over
    the pomegranate cloths it never brightens at all (their pale copy is at 4.58:1 already): text keeps WCAG AA on
    every frame (worked out per cloth and sampled from screenshots, see CHANGES.md round 5).
-   Fallbacks: no WebGL / software GPU -> the static CSS light on the wrapper (enhance.css 5a); reduced motion -> one
+   Fallbacks: no WebGL -> the static CSS light on the wrapper (enhance.css 5a); a software GPU -> no layer at all (see
+   below); reduced motion -> one
    still frame, no loop; hub iframe -> half resolution, 30 fps; hidden tab -> stopped. Adaptive quality from a frame
    time EMA. API (used by enhance.js and /play/): window.ydxLight.ting(x, y, strength), .mood(name), .ready.
    No eval, no inline handlers: CSP-safe. Simplex noise: Ashima Arts / Stefan Gustavson (MIT). */
@@ -136,13 +137,16 @@
     }
     if (!build()) { host.setAttribute('data-state', 'fallback'); doc.classList.add('ydx-nogl'); return; }
     // a software rasteriser (blocklisted GPU, VM, some headless setups) would draw this full-screen shader on the CPU
-    // and starve the page's own animations: keep the static CSS light there instead
+    // and starve the page's own animations
     if (!window.__ydxAllowSoftware) {
       let rn = '';
       try { const ext = gl.getExtension('WEBGL_debug_renderer_info'); rn = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (e) { /* unknown: keep going */ }
       if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(rn || '')) {
         try { const lc = gl.getExtension('WEBGL_lose_context'); lc && lc.loseContext(); } catch (e) { /* fine */ }
-        host.setAttribute('data-state', 'fallback'); doc.classList.add('ydx-nogl'); return;
+        // and no layer at all: such a machine usually composites in software too, where even a static full-screen
+        // blended layer is re-blended on every frame of the page's own animations (measured: the language wipe took
+        // ~600ms longer with it). The site's cloths are complete without it.
+        host.remove(); doc.classList.add('ydx-nogl', 'ydx-swgl'); return;
       }
     }
 

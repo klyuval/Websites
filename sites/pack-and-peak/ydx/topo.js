@@ -106,13 +106,13 @@
       e.fn = fn;
       function tick(now) {
         raf = requestAnimationFrame(tick);
-        var dt = last ? Math.min(now - last, 100) : 16.7; last = now;
-        ema += (dt - ema) * .05;
+        var real = last ? Math.min(now - last, 1000) : 16.7, dt = Math.min(real, 100); last = now;
+        ema += (dt - ema) * (real > 50 ? .25 : .05);            // react fast to very long frames
         if (!o.fixedQuality && !(o.hold && o.hold())) {         // (not while the page itself is busy loading)
-          // Counted in 60 Hz frame units of elapsed time, so a very slow device steps down within ~0.7 s, not 40 frames.
-          if (ema > 26 && q > .42) { slow += dt / 16.7; if (slow > 40) { q *= .75; slow = 0; ema = 16; dirty = true; } } else if (q > .42) slow = 0;
-          // Still far too slow at the lowest resolution for ~2 s: give the effect up (the page shows its static fallback).
-          if (q <= .42 && o.onSlow) { if (ema > 45) { if ((hopeless += dt) > 2000) { var cb = o.onSlow; o.onSlow = null; cb(); return; } } else hopeless = 0; }
+          // Measured in real elapsed time (not frames), so a very slow device steps down every ~0.5 s.
+          if (ema > 26 && q > .42) { slow += real; if (slow > 500) { q *= .75; slow = 0; ema = 20; dirty = true; } } else if (q > .42) slow = 0;
+          // Still far too slow at the lowest resolution for ~1.5 s: give the effect up (the page shows its static fallback).
+          if (q <= .42 && o.onSlow) { if (ema > 40) { if ((hopeless += real) > 1500) { var cb = o.onSlow; o.onSlow = null; cb(); return; } } else hopeless = 0; }
           if (ema < 13 && q < (o.quality || 1) && !upgraded) { if (++fast > 240) { q = Math.min(o.quality || 1, q / .75); upgraded = true; dirty = true; } } else fast = 0;
         }
         acc += dt;

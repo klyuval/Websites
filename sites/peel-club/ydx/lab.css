@@ -52,7 +52,7 @@
 /* the crack headline: squeezes open over the stage, the brand's own gesture */
 /* it lands behind the can, the way the hero's "A lot alive." sits behind its can */
 .lab__pop{position:absolute;left:50%;top:50%;z-index:-1;width:max-content;margin:0;translate:-50% -50%;text-align:center;pointer-events:none;opacity:0;
-  font-size:clamp(70px,11vw,210px)}
+  font-size:clamp(56px,6.6vw,124px)}
 .lab__pop .wide{display:block}
 .lab__status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
@@ -62,7 +62,7 @@
   .lab__copy{order:0}
   .lab h1{font-size:clamp(54px,19vw,120px)}
   .lab__can{width:clamp(130px,34vw,220px)}
-  .lab__pop{font-size:clamp(54px,19vw,130px)}
+  .lab__pop{font-size:clamp(46px,15vw,110px)}
   .lab__swatches{justify-self:stretch}
 }
 @media (width<=900px) and (orientation:portrait){

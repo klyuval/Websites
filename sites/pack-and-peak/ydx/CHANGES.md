@@ -368,3 +368,138 @@ esbuild 0.24.0 and is still byte-identical to the inline block.
 - The `shoot.mjs` walks on desktop and mobile have 0 log lines.
 - Live headers (`curl -sI`): still no CSP or security headers. `/ydx/*` is not deployed live yet, which is the
   `both404` case and passes.
+
+## Round 5: a living map and a route lab
+
+The brief: make the site immersive (reactive, moving backgrounds and a genuinely interactive experience) without
+breaking rounds 1–4. Pack & Peak already had one strong signature, the topographic map: every chapter field carries a
+static contour texture, the loader draws contour rings and a trail to a summit, the terrain chapter is a map sheet. So
+both additions are that map, alive, following the playbook's mapping for this site (technique 1 variant: a
+contour-line shader from a domain-warped noise height field; technique 22 details; 21 for the page change).
+
+### 1. The living topographic field (`ydx/topo.js`, all chapters)
+- **What it is.** One fixed WebGL 1 canvas (`#ydx-topo`) draws the site's own contour lines, alive. A domain-warped
+  2D simplex height field erodes slowly; contours every level with an index contour every fifth, anti-aliased with
+  `fwidth` (`OES_standard_derivatives`, with a fixed-band fallback); a soft hillshade from the height gradient; and a
+  slow "sun through moving cloud" light drifting over it.
+- **It reacts.**
+  - *Pointer:* the cursor raises a summit. The rings tighten around it and turn cream (the loader's contour colour;
+    vermilion on the paper map sheet). It follows with mass (a damped spring), rises while the pointer rests and
+    flattens a little while it moves fast.
+  - *Scroll:* the field scrolls at 78% of the page, which reads as depth under the content. Scroll speed stirs it
+    (the warp grows with velocity).
+  - *Trail choice:* picking a different board on the signpost reshapes the land (each trail has its own seed, eased
+    over ~1.5 s) and sends a contour ripple out from the board you tapped.
+  - *Touch:* without a hover pointer the summit wanders on its own (Lissajous drift) and jumps to where you touch;
+    on Android it follows device tilt (no permission prompt there; iOS keeps the drift, so there is no permission UI).
+- **Per chapter.** Line colour and alpha match the old textures exactly (ink at ~13% on sky, spruce and vermilion;
+  sienna on the paper sheet). The light only ever raises text contrast: sunlit slopes lighten on ink-text chapters,
+  shaded slopes darken on the spruce chapter (cream text). No lines are drawn within a few px of a chapter seam (the
+  band widens with scroll speed), which hides any one-frame lag between the canvas and the scrolled content.
+- **Stacking without touching React.** Every chapter child already sits at `z-index >= 1`; the chapters themselves
+  are positioned with `z-index:auto`. A fixed canvas at `z-index:0` appended to `<body>` therefore paints *above* the
+  CSS colour fields and *below* all content. The one in-flow piece of chapter content, the hero kicker, gets
+  `position:relative; z-index:3`. The colour fields and map grids stay CSS, so they never lag the scroll; only the
+  topo texture layer is dropped (`html.ydx-gl`, screen only, so print keeps it).
+- **Hand-off.** It starts after `load` and draws its first frame under the loader, so the swap from the texture is
+  never seen; if it starts after the loader has gone, the canvas fades in over the texture first and the texture is
+  removed once it is fully covered. Under the loader it draws nothing more (no cost during hydration).
+
+### 2. The route lab (`/play/`, `ydx/lab.js`, `ydx/lab.css`)
+A standalone page I own completely ("05 / Route lab — Plot your own line."). The whole viewport is a living
+topographic sheet in the site's map language: pale-green valleys, paper mid-slopes, warm high ground, snow summits,
+sienna contours every 50 m (index every 250 m), hillshade, tarns with moving hatch lines and a shoreline, cloud
+shadows drifting over, the map grid, a north arrow, a 1 km scale bar and the sheet's blue italic coordinates.
+- **Draw** a route with mouse, pen or finger: it is drawn in the site's trail style (white casing, dashed vermilion,
+  white-and-vermilion trailhead marker, a summit flag with its altitude at the highest point). The readout card is a
+  twin of the terrain chapter's: a name ("Summit push", "Tarn traverse", "Valley ramble"…), the elevation profile,
+  distance, elevation gain (8 m hysteresis, like a GPS log), trail time (Naismith's rule), highest point and a
+  difficulty stamp that thumps in when it changes. All of it updates live while you draw.
+- **Raise / Dig:** press and hold to grow a peak or sink a tarn. The land springs up (slight overshoot), the contours
+  ripple outward, and an existing route's numbers change with the land under it.
+- **New land** morphs the terrain into a new seed (the contours flow into new shapes); **Clear** lets the sculpted
+  land settle back.
+- **Walk it:** a hiker rides the line; the card title becomes a live altimeter and a marker runs along the profile;
+  it ends "Logged · 7.5 km" with the stamp and a haptic tick where supported.
+- **Plot one for me** (and the keyboard route through the whole toy): it finds the highest summit in the open map,
+  picks a valley start whose line keeps off the panels and out of the water, and draws switchbacks up to it.
+- **Reticle** (fine pointers): crosshair with the live altitude under the pointer ("2,140 m", or "Tarn · 1,110 m"),
+  re-read while you sculpt underneath it.
+- **One height function, twice.** The shader's terrain and a JS port of the same simplex noise give identical
+  heights, so every number matches the contour you see. Verified by sampling 1,592 grid points of a rendered
+  frame against the JS water test: 1,592/1,592 agree.
+- **Look and back.** Same fonts (the site's own latin subsets), palette tokens, brand mark (links home), blaze
+  eyebrows, readout card, pill buttons and dock-style "Back to the journey" pill. "Pack for it" links to `/#pack`.
+- **Phones:** the panels compact to a title + tool bar on top and a slim readout at the bottom (stamp in the card's
+  corner), leaving the map in between (~250 px on a 390×664 viewport, ~190 px at 360×640). No page scroll, no
+  horizontal overflow.
+
+### 3. Entry point and the page change (`ydx/enhance.js`)
+- **Chip:** "Route lab · Plot your own line" with a contour-ring icon, styled like the dock and the altimeter pill.
+  It is a real link appended to `<body>`, shown while the map sheet or the summit is mid-screen (bottom-left on
+  desktop, above the dock on phones; `visibility:hidden` otherwise, so it is never an invisible tab stop). Hover/focus
+  makes its rings breathe; it has the magnetic pull of the other pills.
+- **Transition:** clicking it plays the chapter-jump strata (vermilion, then a paper band with the route pin,
+  "ROUTE LAB", "Plot your own line"), freezes them while the paper band covers the screen, and navigates. The lab
+  page starts under the identical band (critical CSS + markup first in `<body>`) and lifts it with the ridge edge,
+  vermilion under-layer 90 ms behind, as the panels rise in. Leaving the lab, a ridge-edged vermilion and sky band
+  sweep up and the journey's own loader (short repeat version) takes over; `/#terrain` lands exactly on the chapter.
+  Modifier/middle clicks and reduced motion navigate normally; bfcache restores drop any cover.
+
+### Fallbacks
+| Condition | Journey page | Route lab |
+| --- | --- | --- |
+| No WebGL / software GL flagged by the browser / shader error | not mounted, original topo texture | 2D-canvas contour render of the same heights (1/3 res), everything works |
+| GPU too slow | steps resolution 1 → .32; still too slow for 1.5 s → hands back to the texture (fades) | stays at the lowest resolution |
+| Reduced motion | not mounted (the static texture is the still frame) | static map, rendered on demand; walk / plot / morph jump to the result; cover fades |
+| Hub iframe | 30 fps, 60% resolution, 2 octaves | — |
+| `enhance.css` missing | not mounted (waits for `html.ydx-css`); chip hidden by the inline critical CSS | — |
+| No JS | original site | static topo sheet, the title card and "The route lab needs JavaScript. Back to the journey" |
+| Context lost | texture comes back; restored → rebuilt | 2D fallback / rebuilt |
+
+### Performance
+- DPR cap 1.5 (1.25 on coarse pointers); 3 noise octaves on desktop, 2 on phones and in the hub; adaptive
+  resolution from a frame-time EMA measured in real time; 60 fps only while something moves (input, scroll, ripple,
+  morph), otherwise 30 fps; paused in hidden tabs and under the loader; one WebGL context per page; no layout reads
+  per frame (chapter tops are cached by a ResizeObserver).
+- **JS per drawn frame** (EMA): 0.2–0.6 ms on the page unthrottled, 1.4–5 ms at 4× CPU throttle (this includes
+  SwiftShader's in-process GL calls). The lab: ~0.2 ms idle, more while a route is measured (~500 height samples).
+- **4× CPU throttle, scripted scroll, vs. the same page with `topo.js` blocked** (`perf.cjs`, SwiftShader):
+  - The first build kept drawing at the lowest resolution and SwiftShader made the page crawl (median frame 300 ms vs
+    33 ms on desktop). That is a software rasteriser on a loaded container, not a GPU, but it showed that the layer
+    needed a way out on weak hardware. The engine now counts slow time in real milliseconds and gives up after
+    1.5 s at the lowest resolution.
+  - With that: desktop median frame 33.3 ms with the layer vs 33.3 ms without (p95 283–400 vs 150–250 ms; the layer
+    bails out during the run and its canvas is removed); mobile median 16.7 vs 16.7 ms, p95 83 vs 50–133 ms.
+  - On a real GPU the shader is a few ms (one full-screen triangle, ~9 simplex evaluations per pixel on desktop at
+    DPR 1.5); it was not possible to measure a GPU here.
+
+### Removed or changed from earlier rounds
+Nothing was removed. I re-checked the competing pointer effects: on the map sheet the round-1 reticle and the new
+summit both follow the pointer, but they say the same thing (a point on the map, its coordinates, a peak under it),
+so they reinforce each other. The static topo texture is no longer drawn while the live field runs.
+
+### Files
+- New: `ydx/topo.js` (engine + page driver), `ydx/lab.js`, `ydx/lab.css`, `play/index.html`.
+- `index.html`: one `<script src="/ydx/topo.js" async>` inside the ydx head block, and `#ydx-lab,#ydx-topo` added
+  to the inline "hidden until enhance.css" rule. The inline loader is unchanged and still byte-identical to the
+  esbuild 0.24.0 build of `ydx/loader-inline.src.js` (checked).
+- `ydx/enhance.js`: the lab destination in the shutter, `__ydxToLab`, the chip, the chip in the magnet list.
+- `ydx/enhance.css`: canvas placement and texture swap (5b), the chip, print rules.
+
+### Verification and regression results (scripts in `scratchpad/pack-and-peak-r5/`)
+- Visual: `look.cjs` (all chapters, desktop and iPhone 13), `bgseq.cjs` (summit following the cursor; trail
+  ripple), `lab1.cjs` (draw, raise, walk, plot; desktop and phone), `frames.cjs` (strata into the lab, seeked
+  frame by frame), `flow.cjs` (chip → lab → back to `/#terrain`: lands at 0 px).
+- Fallbacks (`fb.cjs`): no WebGL (page keeps the texture; the lab draws in 2D and measures routes), reduced motion,
+  hub iframe (q .6, 30 fps), `enhance.css` 404, JS off on the lab. No console errors apart from the intended 404s.
+- Round 3/4 suite re-run from `pack-and-peak-r5/reg/`: `t-misc`, `t-reveal`, `t-pins`, `t-shutter`, `t-shutter2`,
+  `t-yank`, `t-bfcache`, `t-bfcache2`, `t-loader` (ready fires once; an exit throw clears the cover), `t-order`
+  (hydration never held back), `t-nojs`, `t-end`, `t-trail` all pass. `t-land` first ran slowly with the GL layer
+  under SwiftShader (the phone landing was late); after the slow-GPU bail-out it lands exactly (5077) again.
+  `t-nojs` counts of opacity-0 nodes fluctuate run to run on both the stripped original (14–16) and ours (16–17)
+  because the original's own CSS intro animations are mid-flight at `load`.
+- `prod.cjs`, 18 scenarios: every one ends visible and usable with `ydx:ready` once and no console errors besides
+  the intended 404s. `bfcache` is still probed while its repeat loader is up (Playwright never restores from
+  bfcache; the same artefact as round 4) and then ends clean.
+- `shoot.mjs` walks: see the final report.

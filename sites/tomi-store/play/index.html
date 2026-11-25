@@ -100,7 +100,7 @@
     .lab-count{position:fixed;z-index:4;inset-inline-end:var(--pad);bottom:clamp(20px,5vh,56px);margin:0;display:grid;justify-items:end;gap:6px;pointer-events:none;text-align:end}
     .lab-count b{font-family:var(--display);font-weight:700;font-size:clamp(72px,9vw,150px);line-height:.74;font-variant-numeric:tabular-nums;direction:ltr}
     .lab-count span{font-size:12px;font-weight:700;letter-spacing:.18em;opacity:.8}
-    .lab-hint{position:fixed;z-index:3;left:50%;top:50%;translate:-50% -50%;margin:0;padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;background:rgb(14 13 12/.28);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;white-space:nowrap;transition:opacity .6s var(--ease-out),translate .6s var(--ease-out)}
+    .lab-hint{position:fixed;z-index:3;left:50%;top:30%;translate:-50% -50%;margin:0;padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;background:rgb(14 13 12/.28);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:none;white-space:nowrap;transition:opacity .6s var(--ease-out),translate .6s var(--ease-out)}
     html.ink .lab-hint{background:rgb(255 248 239/.4)}
     .lab-hint.gone{opacity:0;translate:-50% -30%}
     html:not(.lab-js) .lab-hint{display:none}
@@ -122,7 +122,7 @@
       .lab-count b{font-size:64px}
       .lab-chip{padding:0 9px;font-size:11px}
       .lab-row{gap:8px;margin-top:16px}
-      .lab-hint{top:40%}
+      .lab-hint{top:34%}
     }
     @media (max-width:380px){ .lab-chip i{display:none} }
     @media (prefers-reduced-motion:reduce){ .lab-btn,.lab-hint{transition:none} }
@@ -171,7 +171,7 @@
     <p class="lab-k" data-i="k">TOMI · מעבדת הטבעות</p>
     <h1 class="lab-title" data-i="title">נשפו טבעת.</h1>
     <p class="lab-line" data-i="line">לחצו והחזיקו כדי לטעון, שחררו כדי לשלוח טבעת. גררו כדי לערבב את האוויר.</p>
-    <p class="lab-nojs">המעבדה צריכה JavaScript. · Ring Lab needs JavaScript.</p>
+    <p class="lab-nojs">המעבדה צריכה <span dir="ltr">JavaScript</span>. · <span lang="en" dir="ltr">Ring Lab needs JavaScript.</span></p>
     <div class="lab-row">
       <div class="lab-chips" role="group" aria-label="צבע" data-i-label="colour">
         <button class="lab-chip" type="button" data-m="x" aria-pressed="false"><i aria-hidden="true"></i>X</button>

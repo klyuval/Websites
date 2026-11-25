@@ -300,6 +300,8 @@ html.ydx-on:is(.ydx-loading,.ydx-hold) [data-lay] * { animation-play-state: paus
   opacity: 0; transition: opacity 1.4s ease-out;
 }
 html:not(.ydx-loading) .ydx-light { opacity: 1; }
+/* nothing to light while a cloth covers the page (the loader, the language wipe, leaving for /play/): not composited */
+html:is(.ydx-loading, .ydx-covered) .ydx-light { visibility: hidden; }
 .ydx-light canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease-out; }
 .ydx-light[data-state=ready] canvas { opacity: 1; }
 

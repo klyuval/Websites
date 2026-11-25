@@ -152,7 +152,7 @@
     gl = null;
   }
   try {
-    var attrs = { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: false,
+    var attrs = { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false, preserveDrawingBuffer: true,
       powerPreference: 'low-power', failIfMajorPerformanceCaveat: !allowSW };
     gl = cv.getContext('webgl', attrs) || cv.getContext('experimental-webgl', attrs);
     if (!gl) throw new Error('no webgl');
@@ -305,7 +305,7 @@
       : { field: field, lift: mix(field, [.17, .02, .09], .45), paint: mix(field, [.17, .02, .09], .6), gloss: mix(field, pig, .8), ga: .3 };
     tgtName = 'custom'; wrap.dataset.tone = 'custom'; stillDone = ''; kick();
   }
-  w.__ydxPigment = { quality: function () { return q; }, state: function () { return wrap.dataset.state; }, half: function () { return half; }, setCustom: setCustom };
+  w.__ydxPigment = { quality: function () { return q; }, state: function () { return wrap.dataset.state; }, half: function () { return half; }, dims: function () { return [W, H]; }, setCustom: setCustom };
   if (w.__ydxLabPalette) setCustom(w.__ydxLabPalette);
   size(); kick();
 })();

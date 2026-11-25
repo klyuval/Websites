@@ -56,6 +56,7 @@
     /* ---- the meter ---- */
     let shown = -1;
     function meter() {
+      if (!ready && pressure >= 0.995) pressure = 1; // what the meter shows as 100% is 100%
       const pc = Math.round(pressure * 100);
       if (pc === shown) return;
       shown = pc;
@@ -71,7 +72,7 @@
       }
       soda()?.setFizz(Math.min(1.2, pressure * 1.1));
     }
-    function addPressure(v) { if (ready) return; pressure = Math.min(1, pressure + v); lastInput = performance.now(); }
+    function addPressure(v) { if (ready) return; pressure = Math.min(1, pressure + v); lastInput = performance.now(); meter(); }
 
     /* ---- bubbles ---- */
     const MAX = RM.matches ? 40 : 260;
@@ -110,12 +111,13 @@
       if (!RM.matches) {
         p.vy += 22; p.vr += (Math.random() - 0.5) * 18;
         anim(inner, [{ transform: 'scale(1)' }, { transform: 'scale(1.12,.86)', offset: 0.18 }, { transform: 'scale(.95,1.06)', offset: 0.5 }, { transform: 'scale(1)' }], { duration: 700, easing: OUT });
+        // per-keyframe easing (an easing on the whole animation would squeeze the hold into the first half second)
         anim(popEl, [
-          { opacity: 0, transform: 'scaleX(.45) translateY(10px)' },
-          { opacity: 1, transform: 'none', offset: 0.22 },
-          { opacity: 1, transform: 'none', offset: 0.72 },
+          { opacity: 0, transform: 'scaleX(.45) translateY(10px)', easing: OUT },
+          { opacity: 1, transform: 'none', offset: 0.24 },
+          { opacity: 1, transform: 'none', offset: 0.74, easing: 'cubic-bezier(.65,0,.35,1)' },
           { opacity: 0, transform: 'translateY(-24px) scaleX(1.05)' },
-        ], { duration: 2100, easing: OUT });
+        ], { duration: 2200 });
       } else anim(popEl, [{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.8 }, { opacity: 0 }], { duration: 1800 });
       navigator.vibrate?.([12, 40, 26]);
       say(`Pssssht. Cracked! That is can number ${cracked}. Shake it up again.`);

@@ -68,6 +68,7 @@
     $$('.lab-chip').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-m') === id)); });
     var shop = $('.lab-shop'); if (shop) { shop.setAttribute('href', '/#/shop/' + id); shop.textContent = t('shop') + NAMES[id]; }
     try { sessionStorage.setItem('ydx-lab-m', id); } catch (e) {}
+    if (user) lastInput = performance.now();
     if (user && sim) sim.puff(0.5, 0.2, 0.55, true); // a ring in the new colour says "this is the colour now"
   }
 
@@ -110,13 +111,14 @@
     });
     $('.lab-blow').addEventListener('click', function () {
       if (!sim) return;
+      lastInput = performance.now();
       var x = 0.5 + (Math.random() - 0.5) * 0.2;
       sim.puff(x, 0.18, 0.85);
       count++; paintCount();
       var sr = $('.lab-sr'); if (sr) sr.textContent = t('sent')(count);
       dismissHint();
     });
-    $('.lab-clear').addEventListener('click', function () { if (sim) sim.clear(); });
+    $('.lab-clear').addEventListener('click', function () { lastInput = performance.now(); if (sim) sim.clear(); });
   }
   var count = 0;
   function paintCount() {
@@ -397,7 +399,7 @@
       ema += ((ts - (frame.p || ts)) - ema) * 0.05; frame.p = ts;
       if (ema > 34 && ++slow > 45 && stepped < 2) { slow = 0; stepped++; iters = Math.max(6, iters - 6); scale *= 0.75; }
       // palette eases to the chosen model
-      var k = 1 - Math.exp(-dt / 0.22);
+      var k = reduced ? 1 : 1 - Math.exp(-dt / 0.22);
       ['c1', 'c2', 'c3'].forEach(function (n) { cur[n] = mixc(cur[n], k, pal[n]); });
       cur.ink += ((pal.ink ? 1 : 0) - cur.ink) * k;
       if (!reduced) clock += dt;

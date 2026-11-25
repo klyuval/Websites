@@ -391,3 +391,137 @@ ending.
 - `ydx/enhance.js` (tokens, the footer inking)
 - `ydx/enhance.css` (tokens, interaction states, the footer keyline, the removed index slide, print)
 - `index.html`, `styles.css` and `app.js` were not touched.
+
+## Round 5
+
+The owner found the sites still too quiet. Rounds 1–4 gave this page its motion. This round adds two new things,
+both built on the printer's-proof idea the page already uses: a **living print** behind the long read, and a
+**proof press** you work by hand on its own page. Neither repeats the existing studies. Those studies are about
+type, frame, colour and states; this round is about ink, paper and pressure.
+References: playbook §1.6 (Bayer/halftone fields, Codrops dithering articles), §1.3 (flowmap trail, Codrops "mouse
+flowmap deformation"), §1.21 (shader wipes), §2.1 (`PLAYBOOK-bg-reference.js` for the context, DPR and adaptive
+scaffolding). Simplex noise: Ashima/Gustavson, MIT.
+
+### 1. The living proof (`ydx/field.js`, about 400 lines)
+
+- **What it is:** the flat colour fields of every `main > .sec` become ink on paper that is still on the press. One
+  WebGL canvas paints each section's own `--field` with two halftone screens, in document space, so the dots scroll
+  with the page:
+  - *Show-through* (15° screen): where the ink runs thin, the paper shows through in slow, drifting pools.
+  - *The brayer* (75° screen): the pointer rolls a second screen into the page. The ink map is a small ping-pong FBO
+    (canvas/8). It is anchored to the document: it shifts with the canvas and dries off over about 2s. A still pointer
+    over a scrolling page draws a line. On touch, a tap presses a blot of ink.
+  - *Scroll speed* starves the ink (more show-through), and the plates slip: section edges mis-register by up to 14px
+    in halftone and settle back when you stop. A transition jump makes them slip and settle once.
+  - *Chapter 04's "change the field"* flood is printed by the shader as a growing halftone front (app.js's flood
+    disc is hidden in live mode; its timing, easing and the text-colour switch are unchanged).
+- **Why this stacking:** the site's own rules forbid fixed full-screen layers. The canvas is `position:absolute`
+  inside `main` (now `isolation:isolate`) at `z-index:-1`, so it scrolls natively. JS only moves it to keep a
+  viewport-plus-overscan window covered (18% each side on desktop, 36% on touch). The band edges are drawn in the same
+  layer that scrolls, so section edges never lag or seam. Sections turn `background-color:transparent` only after the
+  first frame is on screen (`html.ydx-field-live`). Print restores the flat fields.
+- **Contrast:** every dot colour moves away from the field's text colour: paler on yellow, mint and paper, deeper on
+  violet and ink. Pink's italics (yellow, white) are lighter than the field and its body text is ink, so pink gets a
+  narrow, slightly deeper band. The worst case for body text, including the ±1.1% paper tooth, is **4.58:1** (ink on
+  pink). Every other body text pair is 5.8:1 or more. Display italics that were already under 3:1 in the original
+  design keep their contrast or gain a little. The slip strip (≤14px) never reaches text, because sections have at
+  least 70px of padding. Full table: `scratchpad/form-and-field-r5/contrast.txt`.
+- **Fallbacks:**
+  - The *static frame* (`html.ydx-field-static`) is the same idea in CSS: an 8px dot screen of thin ink under two soft
+    pools of solid field. It is used with reduced motion (also when switched on live), in the hub iframe, with
+    `saveData` or ≤2GB memory, without WebGL, and on a GPU that is too slow.
+  - No JS, or no `enhance.css`: the original flat fields.
+- **Performance:**
+  - DPR is capped at 1.5, with an adaptive step to 0.8 and then 0.66.
+  - A *GPU probe*: one 256×256 frame is timed with a readPixels round trip and scaled to the real canvas. Over
+    ~40ms per frame gives the static frame; over 12ms starts at a lower resolution.
+  - A runtime guard (EMA over 45ms after 40 frames) also hands over to the static frame.
+  - The loop pauses when the tab is hidden, drops to 30fps after 2.5s with no input, and skips the page pass while
+    the cover (hero, no fields) fills the screen. It starts only after the loader, in idle time.
+  - Main-thread cost, measured here with `?ydxgl=force`: **0.44 ms/frame**, and **2.0 ms/frame with the CPU
+    throttled 4×**.
+  - This container renders WebGL on SwiftShader at about 0.5 fps for the full page. The probe correctly sends it
+    to the static frame, so every regression run here exercised the fallback. The live look was judged from `force`
+    screenshots.
+- `?ydxgl=off` forces the static frame. `?ydxgl=sw` allows software GL. `?ydxgl=force` skips the probe and guard
+  (for visual tests only).
+
+### 2. The proof press (`press/index.html`, `ydx/press.js` ~560 lines, `ydx/press.css`)
+
+A new standalone page. It is a hands-on print study, the "bigger moment" the existing studies do not have.
+- **01 Set the plate:**
+  - Your word (it arrives from the playground: the word and the weight travel in the URL).
+  - One of the guide's three poster layouts (Loud, Quiet, Rhythm). The plate shows it **wrong-reading**, as a real
+    plate does.
+- **02 Ink the plate:**
+  - Drag the brayer across the plate. It is a CSS roller on a handle that turns its axle across your stroke.
+  - It carries pink, violet, mint, black, yellow, or a **split fountain** (three colours on one roller).
+  - The roller is streaky and runs dry as you roll, so coverage is uneven, like a real one.
+  - The plate is lit relief, with wet ink and specular sheen.
+  - "Roll it for me" does it for keyboard users.
+  - A meter reads the coverage.
+- **03 Pull the proof:** pick a stock (white, newsprint, yellow), then pull.
+  - The sheet is laid on and a roller presses it. The type bites through as a blind emboss.
+  - The sheet is turned over like a page, in perspective with shading and a cast shadow.
+  - The proof lands beside the plate, **right-reading**. Thin ink prints salty, rolled ink prints solid, and
+    overprints multiply.
+  - The plate keeps a ghost of the ink, so you re-ink for the next pull.
+- **Keep it:**
+  - Each proof is pinned to "Today's proofs" (a drying line, kept for the session).
+  - "Save the proof" downloads a 1200×1600 PNG, rendered on the CPU with a proof caption.
+  - The proof number counts up.
+- **Look and system:**
+  - The site's tokens, fonts, pill/segment/text buttons, crop marks, proof bar and the loader's 4.9vw ruling.
+  - The same proof-sheet **loader** (same inline critical CSS and markup, `quick` on repeat).
+  - The same **five plates**. Leaving the guide for the press, the plates close in the press room's ink with "Pull a
+    *proof.*". The press opens under them (new `cut` loader mode, via `sessionStorage 'ydx-ff-cut'`, 8s expiry).
+  - "← Back to the field guide" plays them in violet and lands the playground flush. The wordmark goes to the top.
+  - Both pages lift any plates left up when restored from the bfcache.
+- **Phones:** the title, then the press bed, then the steps. The bed shows one sheet at a time, with a Plate/Proof
+  toggle, and it pans to the proof after a pull. Pulling scrolls the bed into view first.
+- **Degradation:**
+  - No WebGL: a still plate and a CPU-printed proof, side by side.
+  - Reduced motion: no pull animation, the result appears at once.
+  - No JS: a `noscript` line pointing to the posters in the guide.
+  - The canvas is `role=img`, with a label that describes the last proof.
+  - A polite live region announces inking, pulls and saves.
+  - Every control is a real button in a fieldset. While a pull runs they are `aria-disabled`.
+- The press canvas renders on demand only: while you roll, during a pull or a pan.
+
+### 3. Entry points and other changes
+
+- **Entry points** (`index.html`, CRLF kept):
+  - "Pull a proof of it ↗" in the playground's actions, next to "Reset study".
+  - "Pull a proof at the press" in the closing row, opposite "Revisit the field guide". It is a `round-link`, so it is
+    magnetic.
+- **`enhance.js`:**
+  - The out-transition to the press (capture-phase handler on `a[data-ydx-go]`, which also adds `?w=&wght=` for
+    new-tab clicks).
+  - The `cut` loader mode (70ms minimum, plates only, flush landing on the target field).
+  - A bfcache `pageshow` release.
+- **Inline boot script** (`index.html` and `press/index.html`): reads `ydx-ff-cut`, sets `--ydx-cut`, and gives the
+  `cut` mode a 1.5s failsafe. The cut-mode CSS is inline, next to the loader's.
+
+### Regression (all re-run after the changes)
+
+- Round 3:
+  - `bugs.mjs`: 11/11.
+  - `prod.mjs`: 18/18 (JS off, 404s, late scripts, fonts 404, reduced motion, iPhone 13, slow 3G with 4× CPU, frozen
+    page, background tab, bfcache, hub iframe at 1440 and 390, about 0.53s).
+  - `bg.mjs`: 4/4.
+  - `back.mjs`, `twice.mjs`, `order.mjs`: same results as round 4.
+- Round 4:
+  - `foot.mjs`: the footer inks to 800 with its neighbours fixed.
+  - `rm.mjs`: reduced motion stays at 800.
+  - `states.mjs`: no errors.
+- `tools/shoot.mjs`:
+  - Guide, desktop and mobile: **0 log lines**.
+  - Press, desktop and mobile: 1 line each, a headless-only `GL Driver Message … GPU stall due to ReadPixels`
+    warning. A bare 5-line WebGL clear loop produces the same lines in this container with any context attributes,
+    so it comes from SwiftShader compositing, not from the page.
+- New round-5 scripts (`scratchpad/form-and-field-r5/`):
+  - `press.cjs` (inking, pull screencast, result; desktop and iPhone 13; no errors, no horizontal overflow).
+  - `trip.cjs`: guide → press (`cut` mode, the word arrives) → back to the playground flush (y = 0 at the field) →
+    history Back and Forward. Nothing covered, no errors.
+  - `cost.cjs`, `fl3.cjs` (flood stills), `edge.cjs` (the slip settles to 0), `look.cjs` (live shots), and
+    `probe.cjs` / `static.cjs` (fallback).

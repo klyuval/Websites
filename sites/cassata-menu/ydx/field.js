@@ -328,12 +328,12 @@
     cv.className = 'ydx-field';
     cv.setAttribute('aria-hidden', 'true');
     d.body.appendChild(cv);
-    var box = { top: 0, w: 1, h: 1 };
-    var heroRect = null, pending = null, lastY = scrollY, onScreen = true;
+    var box = { top: 0, left: 0, w: 1, h: 1 };
+    var pending = null, lastY = scrollY, onScreen = true;
 
     function layout() {
       var r = hero.getBoundingClientRect();
-      box.top = r.top + scrollY; box.w = r.width; box.h = r.height;
+      box.top = r.top + scrollY; box.left = r.left + scrollX; box.w = r.width; box.h = r.height;
       cv.style.top = box.top + 'px'; cv.style.left = (r.left + scrollX) + 'px';
       cv.style.width = r.width + 'px'; cv.style.height = r.height + 'px';
       F.setSize(r.width, r.height);
@@ -370,10 +370,9 @@
       },
       tick: function () {
         if (!hero.isConnected) { var nh = d.querySelector('.site:not(.host-site) .hero'); if (nh) { hero = nh; io.observe(hero); ro.observe(hero); mo.observe(hero, { attributes: true, attributeFilter: ['style'] }); layout(); readField(false); } }
-        if (pending) { // one rect read per frame, only after the pointer moved
-          heroRect = hero.getBoundingClientRect();
-          var x = pending[0] - heroRect.left, y = pending[1] - heroRect.top;
-          if (x >= 0 && y >= 0 && x <= heroRect.width && y <= heroRect.height) F.stroke(x, y); else F.lift();
+        if (pending) { // hero box cached by the ResizeObserver: no layout read per frame
+          var x = pending[0] + scrollX - box.left, y = pending[1] + scrollY - box.top;
+          if (x >= 0 && y >= 0 && x <= box.w && y <= box.h) F.stroke(x, y); else F.lift();
           pending = null;
         }
       }
@@ -388,8 +387,8 @@
     addEventListener('pointermove', function (e) { pending = [e.clientX, e.clientY]; }, { passive: true });
     addEventListener('pointerdown', function (e) {
       if (e.pointerType === 'mouse') return;
-      var r = hero.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-      if (x >= 0 && y >= 0 && x <= r.width && y <= r.height) F.dab(x, y);
+      var x = e.clientX + scrollX - box.left, y = e.clientY + scrollY - box.top;
+      if (x >= 0 && y >= 0 && x <= box.w && y <= box.h) F.dab(x, y);
     }, { passive: true });
     addEventListener('pointerup', function () { F.lift(); }, { passive: true });
     d.documentElement.addEventListener('pointerleave', function () { F.lift(); });

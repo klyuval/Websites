@@ -268,15 +268,15 @@
       boot = Math.min(1, boot + dt / 1600);
       ema += (dt - ema) * 0.05; // adaptive quality from measured frame time (never steps back up more than once)
       if (ema > 24 && q > 0.36) { if (++slow > 45) { q *= 0.75; slow = 0; ema = 16; dirty = true; } } else slow = 0;
-      // wall-clock check every 1.5s of drawing: a device that cannot hold ~20fps gets a much smaller buffer at once,
+      // wall-clock check every 1s of drawing: a device that cannot hold ~20fps gets a much smaller buffer at once,
       // and if even that does not help, the layer retires for the session (the page is the original design again)
       win.n++; win.t += Math.min(raw, 1000);
-      if (win.t > 1500) {
+      if (win.t > 1000) {
         var fps = win.n / win.t * 1000; win.n = 0; win.t = 0;
-        if (fps < 20) {
-          if (q > 0.3) { q = Math.max(0.24, q * 0.6); dirty = true; }
-          else if (++win.bad >= 2 && !opts.keep) { retire(); return; }
-        } else win.bad = 0;
+        if (fps < 24) {
+          if (q > 0.25) { q = Math.max(0.24, q * 0.5); dirty = true; }
+          else if (!opts.keep) { retire(); return; }
+        }
       }
       if (ema < 13 && q < 0.8 && !upgraded) { if (++fast > 240) { q = Math.min(0.8, q / 0.75); upgraded = true; dirty = true; } } else fast = 0;
       var idle = now - lastMove > 3500;

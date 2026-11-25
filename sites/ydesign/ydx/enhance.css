@@ -136,9 +136,9 @@ html.ydx-kbd .contact__copy { visibility: visible !important; opacity: 1 !import
 /* No WebGL, a software GPU or frames too slow: a still glow of the studio's colours, placed away from the copy. */
 .ydx-fluid.is-fallback {
   background:
-    radial-gradient(40vw 30vw at 8% 34%, rgb(240 78 35 / .16), transparent 70%),
-    radial-gradient(34vw 26vw at 96% 12%, rgb(28 70 224 / .14), transparent 70%),
-    radial-gradient(30vw 24vw at 90% 92%, rgb(255 143 174 / .1), transparent 70%);
+    radial-gradient(40vw 30vw at 8% 34%, rgb(240 78 35 / .22), transparent 70%),
+    radial-gradient(34vw 26vw at 96% 12%, rgb(28 70 224 / .2), transparent 70%),
+    radial-gradient(30vw 24vw at 90% 92%, rgb(255 143 174 / .14), transparent 70%);
 }
 /* While the ink runs, the wall lets it glow through the gaps between the tiles (the shader paints the wall's own darker
    tone underneath). During the dive the wall keeps its solid ground. */
