@@ -66,6 +66,35 @@ Botanical's arrive on the label-peel slant, TOMI's rise as ring domes, AlexStudi
 ydesign hub's scenes lift in like sheets with matching rounded tops. Pack & Peak gained a summit ending, STRATA a
 footer word that un-prints toward the cursor, FORM a faster return to views you've already opened.
 
+## Round 5: immersive backgrounds and interactive pages
+
+Researched from current award-winning work (playbook in the session notes), then built per site. Every site got a moving
+background that reacts to the pointer/touch, scroll and the active colour or product, plus a new interactive page:
+
+| Site | Moving background | Interactive page |
+| --- | --- | --- |
+| Cassata | Churning gelato surface; pointer drags a ribbon; new flavours pour out of the coupe | `/play/` Scoop Lab: stack scoops on a cone, don't drop them |
+| FORM | Chalk floor with a gym spotlight on sign-in, calm haze in the app; confetti on sets and workouts | "Load the bar" toy on the sign-in poster |
+| Form & Field | Halftone print field; pointer rolls an ink trail; fast scroll slips the registration | `/press/` proof press: set a word, ink the plate, pull a proof |
+| AlexStudio | Developer tray under a safelight; pointer is a hand lamp; ripples | `/darkroom/`: expose, dodge, develop and fix a real print |
+| MyChef | Dappled olive-tree light and a candle that follows the pointer (soft-light blend, colours untouched) | `/play/` plating game, ends in a named kitchen ticket |
+| Negia | **Recomposed on one 12-column grid**; glossy pigment the pointer smears, tinted by the shade family | `/lab/` shade mixer that tints a lips photo and fills the booking form |
+| Pack & Peak | Living topographic map; pointer raises a summit; trail choice reshapes the land | `/play/` route lab: draw a route, raise peaks, dig tarns, walk it |
+| PEEL CLUB Citrus | Soda: caustics, light shafts, bubbles; fizzes harder with scroll; state carries across pages | `/lab/` Fizz lab: shake the can, crack it open |
+| PEEL CLUB Botanical | Sunlight through swaying leaves over the brand colours; leaves part around the pointer | `/fizz-lab/` mix fruit and herbs, shake, add the six-pack to the real bag |
+| STRATA | Each section's 3D-print infill pattern; pointer is a hot nozzle leaving filament | `/play/` Print your name in 3D, layer by layer |
+| TOMI | Ripples from each section's ring centre; asleep whenever the 3D hero draws | `/play/` Ring Lab (fluid simulation) |
+| ydesign | Real fluid ink behind the work wall and contact; tiles pour their site's colours | `/play/`, `/he/play/` ink lab: paint with the sites' screenshots |
+
+Notes:
+- The backgrounds deliberately switch themselves off on software graphics (no GPU, some VMs) and fall back to the
+  designed static look; they also step resolution down and give up if a real GPU can't keep up, pause offscreen and in
+  hidden tabs, show a still frame under reduced motion, and never load in the hub's preview iframe.
+- Real-GPU cost could not be measured in the build container (software rendering only); JS cost per frame was measured
+  at 0.01–2 ms. Check smoothness on a mid-range phone before shipping.
+- New pages are plain static files (`<site>/<page>/index.html`); the workers serve real files before the app's
+  fallback, so they only appear once deployed.
+
 ## Deploying the pass
 
 - Publish each site's HTML **together with** its `ydx/` folder. The live workers answer a missing file with the site's
