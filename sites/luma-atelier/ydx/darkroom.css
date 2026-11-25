@@ -240,3 +240,5 @@ dr-load.is-out { opacity: 0; transition: opacity .45s ease; }
   .dr-panel, .dr-print.is-new { animation: none; }
   * { transition-duration: .01ms !important; }
 }
+/* no JS: only the copy, the static print and the way back (the controls need the script) */
+html:not(.dr-js) .dr-steps, html:not(.dr-js) .dr-panel, html:not(.dr-js) .dr-line, html:not(.dr-js) .dr-lang { display: none; }

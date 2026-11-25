@@ -82,8 +82,10 @@
     ' vec2 q=p*vec2(1.,1.+min(abs(uVel),2.)*.18)-vec2(0.,uScroll*.22)+g*.035;', // flow with scroll, stretch on flicks
     ' float c=web(q,t);',
     ' float light=uAmb+lamp*(1.+abs(uVel)*.2);',
-    ' vec3 col=base+uTint*(c*.07*light*uGain+lamp*.04+h*.026*(.4+lamp));',
-    ' col+=uTint*max(0.,h)*.03;',                                            // ring crests catch the light
+    ' vec3 add=uTint*(c*.07*light*uGain+lamp*.04+h*.026*(.4+lamp)+max(0.,h)*.03);',
+    // contrast guard: the added light is soft-capped (~+23/255) so cream and gold text stay AA on every frame
+    ' add=.09*(1.-exp(-max(add,vec3(-.04))/.09));',
+    ' vec3 col=base+add;',
     ' float gr=fract(52.9829189*fract(dot(fc+mod(uTime*60.,64.)*5.588238,vec2(.06711056,.00583715))));',
     ' gl_FragColor=vec4(col+(gr-.5)*uGrain,1.);',
     '}'
