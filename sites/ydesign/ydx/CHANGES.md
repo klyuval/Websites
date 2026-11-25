@@ -293,3 +293,36 @@ Home/End.
   frames with 6 long tasks for ydx, against the earlier clean run.
 - **Weight:** fluid.js 6.1 KB, immersive.js 7.3 KB, play.js 5.6 KB gzip. The lab adds about 8 KB of CSS and
   lazy-loads its screenshots (60-140 KB each, the neighbours prefetched).
+
+### Regression (round-3 suite + shoot.mjs, re-run after the container restart, machine load average about 30)
+Headless Chromium here renders WebGL with SwiftShader, which the layer refuses. So the suite exercises the production
+path software users get: the still CSS glow. The fluid itself was tested separately with `__ydxAllowSoftware`
+(`fast.cjs`, `seq.cjs`, `ctr.cjs`, `lab2.cjs`, `rmv.cjs` in `scratchpad/ydesign-r5/`).
+- `t-base` HE/EN: the loader leaves and the page scrolls. No errors.
+- `t-prod`: headers, js404, css404, both404, each delayed 8s and "twice" all end usable. nojs, main404 and mainThrows
+  behave as in rounds 3/4 (the inline watchdog lifts the screen). The loader is slower in wall-clock time only because
+  of the machine load.
+- `t-rm`: reduced, reduced+slowimg, main404 (ydx lift) and repeat all pass. `t-frame`: the `?noloader` path in the
+  hub frame, and the fluid is not loaded there. `t-bg3`: a hidden tab waits, then finishes 1.7s after it is shown.
+- `t-dlg`: all 10 close scenarios end closed, not diving, with no animations left. The fluid pauses while the
+  dialog is open or the wall dives.
+- `t-idx` (360/1024/1280/1920), `t-alt`, `t-nl` and `t-lang3` (all four scenarios): pass.
+- `t-ovf`: only the decorative studio "Y" (unchanged), plus once at HE 360 the `<b>` of the site's own process-demo
+  language wipe, caught mid-animation (`site__wipe`, a bundle element, transient; not ydx).
+- `shoot.mjs` HE/EN, desktop/mobile: page heights grow by the invitation only (HE desktop 9945). The only log lines
+  are the site's own hero `GL Driver` ReadPixels warnings, as in every round. The lab (`/play/`, `/he/play/`)
+  desktop/mobile: 0 log lines and no horizontal overflow.
+- Lab checks (`labfb.cjs`, `kbd.cjs`): no WebGL gives the designed still, with the pots swapping the screenshot and
+  Splash/Clear hidden. Reduced motion: no loader animation (the site's reduced-motion rule forces `animation:none`,
+  so the lab loader is `display:none` there) and a still painting. JS off: the loader leaves by CSS and the still
+  shows. Keyboard: skip link, mark, language, back, live link, pots; RTL arrows, Home/End, live region text.
+
+### Left alone / known limits
+- GPU cost could not be measured in this container (SwiftShader only). The tiers are the usual sizes for this
+  technique (Dobryakov's defaults are sim 128 / dye 1024 / 20 iterations; ours are lower). Adaptive stepping and the
+  give-up path were verified by forcing the fluid on under SwiftShader: mobile stepped to tier 3, then fell back to
+  the still look.
+- The hero keeps its own WebGL dot field: it is the site's signature and already reacts to the pointer. A second
+  effect there would compete.
+- The lab uses the site's hashed stylesheet `/assets/main-A2DhiWJl.css` for fonts and tokens. If the studio
+  rebuilds the bundle, update that one line in the template (`make-play.py`) and regenerate both pages.
