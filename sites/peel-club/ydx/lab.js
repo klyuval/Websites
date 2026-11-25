@@ -154,18 +154,18 @@
     can.addEventListener('lostpointercapture', endDrag);
     can.addEventListener('click', e => {
       if (suppressClick) { suppressClick = false; return; }
-      if (spaceClick) { spaceClick = false; return; }
+      if (!e.detail && lastKey === ' ') return; // Space shakes; only Enter (or a tap) cracks
       crack();
     });
     crackBtn.addEventListener('click', crack);
 
     /* ---- input: keyboard (Space / arrows shake; Enter cracks through the button's click) ---- */
-    let spaceClick = false;
+    let lastKey = '';
     const KICK = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], ' ': null };
     can.addEventListener('keydown', e => {
+      lastKey = e.key;
       if (!(e.key in KICK)) return;
       e.preventDefault();
-      if (e.key === ' ') spaceClick = true;
       const k = KICK[e.key] || [(Math.random() < 0.5 ? -1 : 1), (Math.random() - 0.5)];
       const f = RM.matches ? 4 : 13;
       p.vx += k[0] * f; p.vy += k[1] * f; p.vr += k[0] * (RM.matches ? 2 : 7);
@@ -174,7 +174,8 @@
       bubble(t.x, t.y, (Math.random() - 0.5) * 50, -80, 3 + Math.random() * 6, 2.5);
       wake();
     });
-    can.addEventListener('keyup', e => { if (e.key === ' ') { e.preventDefault(); setTimeout(() => { spaceClick = false; }, 0); } });
+    can.addEventListener('keyup', e => { if (e.key === ' ') e.preventDefault(); });
+    can.addEventListener('pointerdown', () => { lastKey = ''; });
 
     /* ---- input: pointer pops bubbles (hover with a mouse, press and drag with a finger) ---- */
     lab.addEventListener('pointermove', e => {

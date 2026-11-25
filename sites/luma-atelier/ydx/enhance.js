@@ -629,7 +629,7 @@
   const SURFACE = { paper: '#dccfae', canvas: '#cdb27f', glass: '#9fb9be', wood: '#c48b55' };
   const routeTint = () => TINT[location.pathname.replace(/\/$/, '')] || TINT.base;
   function living() {
-    if (RM.matches || MODE === 'frame' || !CSSOK || !window.WebGLRenderingContext || store.get('ydx-bg-off')) return; // ydx-bg-off: retired as too slow earlier this session
+    if (RM.matches || has('ydx-frame') || window.self !== window.top || !CSSOK || !window.WebGLRenderingContext || store.get('ydx-bg-off')) return; // ydx-bg-off: retired as too slow earlier this session
     const go = () => {
       const sc = d.createElement('script');
       sc.src = '/ydx/darkroom-bg.js'; sc.async = true;
@@ -662,7 +662,7 @@
      (same continuation the site's pages use). */
   const CHIP = { en: ['Darkroom', 'Develop a print'], he: ['חדר חושך', 'פתחו הדפסה'], ru: ['Тёмная комната', 'Проявите снимок'] };
   function darkroomChip() {
-    if (MODE === 'frame') return;
+    if (has('ydx-frame') || window.self !== window.top) return; // hub iframe: light version
     const a = d.createElement('a');
     a.className = 'ydx-chip'; a.href = '/darkroom/'; a.setAttribute('data-no-transition', '');
     a.innerHTML = '<i aria-hidden="true"></i><b></b><span></span>';

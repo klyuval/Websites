@@ -404,11 +404,15 @@
     var on = {};
     if ('IntersectionObserver' in window) {
       var o = new IntersectionObserver(function (es) {
-        es.forEach(function (e) { on[e.target.id] = e.isIntersecting; });
-        // phones: only the summit (an end-of-page invitation), so it never sits on the map sheet's readout card
-        a.classList.toggle('is-on', !!((on.terrain && innerWidth > 760) || on.summit));
+        es.forEach(function (e) { on[e.target.__ydxKey] = e.isIntersecting; });
+        show();
       }, { rootMargin: '-40% 0px -40% 0px' });
-      ['terrain', 'summit'].forEach(function (id) { var el = document.getElementById(id); if (el) o.observe(el); });
+      // Desktop: over the map sheet's relief or the summit. Phones: only while the PEAK / summit-rock picture is
+      // mid-screen, so it never sits on the readout card or the summit links. Never over the footer's text.
+      var show = function () { a.classList.toggle('is-on', !on.foot && !!(innerWidth > 760 ? on.terrain || on.summit : on.stage)); };
+      [['terrain', '#terrain'], ['summit', '#summit'], ['stage', '.summit-stage']].forEach(function (k) { var el = $(k[1]); if (el) { el.__ydxKey = k[0]; o.observe(el); } });
+      var ft = $('.summit-footer');
+      if (ft) new IntersectionObserver(function (es) { on.foot = es[0].isIntersecting; show(); }).observe(ft);
     } else a.classList.add('is-on');
     a.addEventListener('click', function (e) {
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || reduce || !window.__ydxToLab) return;
