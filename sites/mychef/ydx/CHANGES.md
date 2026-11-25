@@ -529,3 +529,29 @@ the table" pill, the language switch, and the shared light layer (`/ydx/light.js
   table sets itself; no wipe left behind, no errors.
 - `dock.cjs` (new): the card never overlaps the dock (iPhone 13, 360px, 1280, 1440, he/en).
 - `contrast.cjs` (new): see Contrast above.
+
+### Regression results (final run, after all changes)
+
+The container was very loaded during this round (load average 15–38 on 4 cores, other agents' SwiftShader runs), so
+timing-sensitive tests were also checked as A/B against the round-4 files served under the same load
+(`wipeab.cjs`, `ifrab.cjs`): equal within noise.
+
+- **Round-3 `bugs.cjs`:** all PASS (doubleRun, kbFocus, rapid, frozen, hidden, css404wipe, iframe, bfcache,
+  liftThrows, preHydrate, writeAll 1440/390, frozenWipe; churn 0 mutations idle).
+- **Round-3 `modes.cjs`:** every mode ends usable (normal, en, nojs, js404, css404, both404, jsLate8, appLate8,
+  appNever, appNeverEn). **`headers.cjs`** (live headers): PASS. **`cssLate.cjs`:** usable. **`ifr.cjs`:** loader gone
+  816–1142 ms (round 4 under the same load: 805–1374 ms).
+- **Round-4 `r4modes.cjs`:** PASS in all 10 modes.
+- **Round-5** `modes5.cjs`, `play.cjs` ×3 (desktop he/en, iPhone fr), `kb.cjs`, `dock.cjs`: as described above, no
+  console errors.
+- **`shoot.mjs` walk:** `/` desktop (12 shots) and mobile (16 shots), `/play/` desktop and mobile: **0 log lines** (no
+  errors, no warnings, no failed requests).
+- Scratch scripts and shots: `scratchpad/mychef-r5/` (`js/*.cjs`, `reg-*.txt`, `final-light-frames.png`,
+  `pl-*.png`, `xfer-sheet2.png`).
+
+### Files
+
+- New: `ydx/light.js` (the light layer, ~19 KB unminified, 7.6 KB gzip), `play/index.html`, `play/play.css`,
+  `play/play.js` (14 KB gzip).
+- Changed: `ydx/enhance.js` (parts 7–8, `ydx-covered` during the wipe), `ydx/enhance.css` (Round 5: 5a, 5b, print),
+  `index.html` (one `ydx` line: `<script src="/ydx/light.js" async>`). No minified bundle was edited.
