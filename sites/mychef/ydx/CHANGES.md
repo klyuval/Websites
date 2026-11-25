@@ -393,3 +393,135 @@ an iPhone 13, in Hebrew, English and French, and recorded the motion as frame se
 - **`shoot.mjs` walk, desktop and mobile:** 0 log lines, with no errors and no failed requests.
 - **Paint trace of a full scroll:** within noise of round 3. Desktop raster is about 3.2–3.9s against 3.2s, and
   mobile is 0.24s against 0.30s.
+
+## Round 5
+
+The brief: the sites are still "too boring"; make them immersive. Reactive, moving backgrounds, at least one genuinely
+interactive experience, and motion on the level of award-winning studios, without breaking anything from rounds 1–4.
+
+### The idea
+
+MyChef's art direction is a table seen from above: woven cloths, cut-out plates, cutlery, glasses and tea lights. A
+"moving background" here should not be a gradient blob on top of the cloths: the cloths *are* the background. So the
+signature is **light on the table**, the thing a food photographer would move: dappled window light through an olive
+tree, a candle you carry with your hand, a glass that rings when you tap it, and the evening getting later as you
+scroll. Then the interactive moment is the thing every guest secretly wants to do at a chef's table: **plate a course
+yourself.** (Playbook §4 MyChef: "warm candle-light field" + "booking delight"; techniques 1, 7/22, 21.)
+
+### 1. The table is lit (`ydx/light.js`, `enhance.css` 5a)
+
+- **One fixed WebGL canvas** over the whole page (`<ydx-light>`, appended to `<body>` outside the app root after React
+  has hydrated), `pointer-events:none`, blended with **`mix-blend-mode: soft-light`**. Soft-light with 50% grey is an
+  identity, so the shader only moves light and shade across what is already there: the weave, the plates and the type
+  keep their exact colours, the teal site stays teal. It sits under the dock (z 40) and the booking sheet (60/61).
+- **What it draws** (raw WebGL 1, one full-screen triangle, Ashima 2D simplex noise, MIT):
+  - **dappled light through leaves**: a warped two-octave noise thresholded into leaf-shaped light and shade, warm in
+    the light and cool in the shade, stronger toward the top of the room. It is attached to the table (it scrolls with
+    the page) and **scroll speed stirs it** like a breeze;
+  - **a candle that follows the pointer** (or the last touch/drag), with a flame's flicker, trailing the hand by
+    ~140ms; after 4s idle it drifts on its own. Fast scrolling **stretches** the pool along the scroll;
+  - **a glass "ting"**: every click or tap on the cloth sends a ring of light out from that point, stronger on a glass
+    or a tea light, and the glass itself wobbles (`enhance.js` part 8, the individual `rotate` property so the site's
+    own transform is untouched). Form fields and the booking sheet never ring;
+  - **the evening**: each cloth has its own light (cool daylight on linen, amber on pomegranate and saffron, deep
+    candle warmth on the wine "hosting" cloth, low and dark at the night-teal footer), eased between sections, with a
+    soft vignette that deepens on the darker cloths.
+- **Contrast.** The output is clamped to 0.41–0.60 grey, and over the **pomegranate cloths it never brightens at all**
+  (their rects are passed to the shader each frame): their pale body copy (#ffe9ee on #c92c60) is at 4.58:1 before
+  any light, so it cannot afford any. Worked out per cloth with the soft-light formula, the worst frame (candle right
+  on the text) keeps body copy at ≥ 4.8:1 on teal (5.7 without), ≥ 7.7 on wine, unchanged on pomegranate, and dark text
+  on linen/saffron only gains. A screenshot sampler (candle placed on the text at 4 spots, light on vs off) agrees:
+  hero copy −14%, pomegranate copy 0%, all large type far above 3:1.
+- **Performance** (see the numbers below): rendered at half CSS resolution on desktop (the light is low-frequency,
+  the compositor upscales it), 0.32 on phones, 0.25 in the hub iframe; 60 fps only while the hand or the page moves,
+  30 fps when still (phones/iframe 30/20); adaptive step-down from a frame-time EMA; packed uniforms (5 WebGL calls per
+  frame); stopped in hidden tabs; **no drawing while a cloth covers the page** (loader, language wipe, leaving for
+  /play/: `html.ydx-covered`); `webglcontextlost/restored` handled.
+- **Fallbacks.** No WebGL, a failed shader, or a **software rasteriser** (SwiftShader/llvmpipe/"Basic Render", read
+  from `WEBGL_debug_renderer_info`; it would draw the shader on the CPU and starve the site's own animations) → the
+  wrapper's static CSS light (a warm pool high on the table and a vignette, also soft-light) and `html.ydx-nogl`.
+  Reduced motion → one still frame (no loop, not coupled to scroll; on scroll end the cloth's light is applied as a
+  state change). `light.js` blocked or slow → the site exactly as in round 4. Print → hidden.
+
+### 2. "Your turn, chef" — the plating table (`/play/`)
+
+A standalone page, owned completely by ydx (`play/index.html`, `play/play.css`, `play/play.js`; the preview server and
+the Workers serve real files before the SPA fallback). It carries the site's look: the teal cloth with its weave and
+stitched hem, Frank Ruhl Libre / Assistant / Caveat / Gveret Levin, the `mychef✳` wordmark (links home), a "Back to
+the table" pill, the language switch, and the shared light layer (`/ydx/light.js`) so the room is lit the same way.
+
+- **The toy.** A real plate (`plate-empty.webp`, its baked shadow clipped away so it can turn) with fork, knife, wine
+  glass and a tea light around it, and twelve tools laid on the cloth as objects (SVG ramekins for the sauces, the
+  site's own spice-bowl, salt, pomegranate, olive and lemon cut-outs, a ✳ card):
+  - **sauces**: saffron, pomegranate and silan are **spoon swooshes** (a pool where the spoon lands, a tail that
+    tapers with distance and thins with hand speed, pulled out to a point when you let go; darker edge drawn *under*
+    the sauce, a glossy streak on top); herb oil makes the classic **line of shrinking dots**;
+  - **spices**: turmeric and paprika dust, toasted cumin seeds, fleur de sel flakes (tap = a pinch, drag = a trail);
+  - **garnish**: pomegranate pearls (glossy arils with a highlight), olives and leaves (oriented along the hand),
+    lemon zest curls, and the chef's ✳ (the site's own garnish).
+  - **Turn the plate** by grabbing it outside the rim (with inertia); everything on it turns with it.
+  - **Undo**, **Clear** (the napkin passes over), **Surprise me** (the chef's hand plates a dish live with the same
+    tools: swoosh, dots, pearls at the head, a spice trail, zest or olives, maybe the ✳).
+  - **Send to the pass**: a ting of light, the plate lifts and turns a quarter, and a torn **kitchen ticket** comes
+    back with the dish's name written from what is on the plate, in the guest's language ("Pomegranate jus, herb oil,
+    pomegranate pearls & toasted cumin" / "Jus de grenade, huile d'herbes…" / "ציר רימונים, …ופניני רימון") and a
+    note from the chef. From the ticket: **Book the real thing** (→ `/#contact`), **Save the plate** (a 1080×1350
+    PNG: the cloth, the turned plate, the name and the wordmark), or plate another.
+  - A first look: if nobody has touched the plate shortly after arriving, the chef's hand draws one saffron swoosh.
+- **Accessible.** Tools are toggle buttons (`aria-pressed`), the plate is focusable (`role=application`, described):
+  Enter/Space adds the selected ingredient at a random spot, the arrow keys turn it; a polite live region announces
+  each addition; the ticket is a labelled dialog that keeps focus, closes on Escape and returns focus. RTL is native
+  (grid + logical properties). Reduced motion: no spin inertia, instant "Surprise me", fades only.
+- **Layout.** Desktop: intro | plate | tools in three columns. ≤1100px: one column, the tools become a swipeable
+  strip under the plate, and on phones undo/clear/surprise become round icon buttons so the actions fit one row; the
+  whole table fits an iPhone 13 screen.
+- **Same loader/transition system.** The page opens on the teal cloth with its word (inline critical CSS, painted
+  first), which sweeps off in the reading direction once the plate and fonts are ready (min 0.26s after a transition,
+  0.7s on a direct visit; cap 1.4s/2.6s; CSS bail 3.2s; ≤0.4s in the hub iframe). Leaving (wordmark, back, Book) and
+  switching language use the site's four cloths. JS off or `play.js` missing: the plate shows as a picture with a
+  "needs JavaScript · Back to the table" line, no dead tools; a CSS failsafe reveals everything at 3.6s whatever
+  happens.
+
+### 3. Entry point and the transition there (`enhance.js` part 7, `enhance.css` 5b)
+
+- **A place card on the cloth**, "Your turn, chef / plate a course yourself" (`תורכם, שף` / `À vous, chef`) with a
+  tiny plated-plate icon. It is outside the app root (a link appended to `<body>` after hydration), appears once the
+  guest is past the hero, lifts and spins its plate on hover/focus.
+  On phones it is a round plate in the corner the dock leaves free (inline-start; the dock sits at the inline-end),
+  and opens into the card while the invitation section is on screen.
+- **Click → the language wipe's cloths** sweep across with "✳ Your turn, chef" on the teal one; the page navigates
+  under the cover and `/play/` opens on that same teal cloth, so the two pages read as one move. Back works the same
+  way (and the site's own loader is that teal cloth too). Modifier/middle clicks open normally; bfcache restores drop
+  the cover.
+
+### Removed / kept
+
+- Nothing from rounds 1–4 competed with the new layer, so nothing was removed. The round-2 candle glow under the tea
+  lights now reads as the source of the light layer's warmth; the language wipe became the shared transition.
+
+### Performance numbers (headless Chromium in this container)
+
+- **JS cost of the light per frame**, measured by `ydxLight.bench(50)` (inputs, mood, uniforms, draw call):
+  **0.010 ms desktop / 0.014 ms phone**; **0.06 ms at 4× CPU throttle**. The mood check (`elementFromPoint`) runs every
+  12th frame; the pomegranate rects are 1–3 `getBoundingClientRect` reads per frame, read before any writes.
+- **GPU**: this container only has SwiftShader (the GPU emulated on the CPU, shared with other agents), where the
+  full-screen pass plus the full-screen blend dropped a 4×-throttled scripted scroll from p50 16.7 ms frames to
+  100–166 ms (blend alone with the shader paused: 50 ms). That is exactly the case the software-renderer check now
+  catches: **on a software GPU the page gets the static CSS light and is back to its round-4 frame times**. On a
+  hardware GPU the cost is one quarter-pixel-count noise pass (≈0.32 MPix at 1440×900) plus one compositor blend.
+- Layout/style: unchanged (no layout properties animated; the layer is `contain: strict`). CLS 0.
+
+### Checks
+
+- `modes5.cjs` (new): normal, reduced motion (still frame, 0 frames drawn while idle), no WebGL (`fallback`), light.js
+  blocked, phone, hub iframe (canvas at 0.25 → 300px wide for a 1200px frame), and `/play/` normal / reduced motion /
+  no JS / `play.js` 404 / no WebGL / in an iframe: all end usable, **no console errors**.
+- `play.cjs` (new, desktop + iPhone 13, he/en/fr): arrive, hand-drawn swoosh, pearls, paprika, Surprise, turn
+  (57–110°), serve → ticket with the right name, Save → PNG downloaded, Escape closes, language switch updates
+  everything and localStorage, Back navigates home under the cloths; 0 horizontal overflow; no console errors.
+- `kb.cjs` (new): keyboard only: tab order skip → wordmark → back → languages → plate → actions → tools; Enter on the
+  plate adds, arrows turn (120° after 2 presses + serve), ticket keeps focus, Escape returns it to "Send to the pass".
+- `xfer.cjs` (new): frame sequence of main → /play/ → main: cloths in, teal hold with the word, cloths off, the
+  table sets itself; no wipe left behind, no errors.
+- `dock.cjs` (new): the card never overlaps the dock (iPhone 13, 360px, 1280, 1440, he/en).
+- `contrast.cjs` (new): see Contrast above.

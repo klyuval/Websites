@@ -135,6 +135,16 @@
       return true;
     }
     if (!build()) { host.setAttribute('data-state', 'fallback'); doc.classList.add('ydx-nogl'); return; }
+    // a software rasteriser (blocklisted GPU, VM, some headless setups) would draw this full-screen shader on the CPU
+    // and starve the page's own animations: keep the static CSS light there instead
+    if (!window.__ydxAllowSoftware) {
+      let rn = '';
+      try { const ext = gl.getExtension('WEBGL_debug_renderer_info'); rn = ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); } catch (e) { /* unknown: keep going */ }
+      if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(rn || '')) {
+        try { const lc = gl.getExtension('WEBGL_lose_context'); lc && lc.loseContext(); } catch (e) { /* fine */ }
+        host.setAttribute('data-state', 'fallback'); doc.classList.add('ydx-nogl'); return;
+      }
+    }
 
     /* resolution: the light is low-frequency, so it renders well below CSS resolution and the compositor scales it */
     let scale = window.__ydxLightScale || (FRAME ? .25 : COARSE ? .32 : .5);   // (__ydxLightScale: test hook)
@@ -236,6 +246,8 @@
       if (document.hidden || paused) return;
       const dt = Math.min(50, last ? now - last : 16);
       last = now;
+      // a cloth covers the page (the loader, the language wipe, leaving for /play/): nothing to light, skip the draw
+      if (doc.classList.contains('ydx-loading') || doc.classList.contains('ydx-covered') || doc.classList.contains('pl-cover')) { last = now; raf = requestAnimationFrame(frame); return; }
       const active = now - lastInput < 1500 || Math.abs(vel) > .02 || now - tingS.t0 < 1400;
       every = BASE + (active ? 0 : 1) + extra;
       if (++skip % every) { raf = requestAnimationFrame(frame); return; }

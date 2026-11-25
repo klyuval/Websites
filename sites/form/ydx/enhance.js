@@ -494,8 +494,8 @@
     const W = innerWidth, H = innerHeight;
     if (chalk) { chalk.clap(W / 2, H * .55, 1.6); chalk.setTint(AREA.green); setTimeout(() => chalk && chalk.setTint(bgTint), 2400); }
     const big = Math.min(1.7, .9 + W / 1800);
-    burst(0, H, { count: 30, power: 1.5, size: big, dir: -Math.PI / 3, spread: .9 });
-    burst(W, H, { count: 30, power: 1.5, size: big, dir: -Math.PI * 2 / 3, spread: .9, delay: .08 });
+    burst(0, H, { count: 30, power: 2.1, size: big, dir: -Math.PI / 3, spread: .9 });
+    burst(W, H, { count: 30, power: 2.1, size: big, dir: -Math.PI * 2 / 3, spread: .9, delay: .08 });
     burst(W / 2, H * .45, { count: 22, power: .9, size: big * .9, delay: .25 });
     const el = d.createElement('div');
     el.className = 'ydx-cheer'; el.setAttribute('aria-hidden', 'true');

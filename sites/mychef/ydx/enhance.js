@@ -228,6 +228,7 @@
       word.appendChild(document.createTextNode(WORDS[lang] || ''));
       bands[3].appendChild(word);
       document.body.appendChild(wrap);
+      cls.add('ydx-covered');   // light.js pauses its draws while a cloth is over the page
 
       const ease = CLOTH, D = 290, S = 28;
       const ins = bands.map((b, i) => b.animate(
@@ -256,7 +257,7 @@
         if (ended) return;
         ended = true;
         clearTimeout(safety);
-        wrap.remove(); wiping = false; cls.remove('ydx-hold');
+        wrap.remove(); wiping = false; cls.remove('ydx-hold', 'ydx-covered');
         try { after(); } catch (e) { /* ignore */ }
       }
     }
@@ -487,6 +488,7 @@
       w.appendChild(document.createTextNode(word));
       bands[3].appendChild(w);
       document.body.appendChild(wrap);
+      cls.add('ydx-covered');
       const ins = bands.map((b, i) => b.animate([{ transform: `translateX(${-dir * off}px)` }, { transform: 'none' }],
         { duration: 290, delay: i * 28, easing: CLOTH, fill: 'both' }));
       w.animate([{ opacity: 0, transform: `translateX(${-dir * 40}px)` }, { opacity: 1, transform: 'none' }],
@@ -497,6 +499,7 @@
     addEventListener('pageshow', e => {
       if (!e.persisted) return;
       document.querySelectorAll('.ydx-wipe--leave').forEach(w => w.remove());
+      cls.remove('ydx-covered');
     });
 
     /* 8. Round 5: glasses and tea lights answer a tap. light.js rings the light from the tap point; the glass itself

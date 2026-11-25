@@ -121,7 +121,7 @@
     var tint = hex(opts.tint || '#c9a56a'), tintT = tint.slice();
     var rips = [], ripTravel = 0, lastRipAt = 0;
     var rowCols = new Float32Array(ROWS * 3), rowsT = [], drawNeeded = true;
-    var records = [];
+    var records = [], win = { n: 0, t: 0, bad: 0 };
     var amb = room ? 0.55 : 0.36, gain = room ? 1.5 : 1, boot = 0; // boot: the bath fades in over ~1.6s
     inst.frameMs = 0; inst.frames = 0; // QA: JS cost per frame (EMA) and frames drawn
 
@@ -253,19 +253,31 @@
     function loop(now) {
       raf = requestAnimationFrame(loop);
       var t0 = performance.now();
-      var dt = last ? Math.min(now - last, 50) : 16.7; last = now;
+      var raw = last ? now - last : 16.7, dt = Math.min(raw, 50); last = now;
       var ts = performance.now(); var any = room ? true : sampleRows(); inst.sampleMs = (inst.sampleMs || 0) + (performance.now() - ts - (inst.sampleMs || 0)) * 0.1;
+      // the site's own overlays (loader iris, route shutter, language plate) cover everything: do not compete with them
+      if (!room && (html.classList.contains('ydx-iris-run') || html.classList.contains('ydx-hold') || d.querySelector('ydx-iris,ydx-veil,ydx-out,div.route-shutter[data-active]'))) any = false;
       // track scroll every frame (cheap) so speed is right when the bath becomes visible again
       var y = scrollY, v = (y - lastY) / Math.max(dt, 1) * (1000 / (innerHeight || 1)); lastY = y; // viewports per second
       var kv = 1 - Math.exp(-dt / 160);
       vel += (Math.max(-3, Math.min(3, v)) - vel) * kv;
       scrollT = y / (innerHeight || 1);
-      if (!any) { host.setAttribute('data-covered', ''); last = now; return; } // hero film / paper fills the screen
+      if (!any) { host.setAttribute('data-covered', ''); last = now; win.n = 0; win.t = 0; return; } // hero film / paper fills the screen
       host.removeAttribute('data-covered');
       t = (t + dt / 1000) % 1000;
       boot = Math.min(1, boot + dt / 1600);
       ema += (dt - ema) * 0.05; // adaptive quality from measured frame time (never steps back up more than once)
       if (ema > 24 && q > 0.36) { if (++slow > 45) { q *= 0.75; slow = 0; ema = 16; dirty = true; } } else slow = 0;
+      // wall-clock check every 1.5s of drawing: a device that cannot hold ~20fps gets a much smaller buffer at once,
+      // and if even that does not help, the layer retires for the session (the page is the original design again)
+      win.n++; win.t += Math.min(raw, 1000);
+      if (win.t > 1500) {
+        var fps = win.n / win.t * 1000; win.n = 0; win.t = 0;
+        if (fps < 20) {
+          if (q > 0.3) { q = Math.max(0.24, q * 0.6); dirty = true; }
+          else if (++win.bad >= 2 && !opts.keep) { retire(); return; }
+        } else win.bad = 0;
+      }
       if (ema < 13 && q < 0.8 && !upgraded) { if (++fast > 240) { q = Math.min(0.8, q / 0.75); upgraded = true; dirty = true; } } else fast = 0;
       var idle = now - lastMove > 3500;
       if (idle) { // no pointer (touch, or resting): the safelight drifts slowly by itself
@@ -323,6 +335,11 @@
     function onRestored() { lost = false; try { init(); update(); } catch (err) { fail(err); } }
     function fail() { teardownLive(); host.setAttribute('data-state', 'fallback'); html.classList.add('ydx-bg-off'); }
 
+    function retire() {
+      inst.retired = true;
+      try { sessionStorage.setItem('ydx-bg-off', '1'); } catch (e) { /* ignore */ }
+      inst.destroy();
+    }
     inst.rescan = function () { if (!dead && !room) { scan(); if (!raf) update(); } };
     inst.setTint = function (c) { tintT = hex(c); if (RM.matches || !raf) tint = tintT.slice(); };
     inst.ripple = function (x, y, a) { addRipple(x, y, a == null ? 1 : a); };

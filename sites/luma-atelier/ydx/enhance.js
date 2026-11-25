@@ -629,13 +629,13 @@
   const SURFACE = { paper: '#dccfae', canvas: '#cdb27f', glass: '#9fb9be', wood: '#c48b55' };
   const routeTint = () => TINT[location.pathname.replace(/\/$/, '')] || TINT.base;
   function living() {
-    if (RM.matches || MODE === 'frame' || !CSSOK || !window.WebGLRenderingContext) return;
+    if (RM.matches || MODE === 'frame' || !CSSOK || !window.WebGLRenderingContext || store.get('ydx-bg-off')) return; // ydx-bg-off: retired as too slow earlier this session
     const go = () => {
       const sc = d.createElement('script');
       sc.src = '/ydx/darkroom-bg.js'; sc.async = true;
       sc.onload = () => {
         try {
-          bg = window.__ydxBg = window.ydxDarkroomBG.mount({ mode: 'site', tint: routeTint(), allowSoftware: !!window.__ydxAllowSoftware, quality: window.__ydxBgQ });
+          bg = window.__ydxBg = window.ydxDarkroomBG.mount({ mode: 'site', tint: routeTint(), allowSoftware: !!window.__ydxAllowSoftware, quality: window.__ydxBgQ, keep: !!window.__ydxBgKeep });
         } catch (e) { bg = null; }
       };
       d.head.appendChild(sc);
