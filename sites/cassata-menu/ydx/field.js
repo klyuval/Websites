@@ -114,10 +114,10 @@
   function create(canvas, opts) {
     opts = opts || {};
     var mq = matchMedia('(prefers-reduced-motion: reduce)');
-    var maxDpr = opts.maxDpr || 1.5, q = opts.quality || 1, qMin = 0.4;
+    var maxDpr = opts.maxDpr || 1.5, q = opts.quality || 1, qMin = 0.35;
     var gl = null, U = {}, raf = 0, pend = 0, lost = false, dead = false, on = false, visible = !d.hidden;
     var W = 0, H = 0, cssW = 1, cssH = 1, dirty = true, held = false;
-    var t = 7 + Math.random() * 40, last = 0, ema = 16, slow = 0;
+    var t = 7 + Math.random() * 40, last = 0, ema = 16, slow = 0, strikes = 0, bad = 0;
     var F0 = hex('#b9cc5a'), F1 = F0, A0 = [1, 1, 1], A1 = A0, ink = hex('#1e3a27');
     var amt = 1, amtT = 1;
     var prog = 0, pouring = false, O = [0, 0], seed = 1.3;
@@ -200,11 +200,21 @@
     }
     function loop(now) {
       raf = requestAnimationFrame(loop);
-      var dt = last ? Math.min(now - last, 50) : 16.7; last = now;
+      var raw = last ? Math.min(now - last, 1000) : 16.7, dt = Math.min(raw, 50); last = now;
       t = (t + dt / 1000) % 1e4;
-      // adaptive quality: drop the render scale when frames are slow (never steps back up: no oscillation)
-      ema += (dt - ema) * 0.05;
-      if (ema > 26 && q > qMin) { if (++slow > 50) { q = Math.max(qMin, q * 0.8); slow = 0; ema = 16; dirty = true; } } else slow = 0;
+      // adaptive quality: drop the render scale when frames are slow (never steps back up: no oscillation);
+      // very slow frames count more, so a struggling device reacts within a second or two
+      ema += (raw - ema) * 0.08;
+      if (ema > 26) slow += raw > 60 ? 6 : 1; else slow = Math.max(0, slow - 1);
+      bad = raw > 100 ? bad + 1 : 0; // a dozen frames in a row under 10fps: the device can't carry it
+      if (bad >= 12 && !w.__ydxGLkeep) { inst.ready = false; setState('slow'); inst.destroy(); return; }
+      if (slow > 50) {
+        slow = 0; ema = 16;
+        if (q > qMin) { q = Math.max(qMin, q * 0.75); dirty = true; }
+        // still too slow at the lowest scale: give the page back its flat CSS field — the field must never cost
+        // the app its smoothness (a test hook, __ydxGLkeep, keeps it for screenshots)
+        else if (++strikes >= 2 && !w.__ydxGLkeep) { inst.ready = false; setState('slow'); inst.destroy(); return; }
+      }
       var kk = 1 - Math.exp(-dt / 110);
       ptr[0] += (ptrT[0] - ptr[0]) * kk; ptr[1] += (ptrT[1] - ptr[1]) * kk;
       pull += (pullT - pull) * (1 - Math.exp(-dt / 260)); pullT *= Math.exp(-dt / 900);
@@ -361,7 +371,7 @@
       width: coarse ? 16 : 22,
       onState: function (s) {
         if (s === 'ready') { h.classList.add('ydx-gl'); cv.classList.add('is-on'); }
-        else if (s === 'lost' || s === 'fallback') { h.classList.remove('ydx-gl'); cv.classList.remove('is-on'); }
+        else if (s === 'lost' || s === 'fallback' || s === 'slow') { h.classList.remove('ydx-gl'); cv.classList.remove('is-on'); }
       },
       ghost: function () { // idle spoon churns the empty band above the copy, away from the coupe
         if (!box.w) return null;

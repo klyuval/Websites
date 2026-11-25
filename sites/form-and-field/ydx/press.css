@@ -114,3 +114,6 @@
 }
 @media (max-width:420px){.pr-actions .pill-button{width:100%;justify-content:center}}
 @media (prefers-reduced-motion:reduce){.pr-line li.new img{animation:none}}
+/* no WebGL: the labels and the landing slot belong to the GL layout */
+.pr-stage.fb .pr-tag,.pr-stage.fb .pr-slot,.pr-stage.fb .pr-brayer{display:none}
+.pr-nojs{font-size:20px;font-weight:600;max-width:32ch}

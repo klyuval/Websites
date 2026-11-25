@@ -693,7 +693,7 @@ void main(){
   /* ---------- go ---------- */
   try { gfx = makeGL(); } catch (e) {
     gl = null; gfx = null; fallback2d = true;
-    cv.hidden = true; $('#pr-fallback').hidden = false;
+    cv.hidden = true; $('#pr-fallback').hidden = false; stage.classList.add('fb');
   }
   if (gl) {
     cv.addEventListener('webglcontextlost', e => { e.preventDefault(); }, false);
