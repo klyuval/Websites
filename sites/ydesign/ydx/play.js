@@ -83,7 +83,7 @@
   const fx = F && cv ? F.create(cv, { tier: coarse ? 1 : 0, allowSoftware, power: 'high-performance', dprCap: 1.5 }) : null;
   const noGl = () => {
     if (hint) hint.textContent = hint.dataset.nogl || hint.textContent;
-    if (cv) cv.hidden = true; // (a refused or lost context can paint white over the still)
+    if (cv) cv.style.display = 'none'; // (a refused or lost context can paint white under the still)
     if (cursor) cursor.remove();
   };
   if (!fx) { noGl(); return; }

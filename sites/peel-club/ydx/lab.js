@@ -112,13 +112,20 @@
         p.vy += 22; p.vr += (Math.random() - 0.5) * 18;
         anim(inner, [{ transform: 'scale(1)' }, { transform: 'scale(1.12,.86)', offset: 0.18 }, { transform: 'scale(.95,1.06)', offset: 0.5 }, { transform: 'scale(1)' }], { duration: 700, easing: OUT });
         // per-keyframe easing (an easing on the whole animation would squeeze the hold into the first half second)
-        anim(popEl, [
-          { opacity: 0, transform: 'scaleX(.45) translateY(10px)', easing: OUT },
-          { opacity: 1, transform: 'none', offset: 0.24 },
-          { opacity: 1, transform: 'none', offset: 0.74, easing: 'cubic-bezier(.65,0,.35,1)' },
-          { opacity: 0, transform: 'translateY(-24px) scaleX(1.05)' },
+        const [pt, pw] = popEl.children;
+        anim(pt, [
+          { opacity: 0, transform: 'translateY(40%) scale(.5,.3)', easing: 'cubic-bezier(.34,1.56,.64,1)' },
+          { opacity: 1, transform: 'none', offset: 0.2 },
+          { opacity: 1, transform: 'none', offset: 0.7, easing: 'cubic-bezier(.65,0,.35,1)' },
+          { opacity: 0, transform: 'translateY(-30%) scaleX(1.06)' },
         ], { duration: 2200 });
-      } else anim(popEl, [{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.8 }, { opacity: 0 }], { duration: 1800 });
+        anim(pw, [
+          { opacity: 0, transform: 'scaleX(.45)', easing: OUT },
+          { opacity: 1, transform: 'none', offset: 0.26 },
+          { opacity: 1, transform: 'none', offset: 0.76, easing: 'cubic-bezier(.65,0,.35,1)' },
+          { opacity: 0, transform: 'scaleX(1.08)' },
+        ], { duration: 2200, delay: 90 });
+      } else [...popEl.children].forEach(el => anim(el, [{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.8 }, { opacity: 0 }], { duration: 1800 }));
       navigator.vibrate?.([12, 40, 26]);
       say(`Pssssht. Cracked! That is can number ${cracked}. Shake it up again.`);
       meter();

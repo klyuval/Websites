@@ -33,7 +33,7 @@
 
 /* the stage: the can is a big button you can grab */
 .lab__stage{display:grid;place-items:center;min-height:min(74svh,760px);align-self:stretch}
-.lab__can{position:relative;display:block;width:clamp(180px,17vw,300px);aspect-ratio:562/1100;padding:0;border:0;background:none;cursor:grab;touch-action:none;
+.lab__can{position:relative;display:block;width:var(--canw);aspect-ratio:562/1100;padding:0;border:0;background:none;cursor:grab;touch-action:none;
   border-radius:28px;-webkit-user-select:none;user-select:none;will-change:transform}
 .lab__can:active{cursor:grabbing}
 .lab__can:focus-visible{outline:4px solid var(--on);outline-offset:14px}
@@ -50,10 +50,13 @@
 .lab:has(.lab__can:focus-visible) .lab__hint-k{display:inline}
 
 /* the crack headline: squeezes open over the stage, the brand's own gesture */
-/* it lands behind the can, the way the hero's "A lot alive." sits behind its can */
-.lab__pop{position:absolute;left:50%;top:50%;z-index:-1;width:max-content;margin:0;translate:-50% -50%;text-align:center;pointer-events:none;opacity:0;
-  font-size:clamp(56px,6.6vw,124px)}
-.lab__pop .wide{display:block}
+/* the crack headline: "Pssssht." bursts out over the top of the can, "A lot alive." lands behind it, the way the
+   hero's own headline sits behind its can. The two lines animate separately so each keeps its own layer. */
+.lab__stage{--canw:clamp(180px,17vw,300px)}
+.lab__pop{position:absolute;inset:0;margin:0;pointer-events:none;font-size:clamp(56px,6.6vw,124px)}
+.lab__pop>span{position:absolute;left:50%;width:max-content;opacity:0;translate:-50% 0}
+.lab__pop .tight{bottom:calc(50% + var(--canw) * .9);z-index:2;line-height:.86}
+.lab__pop .wide{display:block;top:50%;translate:-50% -50%;z-index:-1;margin:0}
 .lab__status{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
 @media (width<=900px){
@@ -61,7 +64,7 @@
   .lab__stage{order:-1;min-height:0;height:clamp(330px,96vw,470px);margin-top:4px}
   .lab__copy{order:0}
   .lab h1{font-size:clamp(54px,19vw,120px)}
-  .lab__can{width:clamp(130px,34vw,220px)}
+  .lab__stage{--canw:clamp(130px,34vw,220px)}
   .lab__pop{font-size:clamp(46px,15vw,110px)}
   .lab__swatches{justify-self:stretch}
 }

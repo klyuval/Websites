@@ -349,7 +349,7 @@ html.ydx-topo .intro-kicker { position: relative; z-index: 3; }
 
 /* Round 5: the route lab chip (dock styling; bottom-left on desktop, above the dock on phones) */
 #ydx-lab {
-  position: fixed; left: var(--gutter); bottom: 25px; z-index: 39;
+  position: fixed; right: var(--gutter); bottom: 86px; z-index: 39;
   display: flex; align-items: center; gap: 11px; padding: 6px 18px 6px 7px;
   background: var(--ink); color: var(--cream); border: 2px solid var(--cream); border-radius: 99px;
   font-family: var(--text); font-weight: 800; font-size: .92rem; line-height: 1.1; white-space: nowrap; text-decoration: none;
@@ -368,8 +368,9 @@ html.ydx-topo .intro-kicker { position: relative; z-index: 3; }
 #ydx-lab .ydx-lab-go { transition: translate .25s var(--ydx-out); }
 #ydx-lab:hover .ydx-lab-go { translate: 3px -3px; }
 @media (max-width: 1279px) { #ydx-lab .ydx-lab-t small { display: none; } #ydx-lab { padding-right: 14px; } }
+@media (max-width: 999px) { #ydx-lab { bottom: 25px; } }   /* no altimeter pill below 1000px */
 @media (max-width: 760px) {
-  #ydx-lab { left: 50%; bottom: 74px; translate: -50% calc(100% + 90px); font-size: .82rem; gap: 8px; padding: 4px 12px 4px 5px; }
+  #ydx-lab { left: 50%; right: auto; bottom: 74px; translate: -50% calc(100% + 90px); font-size: .82rem; gap: 8px; padding: 4px 12px 4px 5px; }
   #ydx-lab.is-on { translate: -50% 0; }
   #ydx-lab .ydx-lab-ico { width: 30px; height: 30px; }
 }

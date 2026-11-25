@@ -405,7 +405,8 @@
     if ('IntersectionObserver' in window) {
       var o = new IntersectionObserver(function (es) {
         es.forEach(function (e) { on[e.target.id] = e.isIntersecting; });
-        a.classList.toggle('is-on', !!(on.terrain || on.summit));
+        // phones: only the summit (an end-of-page invitation), so it never sits on the map sheet's readout card
+        a.classList.toggle('is-on', !!((on.terrain && innerWidth > 760) || on.summit));
       }, { rootMargin: '-40% 0px -40% 0px' });
       ['terrain', 'summit'].forEach(function (id) { var el = document.getElementById(id); if (el) o.observe(el); });
     } else a.classList.add('is-on');
