@@ -456,4 +456,49 @@ and this file's rounds 1–4. Scripts and shots are in `scratchpad/cassata-menu-
   paused as soon as the hero leaves the viewport.
 
 ### Regression (round-3/4 suite copied to `scratchpad/cassata-menu-r5/suite/`, live CSP, stubbed `/api/menu`)
-RESULTS_PLACEHOLDER
+Final run on the round-5 files (`r5-final.txt`):
+
+| Script | Result |
+| --- | --- |
+| `bugs.mjs` | 12/12 PASS |
+| `matrix.mjs` | 27/27 PASS (base, no-JS, 404s, 8s delays, API down, reduced motion, English, iframe, background tab, frozen; `/` and `/host/`) |
+| `regress2.mjs` | desktop + mobile ok: language scoop by mouse and keyboard, sheet + ghost exit + focus return, pour to `/host` and back, bfcache |
+| `order.mjs` | app hydration and FCP not delayed by slow `enhance.js` or `enhance.css` |
+| `cssdelay.mjs` | ok |
+
+`regress2.mjs` runs the same checks as `regress.mjs`, with longer waits and screenshot timeouts tolerated. At load ~35,
+the original's 900ms language check and its screenshots timed out on both the old and the new files.
+
+**`GL=1`: software WebGL forced on, the worst case, which production refuses.**
+- `regress2` passes on desktop and mobile.
+- `bugs` fails 3 timing probes (`js404time` at 3.3s, `lateJs`, `clickDuringLift`). SwiftShader frames take 2–5s each
+  and starve the main thread. With the real renderer check active, the field never runs on such a machine.
+- `lateJs` and `clickDuringLift` were already intermittent under load in round 4.
+
+**Checked separately:**
+- **Fallbacks:** reduced motion (static field frames; `/play/` builder without physics), no WebGL (original flat
+  field), no JS (original site; `/play/` noscript note), and API down on `/play/` (all 18 flavours plus the note).
+- **`/play/` layout:** no horizontal overflow and no tap target under 40px at 360, 390, 768, 1280, 1440, 1920 and
+  844×390, in Hebrew and English. RTL/LTR mirroring is correct, and the keyboard flow is complete.
+- **`shoot.mjs` walk** of `/`, `/host/` and `/play/` (desktop and mobile): no console errors. The only warning is the
+  app's own `/host` preload notice.
+- **Software-GL bail-out:** the page gets its CSS field back after 5–12s (`bail.mjs`).
+
+### Files
+- **New:**
+  - `ydx/field.js`: the field engine and the hero binding.
+  - `play/index.html`: the lab, with the same inline loader blocks plus `enhance.css`/`enhance.js`.
+  - `ydx/play.js` and `ydx/play.css`.
+- **Edited:**
+  - `index.html`: one `<script src="/ydx/field.js" defer>`, marked `ydx r5`.
+  - `ydx/enhance.js`: the lab chip, and the field hold during the language View Transition.
+  - `ydx/enhance.css`: the field canvas, `html.ydx-gl`, the chip.
+- **Untouched:** `host/index.html` and the bundles.
+
+### Known, not changed
+- **GPU cost on real phones** could not be measured here (SwiftShader only). The adaptive scale and the bail-out are
+  the guard.
+- **Hidden render cost:** the field still renders the part of the hero under the coupe photo. A scissor would save a
+  little but would complicate the pour edge.
+- **`/play/` in landscape on phones** (844×390): the stage starts below the fold under the title. It is reachable by
+  scrolling, and the page is a portrait-first toy.
