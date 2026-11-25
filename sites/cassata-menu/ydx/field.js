@@ -117,7 +117,7 @@
     var maxDpr = opts.maxDpr || 1.5, q = opts.quality || 1, qMin = 0.35;
     var gl = null, U = {}, raf = 0, pend = 0, lost = false, dead = false, on = false, visible = !d.hidden;
     var W = 0, H = 0, cssW = 1, cssH = 1, dirty = true, held = false;
-    var t = 7 + Math.random() * 40, last = 0, ema = 16, slow = 0, strikes = 0, bad = 0;
+    var t = 7 + Math.random() * 40, last = 0, ema = 16, slow = 0, strikes = 0, bad = 0, badMs = 0;
     var F0 = hex('#b9cc5a'), F1 = F0, A0 = [1, 1, 1], A1 = A0, ink = hex('#1e3a27');
     var amt = 1, amtT = 1;
     var prog = 0, pouring = false, O = [0, 0], seed = 1.3;
@@ -206,8 +206,9 @@
       // very slow frames count more, so a struggling device reacts within a second or two
       ema += (raw - ema) * 0.08;
       if (ema > 26) slow += raw > 60 ? 6 : 1; else slow = Math.max(0, slow - 1);
-      bad = raw > 100 ? bad + 1 : 0; // a dozen frames in a row under 10fps: the device can't carry it
-      if (bad >= 12 && !w.__ydxGLkeep) { inst.ready = false; setState('slow'); inst.destroy(); return; }
+      // three or more frames in a row under 10fps adding up to 2s: the device can't carry it
+      if (raw > 100) { bad++; badMs += raw; } else if (raw < 50) { bad = 0; badMs = 0; }
+      if (bad >= 3 && badMs > 2000 && !w.__ydxGLkeep) { inst.ready = false; setState('slow'); inst.destroy(); return; }
       if (slow > 50) {
         slow = 0; ema = 16;
         if (q > qMin) { q = Math.max(qMin, q * 0.75); dirty = true; }

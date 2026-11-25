@@ -270,3 +270,135 @@ nothing reads as generic. Only a few things still let it down, so this round is 
   overflow at 360, 390, 768, 1280 or 1920.
 - **Live headers** (`curl -sI`): `cache-control: public, max-age=0, must-revalidate`, no CSP and no `X-Frame-Options`. This is
   unchanged, so nothing in the layer can be blocked.
+
+## Round 5
+
+The brief: make it immersive. Reactive, moving backgrounds, one genuinely interactive experience, motion with weight.
+The site's own line was already the brief: "Move a little. Feel the fizz." So the signature is the soda itself
+(playbook technique 5, fizz and caustics), carried everywhere, and a toy that lets you shake a can.
+
+### 1. The soda field (every page): `ydx/soda.js`, loaded by `enhance.js`
+
+- **What it is.** One fixed, full-screen WebGL 1 canvas behind the page (`.ydx-soda`, `z-index:-1`, `pointer-events:none`,
+  `aria-hidden`). It turns the flat flavour field into the inside of the can: sunlit caustics (two ridged-noise webs
+  combined with `min`, lightly domain-warped), slow light shafts at **14°, the brand's rip angle**, a depth gradient, and
+  carbonation rising in three depths (one hashed bubble per grid cell: rim, specular dot, faint body, wobble).
+- **Where it shows.** Once the first frame is drawn (`html.ydx-gl`) every field-coloured section (`main > .on-field`) and the
+  footer turn transparent, so the hero, the flavour stage, the story/serve/mix openers, the mix builder and the footer
+  wordmark all sit in the same moving soda. Pith and flip sections stay solid: they are the calm reading surfaces that
+  slide over it, and the field is parallaxed at 35% of the page speed (60% for the caustics), so the field sections read
+  as windows into one can. The flat field stays on `<html>` underneath.
+- **It reacts.** Pointer (mouse, pen, touch drag through `touchmove`): a lens that magnifies the caustics and parts the
+  bubbles around the pointer, plus a brighter sun spot; after 4 s idle the spot wanders on its own. On the home hero,
+  moving the mouse releases bubbles *inside* the soda (shader trail, 16 slots) instead of the round-1 DOM rings, which
+  remain as the fallback when there is no WebGL. Click or tap on empty soda: a burst ring through the field plus a
+  handful of bubbles (and a 6 ms haptic tick where supported). Scroll speed makes it fizz harder (bubble rise speed and
+  density, caustic speed), integrated over time so speed changes never jump. Each field section has its own light
+  (hero 1.0, openers 0.9, flavour stage 0.62, mix builder 0.45, footer 0.8), eased as you scroll.
+- **Colour follows the flavour.** The site's own flavour change sets `data-flavor` while its rip wipe covers the screen; a
+  MutationObserver retints the field in that same frame, so the new soda is simply there when the rip peels off.
+- **State flows across pages.** The shader clock and bubble phase are saved on `pagehide` (sessionStorage) and restored, so
+  the soda keeps moving through the wheel/peel page transitions instead of restarting.
+- **Contrast by construction (WCAG AA).** The shader only ever mixes the field toward a lighter `hi` and a darker `lo`, and
+  both are solved in JS per flavour (binary search on the WCAG formula) to keep **≥ 4.95:1** against the section's text
+  colour `--on`, leaving margin for the ±1.5% grain. Measured by reading back every 7th pixel of the canvas over 6 frames
+  with fizz at maximum, a burst ring and 16 trail bubbles active (`contrast.cjs`): worst case **4.70** (bitter orange),
+  **4.73** (blood orange), **4.68** (zesty lime), **5.15** (pink grapefruit). A first pass at 4.6 measured 4.35–4.40 because
+  of the grain; that is why the margin exists.
+- **References:** playbook §1.5 (caustics/bubbles) and §2.1 (`PLAYBOOK-bg-reference.js`: oversized triangle, Ashima simplex
+  noise (MIT), DPR cap, adaptive scale, context loss, reduced motion), Evan Wallace's caustics article for the look, Igloo
+  Inc's "one material carried everywhere" idea.
+
+### 2. The Fizz lab (new page): `/lab/` (`lab/index.html`, `ydx/lab.js`, `ydx/lab.css`)
+
+"Move a little. Feel the fizz." taken literally.
+- **Grab the can and shake it.** Pointer capture on the can (`touch-action:none`), a stiff spring while held and a wobbly
+  one back to rest, rotation from velocity, squash and stretch from speed. Shake energy is how hard the can changes
+  direction; it fills the FIZZ meter (condensed Anybody numerals widening to 150% when full, a pith-and-ink bar). As the
+  fizz builds the can trembles, bubbles leak through the tab, and the shared soda field behind the page fizzes harder.
+- **Crack it open** at 100% (tap the can, Enter, or the pulsing "Crack it open" pill): 160 bubbles spray out of the tab
+  along the can's angle (they decelerate and then rise at a size-dependent terminal speed), a burst ring runs through the
+  soda field, the can recoils, and the brand's squeeze headline plays: "Pssssht." bursts over the can's lid while
+  "A lot alive." lands *behind* the can, the hero's own composition. Haptic pattern on phones.
+- **Pop the bubbles.** Hover (mouse) or drag (touch) through them: each pops with a small ring and droplets. Popped and
+  Cracked counters.
+- **Inputs for everyone.** Keyboard: the can is a real `<button>`; Space or arrows shake, Enter cracks (Space never cracks).
+  An `aria-live` status announces 25/50/75/100% and the crack. Phones: "Shake your phone instead" asks for DeviceMotion
+  permission inside the tap (iOS) and then real shakes fill the meter. Flavour swatches are the site's own
+  `[data-product]` buttons, so switching flavour plays the site's rip wipe, swaps the can (`data-f` pictures) and retints
+  both the soda and the bubbles. An idle can does a small hop every few seconds until someone touches it.
+- **It is the site, not a demo.** Same head (fonts, flavour script, site CSS/bundle, loader curtain with its own label
+  "Fizz lab", wheel/peel transitions), the real header, bag dialog and footer, a "Back to the club" link and a
+  route-next sign-off ("All shaken up? Meet the whole club ↗"). The bubbles are a 2D canvas inside the section, behind the
+  type, drawn in the same AA-safe tint; the loop sleeps when nothing moves and pauses offscreen or in a hidden tab.
+- **Entry points.** A round "FIZZ LAB · SHAKE A CAN" sticker (rotating text, a little can with rising fizz) parked
+  bottom-right on every other page. It appears only after the first screen has scrolled away (the hero's swatches live in
+  that corner), steps aside for the footer links, the mobile menu and open dialogs, and is absent in the hub iframe. The
+  footer nav also gets a plain "Fizz lab" link.
+
+### Removed or replaced
+
+- The round-1 DOM fizz trail on the home hero now runs inside the shader when WebGL is on (it would otherwise double up).
+  The tap burst on the hero is the shader's. Nothing else from earlier rounds competed; the loader, wheel/peel transitions,
+  squeezes and pills are unchanged.
+
+### Fallbacks
+
+| Condition | What you get |
+| --- | --- |
+| No WebGL, or `soda.js` fails to load | `html.ydx-nogl`: each field section gets a still, designed version of the same light (radial sunlight from its top edge plus faint 14° shafts, mixed lightly enough to keep AA). The lab still works fully (2D bubbles, meter, crack). |
+| Software GPU (SwiftShader, llvmpipe, …) | Detected through `WEBGL_debug_renderer_info`: treated like no WebGL (these draw on the CPU and stall the page). |
+| GPU that cannot keep up | Adaptive scale from the frame-time EMA (×0.75 steps), plus a time-based guard: 0.7 s of frames ≥ 45 ms drops straight to the 0.45 floor; another 0.7 s at the floor stops the loop for good and leaves a still frame. Load-time jank is not counted. |
+| Reduced motion | One still, correct frame (no loop, no trail, no bursts). Lab: no tremble, recoil, idle hop or spray; shaking by key or drag still fills the meter; the crack is a fade. |
+| Hub iframe | Light version: no third bubble depth, quality 0.55, DPR ≤ 1, no lab sticker. |
+| Phones (coarse pointer) | Light version: two bubble depths, quality 0.7, DPR ≤ 1. |
+| JS off | The original site (the canvas is created by script). `/lab/` shows its title, can and a `<noscript>` line pointing to the flavors page. |
+| Hidden tab, nothing field-coloured on screen | The loop stops (IntersectionObserver on the field sections; `visibilitychange`). |
+| Context loss | `webglcontextlost` stops, `restored` rebuilds. |
+
+### Performance
+
+- **Shader cost**, compared with the playbook reference in the same SwiftShader harness (`bench.cjs`, 480×320, DPR 1,
+  which is CPU rasterising, so only the ratio matters): about **1.3×** the reference per pixel for the desktop version and
+  about **0.5×** for the phone/iframe version. Two fixes got it there from 2.6×: a sine-free hash, and sending only live
+  trail/burst slots, packed first, so the shader's loops break at once (usually at zero).
+- **JS per frame** of the field loop (EMA measured inside the loop): 0.2–0.4 ms at 1× CPU and 0.6–1.8 ms at 4× CPU throttle,
+  in SwiftShader where GL calls are heavier than on a real GPU. No allocations per frame (typed arrays are reused).
+- **Scrolling at 4× CPU throttle** (`perf.cjs`, 40 wheel steps on `/`): without the field p50 16.7 ms / p95 33–66 ms; with
+  the field in SwiftShader (the guard stops the loop after about 1.4 s) p50 16.7 ms / p95 50–83 ms. A bug found here: in
+  still mode `setIntensity` redrew on every scroll frame (2 s per frame in SwiftShader). It now redraws only when the value
+  changes, and never once the field is degraded.
+- Size: `soda.js` 8.2 KB gzip, `lab.js` 5.9 KB gzip (loaded only on `/lab/`), `lab.css` 5.8 KB raw.
+- Headless note: in headless Chromium the compositor shows the bottom ~70 px of a full-screen WebGL canvas as black in
+  screenshots. Reading the canvas back with `readPixels` gives the right colours, and headful runs under Xvfb are clean.
+  The "after" shots were taken headful.
+
+### Bugs found while building (fixed)
+
+- Lab: the meter could read 100% (rounded) while the can was not yet crackable; 99.5% now counts as full.
+- Lab: pressure is evaluated on each key press, so a fast Space-Space-…-Enter sequence cracks reliably. The Space-vs-Enter
+  distinction now uses the last key pressed, not a timer flag.
+- Lab: the "ready" glow changed the can's `animation` list, which restarted its drop-in entrance (the can vanished for a
+  frame on crack). The glow is now a halo pseudo-element (opacity and scale only, no filter repaint).
+- Lab: the crack headline used one easing over the whole keyframe list, which squeezed the hold into the first half second.
+  The easing is now per keyframe.
+- Lab: `[hidden]` lost to `.text-button{display:inline-flex}`, so the phone-shake button showed on desktop.
+- Field: a tap on `/serve/` and `/lab/` never burst, because `main[tabindex=-1]` matched the "interactive element" guard.
+
+### Regression (round-3/4 suite re-run on the round-5 code: `peel-club-r5/reg/out.txt`)
+
+- `t-matrix` (`/`, `/story/`): every mode ends uncovered, un-held, hero visible, nothing left hidden after a full scroll.
+  Usable at: normal 2.6–2.9 s, js404 4.9–5.4 s, css404 2.3–3.3 s, both404 4.5–4.6 s, js +8 s 4.6 s, app +8 s 2.2 s,
+  frozen 5.5 s, css +8 s 2.1–2.3 s. These match round 4, a few hundred ms slower in normal mode with the suite running
+  under load.
+- `t-basic`, `t-clicks`, `t-abort`, `t-stale`, `t-throw`, `t-rm`, `t-nojs`, `t-frame`, `t-bf2` (bfcache restore), `t-bgraw`
+  (usable 36 ms after the background tab comes forward): pass, same output as round 4. `t-backmid` passed in two clean
+  reruns (back during the wheel, then forward, stays on `/flavors/`, restored from bfcache). The first run, made under
+  load, saw the click navigate before the back press. The only page errors are the known ones: the site's own
+  view-transition abort on an image URL, and the sandboxed-iframe CORS noise from the test harness.
+- `t-cls`: **0.0000** on `/`, `/story/` and `/mix/`, desktop and mobile, first load and back.
+- `shoot.mjs` walks, desktop and mobile, all six pages including `/lab/`: 0 console lines, 0 failed requests.
+- New checks: no-WebGL (`--disable-webgl`) on `/` and `/lab/` gives the CSS light and a working lab. Reduced motion gives a
+  still frame (`running:false`), and the lab cracks by keyboard. A flavour switch through the swatches retints with the
+  rip. In the hub iframe the field is in light mode (quality 0.55) with no sticker. A drag-shake with the mouse
+  (desktop) and a CDP touch drag (iPhone 13) both fill the meter to 100% and crack. The contrast readback is above.

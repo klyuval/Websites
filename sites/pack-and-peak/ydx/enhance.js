@@ -403,16 +403,14 @@
     document.body.appendChild(a);
     var on = {};
     if ('IntersectionObserver' in window) {
+      // Shown only while the strip of screen the chip sits on (78-92% of the height) is decorative picture: the
+      // map sheet's relief (desktop) or the PEAK / summit-rock stage, and never while the footer's text is there.
+      // So it never covers a heading, the readout card, the summit links or the footer.
       var o = new IntersectionObserver(function (es) {
         es.forEach(function (e) { on[e.target.__ydxKey] = e.isIntersecting; });
-        show();
-      }, { rootMargin: '-40% 0px -40% 0px' });
-      // Desktop: over the map sheet's relief or the summit. Phones: only while the PEAK / summit-rock picture is
-      // mid-screen, so it never sits on the readout card or the summit links. Never over the footer's text.
-      var show = function () { a.classList.toggle('is-on', !on.foot && !!(innerWidth > 760 ? on.terrain || on.summit : on.stage)); };
-      [['terrain', '#terrain'], ['summit', '#summit'], ['stage', '.summit-stage']].forEach(function (k) { var el = $(k[1]); if (el) { el.__ydxKey = k[0]; o.observe(el); } });
-      var ft = $('.summit-footer');
-      if (ft) new IntersectionObserver(function (es) { on.foot = es[0].isIntersecting; show(); }).observe(ft);
+        a.classList.toggle('is-on', !on.foot && !!((on.relief && innerWidth > 760) || on.stage));
+      }, { rootMargin: '-78% 0px -8% 0px' });
+      [['relief', '.relief-stage'], ['stage', '.summit-stage'], ['foot', '.summit-footer']].forEach(function (k) { var el = $(k[1]); if (el) { el.__ydxKey = k[0]; o.observe(el); } });
     } else a.classList.add('is-on');
     a.addEventListener('click', function (e) {
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || reduce || !window.__ydxToLab) return;

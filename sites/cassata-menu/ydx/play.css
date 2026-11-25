@@ -105,7 +105,7 @@ html.ydx-gl .lab-site { background-color: transparent; }
   .lab { grid-template-columns: minmax(0, 1fr); grid-template-areas: "copy" "stage" "panel"; gap: 10px; padding-top: 0; }
   .lab__title { font-size: clamp(2.3rem, 11vw, 3.6rem); }
   .lab__lead { font-size: .98rem; }
-  .lab__stage { height: 46svh; min-height: 300px; }
+  .lab__stage { height: 50svh; min-height: 300px; }
   .lab__copy { gap: 8px; }
   .lab__lead { font-size: .92rem; }
   .lab__tray { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;

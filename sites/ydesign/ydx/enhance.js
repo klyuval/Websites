@@ -361,7 +361,7 @@
         .forEach((c, i) => { const i2 = d.createElement('i'); i2.style.background = c; i2.style.setProperty('--ydx-i', String(i)); dots.append(i2); });
       const go = d.createElement('span'); go.className = 'ydx-play__go'; go.setAttribute('aria-hidden', 'true');
       go.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg>';
-      a.append(k, t, p, dots, go);
+      a.append(k, ' ', t, ' ', p, dots, go); // (the spaces keep the link's accessible name readable; a grid ignores them)
       idx.after(a);
       reveal([a], '0px 0px -8% 0px');
       viaWipe(a);

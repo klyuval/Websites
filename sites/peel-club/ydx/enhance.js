@@ -358,8 +358,8 @@
       chip.href = '/lab/';
       chip.setAttribute('aria-label', 'Fizz lab: shake a can');
       chip.innerHTML = '<svg viewBox="0 0 100 100" aria-hidden="true"><defs><path id="ydx-chip-c" d="M50 50m-37 0a37 37 0 1 1 74 0a37 37 0 1 1-74 0"/></defs>'
-        + '<g class="ch-spin"><text><textPath href="#ydx-chip-c">FIZZ LAB · SHAKE A CAN · FIZZ LAB · SHAKE A CAN · </textPath></text></g>'
-        + '<g class="ch-can"><rect x="39" y="33" width="22" height="34" rx="5"/><path d="M42 33l2-4h12l2 4"/><circle class="ch-b" cx="46" cy="24" r="2.4"/><circle class="ch-b" cx="54" cy="19" r="1.8"/><circle class="ch-b" cx="50" cy="14" r="1.4"/></g></svg>';
+        + '<g class="ch-spin"><text textLength="228" lengthAdjust="spacing"><textPath href="#ydx-chip-c" textLength="228" lengthAdjust="spacing">FIZZ LAB · SHAKE A CAN · </textPath></text></g>'
+        + '<g class="ch-can"><rect x="39" y="33" width="22" height="34" rx="5"/><path d="M42 33l2-4h12l2 4"/><circle class="ch-b" cx="46" cy="29" r="2.2"/><circle class="ch-b" cx="54" cy="27" r="1.7"/><circle class="ch-b" cx="50" cy="25" r="1.3"/></g></svg>';
       document.body.append(chip);
       // it waits until the first screen has scrolled away (the hero's own foot row lives in that corner) and steps
       // aside again for the footer's links

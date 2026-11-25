@@ -273,8 +273,8 @@
     // adaptive quality: a sustained slow page steps the field's resolution down (never back up: no oscillation)
     ema += (dt - ema) * 0.05;
     if (ema > 26) { if (++slow > 60 && scale > 0.2) { scale *= 0.75; slow = 0; stepped++; } } else slow = 0;
-    if (dirtyGeo || t - lastGeo > 1500) geometry();
-    else if (t - lastCol > 400) colours();
+    if (dirtyGeo || t - lastGeo > 3000) geometry();
+    else if (t - lastCol > 800) colours();
     // scroll velocity decays smoothly; it speeds the ambient clock (rings rush while you scroll)
     vel *= Math.exp(-dt / 220);
     if (!rm) T += dt / 1000 * (1 + 4 * vel);
