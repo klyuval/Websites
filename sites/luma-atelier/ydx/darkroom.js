@@ -444,12 +444,12 @@
     '  vec3 paper=vec3(.95,.93,.87)+.012*snoise(vec3(pu*90.,3.));',
     '  vec3 ink=vec3(.075,.07,.06);',
     '  vec3 refl=mix(ink,paper,R);',
-    '  vec3 lit=refl*amb*(mix(.78,.97,uLight)+pool*.25*(1.-uLight));',
+    '  vec3 lit=refl*amb*(mix(.46,.97,uLight)+pool*.3*(1.-uLight));',
     // enlarger lamp (white light through the negative) and the red focus filter; the hand casts a soft shadow
     '  vec2 hp=(fc-uPtr)/m; float hand=1.-.9*smoothstep(1.25,.35,length(hp)/uHandR)*uHand;',
     '  float proj=Tn*hand;',
     '  lit=mix(lit,lit*.2*hand,uLamp)+white*proj*uLamp*.95;',
-    '  lit+=vec3(.75,.16,.08)*Tn*uFocus*.3*hand*(1.-uLamp);',
+    '  lit+=vec3(.8,.17,.08)*Tn*uFocus*.42*hand*(1.-uLamp);',
     // under the liquid: slightly darker, the caustic web and ring crests catch the light
     '  float cw=web(pu*vec2(uPaper.z/m,uPaper.w/m)*1.3+g*.05,uTime*uMotion);',
     '  lit=mix(lit,lit*.88+amb*(cw*.07+max(0.,h)*.12),uTray);',

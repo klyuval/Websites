@@ -674,10 +674,14 @@
     label();
     new MutationObserver(label).observe(html, { attributes: true, attributeFilter: ['lang'] });
     d.body.appendChild(a);
-    let shown = null;
+    // shown once the visitor is into the page, but tucked away while they scroll down through content (it sits over
+    // the page's bottom-left corner); it returns when they pause, scroll back up or reach the end of the page
+    let shown = null, lastY = scrollY, goingDown = false, still = 0;
     const check = () => {
       const menu = d.querySelector('.mobile-menu[data-state="open"],[role=dialog][data-state="open"]');
-      const on = scrollY > innerHeight * 0.6 && !menu && !d.querySelector('div.route-shutter[data-active]');
+      const y = scrollY, end = y + innerHeight > d.documentElement.scrollHeight - innerHeight * 0.9;
+      if (Math.abs(y - lastY) > 4) { goingDown = y > lastY; lastY = y; clearTimeout(still); still = setTimeout(() => { goingDown = false; check(); }, 1400); }
+      const on = y > innerHeight * 0.6 && (!goingDown || end) && !menu && !d.querySelector('div.route-shutter[data-active]');
       if (on !== shown) { shown = on; a.classList.toggle('is-on', on); a.tabIndex = on ? 0 : -1; a.toggleAttribute('aria-hidden', !on); }
     };
     let pend = 0;
