@@ -402,7 +402,7 @@ References: playbook §1.6 (Bayer/halftone fields, Codrops dithering articles), 
 flowmap deformation"), §1.21 (shader wipes), §2.1 (`PLAYBOOK-bg-reference.js` for the context, DPR and adaptive
 scaffolding). Simplex noise: Ashima/Gustavson, MIT.
 
-### 1. The living proof (`ydx/field.js`, about 400 lines)
+### 1. The living proof (`ydx/field.js`, 394 lines, 9.8 KB gzip)
 
 - **What it is:** the flat colour fields of every `main > .sec` become ink on paper that is still on the press. One
   WebGL canvas paints each section's own `--field` with two halftone screens, in document space, so the dots scroll
@@ -446,7 +446,7 @@ scaffolding). Simplex noise: Ashima/Gustavson, MIT.
 - `?ydxgl=off` forces the static frame. `?ydxgl=sw` allows software GL. `?ydxgl=force` skips the probe and guard
   (for visual tests only).
 
-### 2. The proof press (`press/index.html`, `ydx/press.js` ~560 lines, `ydx/press.css`)
+### 2. The proof press (`press/index.html`, `ydx/press.js` 707 lines / 15 KB gzip, `ydx/press.css`)
 
 A new standalone page. It is a hands-on print study, the "bigger moment" the existing studies do not have.
 - **01 Set the plate:**
@@ -480,9 +480,9 @@ A new standalone page. It is a hands-on print study, the "bigger moment" the exi
 - **Phones:** the title, then the press bed, then the steps. The bed shows one sheet at a time, with a Plate/Proof
   toggle, and it pans to the proof after a pull. Pulling scrolls the bed into view first.
 - **Degradation:**
-  - No WebGL: a still plate and a CPU-printed proof, side by side.
+  - No WebGL: a still plate and a CPU-printed proof, side by side. "Roll it for me" inks the plate.
   - Reduced motion: no pull animation, the result appears at once.
-  - No JS: a `noscript` line pointing to the posters in the guide.
+  - No JS: the steps and the bed are hidden, and a `noscript` line points to the posters in the guide.
   - The canvas is `role=img`, with a label that describes the last proof.
   - A polite live region announces inking, pulls and saves.
   - Every control is a real button in a fieldset. While a pull runs they are `aria-disabled`.
@@ -525,3 +525,25 @@ A new standalone page. It is a hands-on print study, the "bigger moment" the exi
     history Back and Forward. Nothing covered, no errors.
   - `cost.cjs`, `fl3.cjs` (flood stills), `edge.cjs` (the slip settles to 0), `look.cjs` (live shots), and
     `probe.cjs` / `static.cjs` (fallback).
+- `fallback.cjs`, all with no errors:
+  - `--disable-webgl`: the press uses its 2D fallback and the pull works; the guide gives `static:no-webgl`.
+  - Reduced motion: the press pulls instantly and pins the proof; the guide gives `static:reduced`.
+  - JS off: the press shows its noscript layout.
+  - Hub iframe: the press is in `frame` mode and its loader is gone.
+- The machine was heavily loaded during the final runs (load average about 25 on 4 cores, shared with the other
+  agents), so the absolute timings above are pessimistic.
+
+### Files touched in round 5
+
+- New:
+  - `ydx/field.js`
+  - `ydx/press.js`
+  - `ydx/press.css`
+  - `press/index.html`
+- `ydx/enhance.js`: the out-transition to the press, the `cut` mode and the bfcache release.
+- `ydx/enhance.css`: the living-proof stacking and the static frame.
+- `index.html` (CRLF kept):
+  - the boot script (`cut` mode) and the cut-mode CSS;
+  - the `field.js` link;
+  - the two entry links.
+- `styles.css` and `app.js` were not touched.
