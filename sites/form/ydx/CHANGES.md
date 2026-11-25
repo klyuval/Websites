@@ -375,3 +375,151 @@ every view switch, (b) the same kind of motion using five different curves, (c) 
 - **shoot.mjs desktop and mobile:** only the expected blocked-Supabase line.
 - **Tours** (coach and client, desktop and mobile, Hebrew and English): no overflow and no console errors.
 - **Live headers** (`curl -sI`): still no CSP or XFO, so nothing new to allow.
+
+## Round 5
+
+The brief for this round was "immersive and reactive". FORM is a tool people keep open all day, so the big moments go
+where nobody is trying to work: the sign-in screen and the moments when work gets done. The data views get the same
+living floor, but calm.
+
+**New files** (all loaded lazily by `enhance.js`; `index.html` is unchanged)
+- `ydx/chalk.js`: the living floor. Raw WebGL 1, no libraries, about 8 KB gzip.
+- `ydx/play.js` and `ydx/play.css`: the barbell toy, about 10 KB and 2 KB gzip.
+- `enhance.js` and `enhance.css` gained a round-5 section: the floor modes, plate confetti, the workout cheer and the
+  toy chip.
+
+### 1. The living chalk floor (`chalk.js`)
+- **The idea:** the app's floor is `#111` with a speckle of chalk dust and a few plate-coloured chips (the body's SVG
+  background). This draws that same floor alive:
+  - a slow, domain-warped haze of chalk dust drifting up through the room;
+  - two parallax layers of specks (chalk plus red, blue, yellow and green plate chips) that twinkle and scatter away
+    from the pointer;
+  - "claps": a cloudy chalk puff with a shaded rim and a lit core, bursting outward;
+  - a faint light in the view's area colour from the top corner.
+- **Techniques:** playbook techniques 1 and 10, Quilez domain warping and Ashima simplex noise (MIT). It is one
+  canvas per page, fixed, `pointer-events:none` and `aria-hidden`.
+- **Three modes**, switched by `enhance.js`:
+  - **Sign-in, overlay:** the canvas moves *in front of* the poster (z 3) but stays under the form card (z 4) and the
+    chip. It draws with premultiplied alpha:
+    - an overhead gym spotlight that follows the pointer, so the poster dims by up to 42 % away from it;
+    - chalk haze, specks and soft out-of-focus motes between the camera and the FORM letters and photo;
+    - a tap or click on the poster claps chalk into the air.
+  - **App, calm:** behind everything (z −1), showing through the transparent main area only:
+    - the haze is kept to roughly `#1e1e1e` at most, with no domain warp (a third of the noise cost);
+    - it renders at 0.75 resolution, the specks follow scroll with parallax, and the colour comes from the view's area;
+    - **it rests:** five seconds after the last input it slows to a still frame and stops the loop;
+    - if the GPU is still too slow at the lowest adaptive resolution, app views keep a still floor.
+  - **Play:** the strongest version, behind the toy. Plates hitting the platform clap chalk, and the tint follows the
+    last plate loaded.
+- **Contrast:**
+  - **Poster:** the dimming eases off over the poster copy and the footer line. Their rect is passed in as `uProt`, so
+    the dim mono text stays at or above 4.5:1.
+  - **App views:** the haze band stays dark enough that chalk text and `--dim` text keep AA on every frame.
+- **Performance:**
+  - DPR is capped at 1.5, with adaptive quality (frame-time EMA; steps 0.75 → 0.56 → 0.42, steps back up once).
+  - The loop pauses in hidden tabs, and a context loss is handled.
+  - It starts in idle time after the loader, so it never competes with the app's boot.
+  - On a software rasteriser (SwiftShader, llvmpipe and similar, detected through `WEBGL_debug_renderer_info`) it
+    does not start, unless a test sets `window.__ydxAllowSW`.
+- **Fallbacks:**
+  - **No WebGL or a software GPU:** the canvas is removed, `html.ydx-no-gl` is set, and the body's own speckle floor
+    stays.
+  - **Reduced motion:** one still frame, redrawn only on resize or a mode change.
+  - **Hub iframe:** a still frame.
+  - **`chalk.js` missing or returning HTML:** nothing changes.
+
+### 2. "Load the bar": the barbell toy (`play.js`)
+- **Entry:** a "Load the bar / להעמיס את המוט" chip with a spinning four-colour plate sits on the poster, just above
+  the copy block. It is a `<button>` outside `#root`, positioned from the copy's rect and reachable by Tab. On hover or
+  focus the toy's files preload.
+- **Opening:** the poster opens up into a room. The overlay and the floor canvas clip-path from the poster's rect to
+  the full screen (720 ms, the site's `EASE_WIPE`), the rack plates drop in one after another, and a warm-up pair of
+  25s drops onto the bar.
+- **Loading the bar:**
+  - Tap a plate on the rack, or drag it up. A pair flies onto both sleeves, turning from face-on to edge-on in
+    flight, and clangs into place: the bar dips and the plates rattle.
+  - The geometry is real: plate thickness in mm and a 415 mm sleeve, so it fills up. Five 25s plus a 20 is the
+    maximum (310 kg), then "Sleeve full".
+  - The total counts up in big display type. A tag runs Warm-up, Working set, Heavy, PR territory, Legend, and the
+    total is announced politely.
+- **Lifting:**
+  - Drag the bar up, or press Lift or Space.
+  - Heavier loads move slower, and the bar whips: the ends lag the centre's acceleration, scaled by plate mass.
+  - Past about 280 kg it grinds and will not leave the floor ("Too heavy. One plate less?").
+  - Holding at the top is a lockout: the spring collars turn green. A new best (kept in `localStorage`) fires plate
+    confetti and "New PR!".
+- **Dropping:** the bar falls with gravity, the bumpers bounce, the canvas shakes in proportion to the load, and chalk
+  bursts from the platform through the shared floor's claps. Phones get a short haptic tick.
+- **Stripping:** tap a plate stack to strip its outer pair (it tumbles off), or press "Strip".
+- **Accessibility:**
+  - `role=dialog`, `aria-modal`, and `#root` is `inert` while the toy is open.
+  - The rack and actions are real buttons with labels ("Add a pair of 25 kg plates"). Tab is trapped inside, Escape
+    closes, and focus returns to the chip.
+  - It follows the language and direction (Hebrew/RTL and English/LTR), including a live switch.
+- **Reduced motion:** plates snap on and off, the lift is a still frame at the top, and there is no shake or
+  confetti.
+- **No WebGL:** the room is a CSS spotlight gradient.
+- **Cost:** the 2D canvas is drawn only while something moves.
+- **Safety:** `play.css` carries a `--ydx-play` sentinel. If `play.js` or `play.css` fails, the chip hides itself and
+  the toy never opens unstyled.
+
+### 3. Celebrations when work gets done
+- **Plate confetti:** a shared transient 2D canvas (`window.ydxFX.burst`). The pieces are bumper plates with a steel
+  hub, flipping like coins. It is capped at 90 pieces and removed when empty.
+- **Set done** (a `.set-check` turns checked): a small burst from the check. When it was the last set, a bigger burst
+  comes from the sticky score and the Finish button gives one nudge.
+- **Workout finished:** this fires only when Finish was just pressed and `.session-score` turns `is-finished`, so
+  opening a day that is already complete never celebrates. It brings:
+  - a beat of dimmed floor;
+  - plate cannons from both bottom corners;
+  - a chalk clap and a green tint in the floor;
+  - the outlined headline "אימון הושלם." / "Workout done.", which slams in and fills with chalk over a green "13 sets ·
+    every rep counts" tag, then slides off in reading direction after about 2.2 s.
+  - It is `pointer-events:none` throughout and never blocks the app; the app's own toast and aria-live text still
+    announce it. With reduced motion only the headline fades in and out.
+- **Coach publishes a plan:** a burst from the Publish button once the app's success toast appears. An error toast
+  cancels it.
+
+### Removed or toned down
+- Nothing earlier competed with the new moments. The sleeve pointer-parallax stays; the spotlight now carries most of
+  the poster's reactivity.
+
+### Measurements
+- **Main-thread JS per frame,** 4× CPU throttle, from the floor's own counters (headless SwiftShader):
+  - **Floor loop logic:** 0.045 ms on sign-in and 0.041 ms in the coach view while scrolling.
+  - **Uniform upload plus draw call:** 0.3–0.9 ms. That figure includes SwiftShader rasterising on the CPU, which a
+    real GPU does elsewhere.
+  - **Toy:** about 1.3 ms per frame, including the test harness, while plates fly and the bar lifts.
+- **GPU cost** can't be judged here: SwiftShader takes about 1 s per frame for any full-screen shader. By
+  construction:
+  - **App mode:** 3 simplex calls per pixel at 0.75 resolution, and none at rest.
+  - **Sign-in and play:** 9 simplex calls per pixel, with adaptive resolution.
+- **Long tasks and CLS:** none added. CLS is 0–0.0001.
+- **Size:** about 20 KB gzip of new JS, lazy-loaded.
+
+### Regression (round 3/4 scripts reused from `form-r5/`, plus round-5 checks)
+- **prod.cjs:**
+  - **Every scenario is usable:** normal 2.4 s (the machine was at load average about 39); enhance.js 404 or HTML
+    1.85–1.9 s; enhance.css 404 or HTML or 8 s late 2.0–2.5 s; enhance.js 8 s late 6.2 s; bundle 8 s late 9.1 s; API
+    hanging 4.2 s, then the app's loading screen; live headers 2.2 s.
+  - **Other checks:** no-JS shows no loader, and dialogs open normally in every scenario.
+- **bugs.cjs:** B1–B5 pass. The late script lets the fade finish, a thrown step does not lock the page, no reveal is
+  left pending on any view, there is one wipe per switch, and the HTML fallback is usable at 1.75 s.
+- **extra.cjs:** hidden or frozen tabs recover, back/forward is fine, the iframe loader is gone in 1.4 s, reduced
+  motion is fine, the repeat visit is fine, and rapid switching leaves no stray wipes. No errors.
+- **final.cjs:** CLS 0.0000 / 0.0001 / 0.0000, no overflow.
+- **shoot.mjs, desktop and mobile:** only the expected blocked-Supabase line.
+- **tour.cjs** (coach desktop, client mobile, client desktop in English): no overflow and no console errors.
+- **Round-5 checks:**
+  - **toykb.cjs:** the chip is reachable by Tab; opening focuses the first plate with `#root` inert; Tab never leaves
+    the toy; the live region reads "160 kg on the bar"; the sleeve fills at 310 kg; Escape restores focus and inert
+    state. Hebrew and English, with and without reduced motion.
+  - **r5fail.cjs:** `chalk.js` 404 or HTML (CSS floor, toy still works), `play.js` 404 and `play.css` HTML (the chip
+    hides itself, sign-in still works) and no WebGL (CSS room) all pass.
+  - **cele.cjs / cheercast.cjs:** a set burst, the last-set burst, then the workout cheer, with no stray overlays
+    left. These are screencast frames.
+  - **glcheck.cjs:** in default headless Chromium (SwiftShader) the floor does not start, so it adds no console
+    warnings.
+
+**Left alone:** the app bundle and markup. The toy and every overlay are siblings of `#root`. Live headers still send
+no CSP, but everything new is in external files, so a strict `script-src 'self'` would still allow it.
